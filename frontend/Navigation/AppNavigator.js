@@ -1,25 +1,34 @@
-// Navigation/AppNavigator.js
-import React from "react";
+import React, { useContext, useState, useEffect } from "react";
+import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
 import SplashScreen from "../screens/SplashScreen";
-import SignUp from "../screens/SignUp";
+import AuthNavigator from "./AuthNavigator";
+import MainTabNavigator from "./MainTabNavigator";
+import { AuthContext } from "../context/AuthContext";
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  const { user } = useContext(AuthContext);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 2000); // show splash 2s
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) return <SplashScreen />;
+
   return (
-    <Stack.Navigator initialRouteName="Splash">
-      <Stack.Screen 
-        name="Splash" 
-        component={SplashScreen} 
-        options={{ headerShown: false }} 
-      />
-      <Stack.Screen 
-        name="SignUp" 
-        component={SignUp} 
-        options={{ headerShown: false }} 
-      />
-    </Stack.Navigator>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <Stack.Screen name="MainApp" component={MainTabNavigator} />
+        ) : (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-

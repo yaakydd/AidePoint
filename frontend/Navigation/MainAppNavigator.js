@@ -1,58 +1,127 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { View, Text, TouchableOpacity } from 'react-native';
-
-import ReportScreen from '../screens/ReportScreen';
-import ChatbotScreen from '../screens/ChatbotScreen';
-import BadgesScreen from '../screens/BadgesScreen';
+import React from "react";
+import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import HomeScreen from "../screens/HomeScreen";
+import Scan from "../screens/Scan";
+import ReportScreen from "../screens/ReportScreen";
+import Chatbot from "../screens/Chatbot";
+import Badges from "../screens/Badges";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const Tab = createBottomTabNavigator();
 
-// Custom Tab Bar
-function MyTabBar({ state, descriptors, navigation }) {
+// Custom tab button with top indicator
+const TabBarButton = ({ children, onPress, accessibilityState }) => {
+  const focused = accessibilityState.selected;
   return (
-    <View style={{ flexDirection: 'row', height: 60, borderTopWidth: 0.5, borderTopColor: '#ccc' }}>
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.index === index;
-
-        const onPress = () => navigation.navigate(route.name);
-
-        const iconName = (() => {
-          switch (route.name) {
-            case 'Home': return isFocused ? 'home' : 'home-outline';
-            case 'Scan': return isFocused ? 'scan' : 'scan-outline';
-            case 'Report': return isFocused ? 'document-text' : 'document-text-outline';
-            case 'Chatbot': return isFocused ? 'chatbubble' : 'chatbubble-outline';
-            case 'Badges': return isFocused ? 'ribbon' : 'ribbon-outline';
-          }
-        })();
-
-        return (
-          <TouchableOpacity
-            key={index}
-            onPress={onPress}
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-          >
-            {isFocused && <View style={{ height: 3, width: '100%', backgroundColor: '#007AFF', position: 'absolute', top: 0 }} />}
-            <Ionicons name={iconName} size={24} color={isFocused ? '#007AFF' : '#8e8e93'} />
-            <Text style={{ color: isFocused ? '#007AFF' : '#8e8e93', fontSize: 12 }}>{route.name}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+    <TouchableOpacity
+      style={styles.tabButton}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      {/* Top indicator */}
+      <View
+        style={[
+          styles.indicator,
+          { backgroundColor: focused ? "#0bc9da" : "transparent" },
+        ]}
+      />
+      {children}
+    </TouchableOpacity>
   );
-}
+};
 
-export default function BottomTabs() {
+export default function MainTabNavigator() {
   return (
-    <Tab.Navigator tabBar={props => <MyTabBar {...props} />}>
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Scan" component={ScanStack} />
-      <Tab.Screen name="Report" component={ReportScreen} />
-      <Tab.Screen name="Chatbot" component={ChatbotScreen} />
-      <Tab.Screen name="Badges" component={BadgesScreen} />
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: styles.tabBar,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "bold" },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" size={size} color={color} />
+          ),
+          tabBarButton: (props) => <TabBarButton {...props} />,
+          tabBarActiveTintColor: "#0bc9da",
+          tabBarInactiveTintColor: "#9ca3af",
+        }}
+      />
+      <Tab.Screen
+        name="Scan"
+        component={Scan}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="qr-code-scanner" size={size} color={color} />
+          ),
+          tabBarButton: (props) => <TabBarButton {...props} />,
+          tabBarActiveTintColor: "#0bc9da",
+          tabBarInactiveTintColor: "#9ca3af",
+        }}
+      />
+      <Tab.Screen
+        name="Report"
+        component={ReportScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="description" size={size} color={color} />
+          ),
+          tabBarButton: (props) => <TabBarButton {...props} />,
+          tabBarActiveTintColor: "#0bc9da",
+          tabBarInactiveTintColor: "#9ca3af",
+        }}
+      />
+      <Tab.Screen
+        name="Chatbot"
+        component={Chatbot}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="chat-bubble" size={size} color={color} />
+          ),
+          tabBarButton: (props) => <TabBarButton {...props} />,
+          tabBarActiveTintColor: "#0bc9da",
+          tabBarInactiveTintColor: "#9ca3af",
+        }}
+      />
+      <Tab.Screen
+        name="Badges"
+        component={Badges}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="person" size={size} color={color} />
+          ),
+          tabBarButton: (props) => <TabBarButton {...props} />,
+          tabBarActiveTintColor: "#0bc9da",
+          tabBarInactiveTintColor: "#9ca3af",
+        }}
+      />
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    height: 70,
+    paddingBottom: 10,
+    paddingTop: 5,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: "center",
+  },
+  indicator: {
+    width: 20,
+    height: 3,
+    borderRadius: 2,
+    marginBottom: 4,
+  },
+});
