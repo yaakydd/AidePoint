@@ -1,32 +1,45 @@
-import React, { useEffect } from "react";
-import styles from "../styles/SplashScreen";
+import React, { useEffect, useContext, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons"; // Expo Vector Icons
+import styles from "../styles/SplashScreen";
+import { AuthContext } from "../context/AuthContext"; // Make sure you have this context
 
 const SplashScreen = ({ navigation }) => {
-  
+  const { user } = useContext(AuthContext);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    setTimeout(() => {
-      navigation.replace("SignUp");
+    const timer = setTimeout(() => {
+      setLoading(false);
+      if (user) {
+        navigation.replace("Dashboard"); // User is logged in → go to main app
+      } else {
+        navigation.replace("Auth"); // User not logged in → go to auth flow
+      }
     }, 2500); // 2.5 seconds
-  }, []);
 
-  return (
-    <View style={styles.container}>
-      
-      {/* Logo / App Name */}
-      <Text style={styles.logo}>🧬</Text>
-      <Text style={styles.title}>AidePoint</Text>
+    return () => clearTimeout(timer);
+  }, [user]);
 
-      {/* Tagline */}
-      <Text style={styles.subtitle}>
-        AI-Powered Blood Diagnostics
-      </Text>
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        {/* Vector Icon instead of emoji */}
+        <MaterialCommunityIcons name="dna" size={80} color="#0bc9da" />
 
-      {/* Loader */}
-      <ActivityIndicator size="large" color="#0bc9da" style={{ marginTop: 30 }} />
+        {/* App Name */}
+        <Text style={styles.title}>AidePoint</Text>
 
-    </View>
-  );
+        {/* Tagline */}
+        <Text style={styles.subtitle}>AI-Powered Blood Diagnostics</Text>
+
+        {/* Loader */}
+        <ActivityIndicator size="large" color="#0bc9da" style={{ marginTop: 30 }} />
+      </View>
+    );
+  }
+
+  return null; // Nothing to render once loading is done; navigation.replace handles the screen switch
 };
 
 export default SplashScreen;
