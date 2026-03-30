@@ -7,9 +7,9 @@ import {
   ScrollView,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import styles from "../styles/Signup";
+import styles from "../styles/SignUp";
 
-const SignupScreen = () => {
+const SignUp = (navigation) => {
   const [form, setForm] = useState({
     name: "",
     id: "",
@@ -160,4 +160,4 @@ const SignupScreen = () => {
   );
 };
 
-export default SignupScreen;
+export default SignUp;
