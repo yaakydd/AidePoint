@@ -12,9 +12,9 @@ const SplashScreen = ({ navigation }) => {
     const timer = setTimeout(() => {
       setLoading(false);
       if (user) {
-        navigation.replace("Dashboard"); // User is logged in → go to main app
+        navigation.replace("Dashboard"); // If user is already logged in go to main app
       } else {
-        navigation.replace("Auth"); // User not logged in → go to auth flow
+        navigation.replace("Auth"); // If user is not logged in go to the authentication flow
       }
     }, 2500); // 2.5 seconds
 
@@ -24,7 +24,7 @@ const SplashScreen = ({ navigation }) => {
   if (loading) {
     return (
       <View style={styles.container}>
-        {/* Vector Icon instead of emoji */}
+        {/* Vector Icon of DNA */}
         <MaterialCommunityIcons name="dna" size={80} color="#0bc9da" />
 
         {/* App Name */}
