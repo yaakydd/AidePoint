@@ -17,7 +17,7 @@ export default function AppNavigator() {
       <Stack.Screen 
         name="SignUp" 
         component={SignUp} 
-        options={{ title: "Sign Up" }} 
+        options={{ headerShown: false }} 
       />
     </Stack.Navigator>
   );
