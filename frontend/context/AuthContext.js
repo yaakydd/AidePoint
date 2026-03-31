@@ -9,44 +9,53 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
 
+  // Load user and first launch info from AsyncStorage
   useEffect(() => {
-    const bootstrap = async () => {
+    const loadData = async () => {
       try {
         const storedUser = await AsyncStorage.getItem("user");
-        const hasLaunched = await AsyncStorage.getItem("hasLaunched");
-
-        if (hasLaunched === null) {
-          await AsyncStorage.setItem("hasLaunched", "true");
-          setIsFirstLaunch(true); // first time user
-        } else {
-          setIsFirstLaunch(false);
-        }
+        const firstLaunch = await AsyncStorage.getItem("isFirstLaunch");
 
         if (storedUser) setUser(JSON.parse(storedUser));
+
+        // If firstLaunch is null, this is the very first time
+        setIsFirstLaunch(firstLaunch === null ? true : false);
       } catch (e) {
-        console.log("AuthContext load error:", e);
+        console.log("Error loading auth data:", e);
       } finally {
         setIsLoading(false);
       }
     };
 
-    bootstrap();
+    loadData();
   }, []);
 
+  // LOGIN function
   const login = async (userData) => {
-    setUser(userData);
-    await AsyncStorage.setItem("user", JSON.stringify(userData));
+    try {
+      setUser(userData);
+      await AsyncStorage.setItem("user", JSON.stringify(userData));
+
+      // Once user registers/logs in, mark first launch as false
+      await AsyncStorage.setItem("isFirstLaunch", "false");
+      setIsFirstLaunch(false);
+    } catch (e) {
+      console.log("Login error:", e);
+    }
   };
 
+  // LOGOUT function
   const logout = async () => {
-    setUser(null);
-    await AsyncStorage.removeItem("user");
+    try {
+      setUser(null);
+      await AsyncStorage.removeItem("user");
+    } catch (e) {
+      console.log("Logout error:", e);
+    }
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, isLoading, isFirstLaunch, login, logout }}
-    >
+    <AuthContext.Provider value={{ user, isLoading, isFirstLaunch, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

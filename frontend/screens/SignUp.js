@@ -1,4 +1,4 @@
-// screens/SignUpScreen.js
+// screens/SignUp.js
 import React, { useContext } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -10,11 +10,11 @@ const SignUp = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation();
 
-  const dummyUser = { name: "Dr. Joshua", email: "joshua@hospital.org" };
-
+  // Dummy user created only when Register is pressed
   const handleRegister = () => {
-    login(dummyUser);
-    navigation.replace("MainApp"); // navigate to bottom tabs
+    const dummyUser = { name: "Dr. Joshua", email: "joshua@hospital.org" };
+    login(dummyUser);                // Save to AsyncStorage
+    navigation.replace("MainAppNavigator");   // Go to MainApp navigator
   };
 
   return (
@@ -30,6 +30,7 @@ const SignUp = () => {
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Enter your professional details to get started.</Text>
 
+        {/* Form Fields */}
         {[
           { label: "Full Name", icon: <MaterialIcons name="person" size={20} color="#888" /> },
           { label: "Professional ID", icon: <MaterialIcons name="badge" size={20} color="#888" /> },
@@ -54,7 +55,7 @@ const SignUp = () => {
           <Text style={styles.buttonText}>Register Account →</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
+        <TouchableOpacity onPress={() => navigation.replace("SignIn")}>
           <Text style={styles.footerLink}>
             Already have an account? <Text style={styles.linkText}>Sign In</Text>
           </Text>
