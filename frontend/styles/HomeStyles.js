@@ -1,5 +1,14 @@
 import { StyleSheet } from "react-native";
 
+
+const cardShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.1,
+  shadowRadius: 10,
+  elevation: 5,
+};
+
 // HOME SCREEN STYLES
 export const homeStyles = StyleSheet.create({
   // CONTAINER
