@@ -14,7 +14,7 @@ const SignIn = () => {
   const handleSignIn = () => {
     const dummyUser = { name: "Dr. Joshua", email: "joshua@hospital.org" };
     login(dummyUser);                // Save to AsyncStorage
-    navigation.replace("MainAppNavigator");   // Navigate to MainApp
+    navigation.replace("MainAppNavigator");   // Navigate to MainAppNavigator
   };
 
   return (
