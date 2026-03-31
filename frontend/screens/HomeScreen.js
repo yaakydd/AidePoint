@@ -1,10 +1,15 @@
-import React from "react";
+import React, { useContext } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
 import { homeStyles } from "../styles/HomeStyles";
-import MainAppNavigator from "../navigation/MainAppNavigator";
+import { AuthContext } from "../context/AuthContext";
 
 const HomeScreen = () => {
+  const { user } = useContext(AuthContext);
+
+  // fallback dummy user if context is empty
+  const displayName = user?.name || "Joshua";
+
   return (
     <View style={homeStyles.container}>
       {/* Header */}
@@ -12,8 +17,8 @@ const HomeScreen = () => {
         <View style={homeStyles.profileRow}>
           <View style={homeStyles.avatar} />
           <View>
-            <Text style={homeStyles.greeting}>Hey, Joshua</Text>
-            <Text style={homeStyles.subGreeting}>Welcome back, Dr. Joshua</Text>
+            <Text style={homeStyles.greeting}>Hey, {displayName}</Text>
+            <Text style={homeStyles.subGreeting}>Welcome back, Dr. {displayName}</Text>
           </View>
         </View>
         <TouchableOpacity>
@@ -62,9 +67,6 @@ const HomeScreen = () => {
         {renderPatientItem("Amara Okafor", "SICKLE CELL DETECTED", "red")}
         {renderPatientItem("David Chen", "NORMAL", "green")}
       </ScrollView>
-
-      {/* Bottom Tabs */}
-      <MainAppNavigator />
     </View>
   );
 };

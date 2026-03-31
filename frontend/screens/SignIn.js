@@ -1,96 +1,103 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Image } from 'react-native';
-import { Feather, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { signInStyles as styles } from '../styles/SignInStyles';
+import React, { useState, useContext } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { signInStyles as styles } from "../styles/SignInStyles";
+import { AuthContext } from "../context/AuthContext";
+import { useNavigation } from "@react-navigation/native";
 
-const SignInScreen = () => {
+const SignIn = () => {
+  const { login } = useContext(AuthContext);
+  const navigation = useNavigation();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = () => {
+    // ✅ Fill your dummy user data here
+    const dummyUser = {
+      name: "Joshua",
+      email: email || "joshua@hospital.org",
+      role: "Technician",
+    };
+
+    login(dummyUser); // This will set the user in AuthContext and navigate to MainApp
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Header Section */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.brandTitle}>AidePoint</Text>
-          <Text style={styles.brandSubtitle}>Trusted Diagnostic tool</Text>
+          <Text style={styles.brandSubtitle}>Trusted Diagnostic Tool</Text>
           <Text style={styles.mainTitle}>Sign In</Text>
         </View>
 
-        {/* Form Fields */}
-        <View style={styles.form}>
-          <Text style={styles.inputLabel}>Hospital Email</Text>
-          <View style={styles.inputBox}>
-            <Feather name="mail" size={20} color="#94A3B8" />
-            <TextInput 
-              style={styles.textInput} 
-              placeholder="name@hospital.org" 
-              placeholderTextColor="#94A3B8"
+        {/* Email */}
+        <Text style={styles.inputLabel}>Hospital Email</Text>
+        <View style={styles.inputBox}>
+          <Feather name="mail" size={20} color="#94A3B8" />
+          <TextInput
+            style={styles.textInput}
+            placeholder="name@hospital.org"
+            placeholderTextColor="#94A3B8"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+          />
+        </View>
+
+        {/* Password */}
+        <Text style={styles.inputLabel}>Password</Text>
+        <View style={styles.inputBox}>
+          <Feather name="lock" size={20} color="#94A3B8" />
+          <TextInput
+            style={styles.textInput}
+            placeholder="••••••••"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Feather
+              name={showPassword ? "eye-off" : "eye"}
+              size={20}
+              color="#94A3B8"
             />
-          </View>
-
-          <Text style={styles.inputLabel}>Password</Text>
-          <View style={styles.inputBox}>
-            <Feather name="lock" size={20} color="#94A3B8" />
-            <TextInput 
-              style={styles.textInput} 
-              placeholder="••••••••" 
-              placeholderTextColor="#94A3B8"
-              secureTextEntry
-            />
-            <Feather name="eye" size={20} color="#94A3B8" />
-          </View>
-
-          <TouchableOpacity style={styles.forgotBtn}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.signInBtn}>
-            <Text style={styles.signInBtnText}>Sign In</Text>
-            <Feather name="arrow-right" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
 
-        {/* SSO Section */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>Or sign in with SSO</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.ssoRow}>
-          <TouchableOpacity style={styles.ssoButton}>
-            <Image 
-              source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg' }} 
-              style={styles.googleIcon} 
-            />
-            <Text style={styles.ssoBtnText}>Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.ssoButton}>
-            <MaterialCommunityIcons name="hospital-box-outline" size={22} color="#475569" />
-            <Text style={styles.ssoBtnText}>Hospital ID</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Navigation */}
-        <TouchableOpacity style={styles.signUpLink}>
-          <Text style={styles.footerBaseText}>
-            Don't have an account? <Text style={styles.footerLinkText}>Sign Up</Text>
-          </Text>
+        {/* Login Button */}
+        <TouchableOpacity style={styles.signInBtn} onPress={handleLogin}>
+          <Text style={styles.signInBtnText}>Sign In</Text>
+          <Feather name="arrow-right" size={20} color="#FFF" />
         </TouchableOpacity>
 
-        {/* Compliance Section */}
-        <View style={styles.complianceBox}>
-          <View style={styles.complianceRow}>
-            <Feather name="shield" size={14} color="#94A3B8" />
-            <Text style={styles.complianceTitle}>HIPAA COMPLIANT SECURE SERVER</Text>
-          </View>
-          <Text style={styles.complianceText}>
-            This system is intended for authorized healthcare personnel only. Access is monitored and logged.
+        {/* Navigate to SignUp */}
+        <TouchableOpacity
+          style={styles.signUpLink}
+          onPress={() => navigation.navigate("SignUp")}
+        >
+          <Text style={styles.footerBaseText}>
+            Don't have an account?{" "}
+            <Text style={styles.footerLinkText}>Sign Up</Text>
           </Text>
-        </View>
-        
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-export default SignInScreen;
+export default SignIn;
