@@ -1,29 +1,25 @@
-import React, { useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { AuthContext } from '../context/AuthContext';
-import { signupStyle as styles } from '../styles/SignUpStyles'; // your CSS-like file
+// screens/SignUpScreen.js
+import React, { useContext } from "react";
+import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { AuthContext } from "../context/AuthContext";
+import { signupStyle as styles } from "../styles/SignUpStyles";
 
 const SignUp = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation();
 
-  // Dummy user
-  const dummyUser = {
-    name: 'Dr. Joshua',
-    email: 'joshua@hospital.org',
-  };
+  const dummyUser = { name: "Dr. Joshua", email: "joshua@hospital.org" };
 
   const handleRegister = () => {
     login(dummyUser);
-    navigation.replace('MainAppNavigator');
+    navigation.replace("MainApp"); // navigate to bottom tabs
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.card}>
-        {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={styles.logoCircle}>
             <MaterialCommunityIcons name="microscope" size={20} color="#00CFE8" />
@@ -34,13 +30,12 @@ const SignUp = () => {
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Enter your professional details to get started.</Text>
 
-        {/* Form Fields */}
         {[
-          { label: 'Full Name', icon: <MaterialIcons name="person" size={20} color="#888" /> },
-          { label: 'Professional ID', icon: <MaterialIcons name="badge" size={20} color="#888" /> },
-          { label: 'Institution', icon: <MaterialIcons name="business" size={20} color="#888" /> },
-          { label: 'Hospital Email', icon: <MaterialIcons name="email" size={20} color="#888" /> },
-          { label: 'Password', icon: <MaterialIcons name="lock" size={20} color="#888" /> },
+          { label: "Full Name", icon: <MaterialIcons name="person" size={20} color="#888" /> },
+          { label: "Professional ID", icon: <MaterialIcons name="badge" size={20} color="#888" /> },
+          { label: "Institution", icon: <MaterialIcons name="business" size={20} color="#888" /> },
+          { label: "Hospital Email", icon: <MaterialIcons name="email" size={20} color="#888" /> },
+          { label: "Password", icon: <MaterialIcons name="lock" size={20} color="#888" /> },
         ].map((field) => (
           <View key={field.label} style={styles.inputGroup}>
             <Text style={styles.label}>{field.label}</Text>
@@ -49,7 +44,7 @@ const SignUp = () => {
               <TextInput
                 style={styles.input}
                 placeholder={`e.g. ${field.label}`}
-                secureTextEntry={field.label === 'Password'}
+                secureTextEntry={field.label === "Password"}
               />
             </View>
           </View>
@@ -59,31 +54,12 @@ const SignUp = () => {
           <Text style={styles.buttonText}>Register Account →</Text>
         </TouchableOpacity>
 
-        <View style={styles.dividerContainer}>
-          <View style={styles.line} />
-          <Text style={styles.dividerText}>Or sign up with SSO</Text>
-          <View style={styles.line} />
-        </View>
-
-        <View style={styles.ssoContainer}>
-          <TouchableOpacity style={styles.ssoButton}>
-            <Text>Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.ssoButton}>
-            <Text>Hospital ID</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
+        <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
           <Text style={styles.footerLink}>
             Already have an account? <Text style={styles.linkText}>Sign In</Text>
           </Text>
         </TouchableOpacity>
       </View>
-
-      <Text style={styles.copyright}>
-        © 2024 AidePoint Diagnostic Systems. All medical data is encrypted and HIPAA compliant.
-      </Text>
     </ScrollView>
   );
 };

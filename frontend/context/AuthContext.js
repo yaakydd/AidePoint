@@ -1,3 +1,4 @@
+// context/AuthContext.js
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -6,40 +7,46 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
 
-  // Load user from storage
   useEffect(() => {
-    const loadUser = async () => {
+    const bootstrap = async () => {
       try {
         const storedUser = await AsyncStorage.getItem("user");
+        const hasLaunched = await AsyncStorage.getItem("hasLaunched");
 
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        if (hasLaunched === null) {
+          await AsyncStorage.setItem("hasLaunched", "true");
+          setIsFirstLaunch(true); // first time user
+        } else {
+          setIsFirstLaunch(false);
         }
+
+        if (storedUser) setUser(JSON.parse(storedUser));
       } catch (e) {
-        console.log("Error loading user:", e);
+        console.log("AuthContext load error:", e);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadUser();
+    bootstrap();
   }, []);
 
-  // LOGIN
   const login = async (userData) => {
     setUser(userData);
     await AsyncStorage.setItem("user", JSON.stringify(userData));
   };
 
-  // 🚪 LOGOUT
   const logout = async () => {
     setUser(null);
     await AsyncStorage.removeItem("user");
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, isFirstLaunch, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

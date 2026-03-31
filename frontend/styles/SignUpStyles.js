@@ -31,22 +31,27 @@ export const signupStyle = StyleSheet.create({
   },
 
   // HEADER / LOGO
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "center",
-    marginBottom: 20,
+  logoContainer: {
+    flexDirection: 'row',           // Icon and text side by side
+    alignItems: 'center',           // Vertically centered
+    justifyContent: 'flex-start',   // Start from left
+    marginBottom: 30,               // Space below logo
   },
+
   logoCircle: {
-    backgroundColor: "#E0F7FA",
-    padding: 8,
-    borderRadius: 12,
-    marginRight: 10,
+    width: 50,                       // Circle width
+    height: 50,                      // Circle height
+    borderRadius: 25,                // Circle shape
+    backgroundColor: '#E0F7FA',      // Light background color
+    alignItems: 'center',            // Center icon horizontally
+    justifyContent: 'center',        // Center icon vertically
+    marginRight: 12,                 // Space between circle and text
   },
+
   logoText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#1E293B",
+    fontSize: 24,                     // Logo text size
+    fontWeight: 'bold',               // Bold text
+    color: '#00CFE8',                 // Match your brand color
   },
 
   // TEXT
