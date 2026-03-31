@@ -9,7 +9,7 @@ const cardShadow = {
   elevation: 5,
 };
 
-export const signupStylese = StyleSheet.create({
+export const signupStyle = StyleSheet.create({
 
   // CONTAINERe
   container: {

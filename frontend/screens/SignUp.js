@@ -1,111 +1,90 @@
-import React, { useState, useContext } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-} from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { signupStyles } from "../styles/SignUpStyles";
-import { AuthContext } from "../context/AuthContext";
+import React, { useContext } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { AuthContext } from '../context/AuthContext';
+import { signupStyle as styles } from '../styles/SignUpStyles'; // your CSS-like file
 
 const SignUp = () => {
   const { login } = useContext(AuthContext);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-  const [showPassword, setShowPassword] = useState(false);
+  const navigation = useNavigation();
+
+  // Dummy user
+  const dummyUser = {
+    name: 'Dr. Joshua',
+    email: 'joshua@hospital.org',
+  };
 
   const handleRegister = () => {
-    // ✅ Fill your dummy user data here
-    const dummyUser = {
-      name: form.name || "New User",
-      email: form.email || "user@hospital.org",
-      role: "Technician",
-    };
-
-    login(dummyUser); // Sets user and navigates to MainApp
+    login(dummyUser);
+    navigation.replace('MainAppNavigator');
   };
 
   return (
-    <SafeAreaView style={signupStyles.container}>
-      <ScrollView contentContainerStyle={signupStyles.scrollContent}>
-        <View style={signupStyles.card}>
-          {/* Header */}
-          <View style={signupStyles.logoRow}>
-            <View style={signupStyles.logoCircle}>
-              <MaterialCommunityIcons
-                name="microscope"
-                size={20}
-                color="#00CFE8"
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.card}>
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <View style={styles.logoCircle}>
+            <MaterialCommunityIcons name="microscope" size={20} color="#00CFE8" />
+          </View>
+          <Text style={styles.logoText}>AidePoint</Text>
+        </View>
+
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Enter your professional details to get started.</Text>
+
+        {/* Form Fields */}
+        {[
+          { label: 'Full Name', icon: <MaterialIcons name="person" size={20} color="#888" /> },
+          { label: 'Professional ID', icon: <MaterialIcons name="badge" size={20} color="#888" /> },
+          { label: 'Institution', icon: <MaterialIcons name="business" size={20} color="#888" /> },
+          { label: 'Hospital Email', icon: <MaterialIcons name="email" size={20} color="#888" /> },
+          { label: 'Password', icon: <MaterialIcons name="lock" size={20} color="#888" /> },
+        ].map((field) => (
+          <View key={field.label} style={styles.inputGroup}>
+            <Text style={styles.label}>{field.label}</Text>
+            <View style={styles.inputBox}>
+              {field.icon}
+              <TextInput
+                style={styles.input}
+                placeholder={`e.g. ${field.label}`}
+                secureTextEntry={field.label === 'Password'}
               />
             </View>
-            <Text style={signupStyles.logoText}>AidePoint</Text>
           </View>
+        ))}
 
-          <Text style={signupStyles.title}>Create Technician Account</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={handleRegister}>
+          <Text style={styles.buttonText}>Register Account →</Text>
+        </TouchableOpacity>
 
-          {/* Name */}
-          <Text style={signupStyles.label}>Full Name</Text>
-          <View style={signupStyles.inputWrapper}>
-            <Icon name="person" size={20} color="#888" />
-            <TextInput
-              placeholder="Full Name"
-              style={signupStyles.input}
-              value={form.name}
-              onChangeText={(text) => setForm({ ...form, name: text })}
-            />
-          </View>
+        <View style={styles.dividerContainer}>
+          <View style={styles.line} />
+          <Text style={styles.dividerText}>Or sign up with SSO</Text>
+          <View style={styles.line} />
+        </View>
 
-          {/* Email */}
-          <Text style={signupStyles.label}>Email</Text>
-          <View style={signupStyles.inputWrapper}>
-            <Icon name="email" size={20} color="#888" />
-            <TextInput
-              placeholder="Email"
-              style={signupStyles.input}
-              keyboardType="email-address"
-              value={form.email}
-              onChangeText={(text) => setForm({ ...form, email: text })}
-            />
-          </View>
-
-          {/* Password */}
-          <Text style={signupStyles.label}>Password</Text>
-          <View style={signupStyles.inputWrapper}>
-            <Icon name="lock" size={20} color="#888" />
-            <TextInput
-              placeholder="Password"
-              style={signupStyles.input}
-              secureTextEntry={!showPassword}
-              value={form.password}
-              onChangeText={(text) => setForm({ ...form, password: text })}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Icon
-                name={showPassword ? "visibility" : "visibility-off"}
-                size={20}
-                color="#888"
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Register Button */}
-          <TouchableOpacity
-            style={signupStyles.registerBtn}
-            onPress={handleRegister}
-          >
-            <Text style={signupStyles.registerBtnText}>Register Account</Text>
-            <Icon name="arrow-forward" size={20} color="#FFF" />
+        <View style={styles.ssoContainer}>
+          <TouchableOpacity style={styles.ssoButton}>
+            <Text>Google</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ssoButton}>
+            <Text>Hospital ID</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
+          <Text style={styles.footerLink}>
+            Already have an account? <Text style={styles.linkText}>Sign In</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.copyright}>
+        © 2024 AidePoint Diagnostic Systems. All medical data is encrypted and HIPAA compliant.
+      </Text>
+    </ScrollView>
   );
 };
 

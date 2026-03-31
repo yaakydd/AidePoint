@@ -1,124 +1,90 @@
-import React from "react";
-import { View, TouchableOpacity, Text, Animated, StyleSheet } from "react-native";
+// MainAppNavigator.js
+import React, { useRef } from "react";
+import { View, Animated, Dimensions } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
+
 import HomeScreen from "../screens/HomeScreen";
-//import Scan from "../screens/Scan";
-import ReportScreen from "../screens/ReportScreen";
-import Chatbot from "../screens/Chatbot";
-import Badges from "../screens/Badges";
-import { MaterialIcons } from "@expo/vector-icons";
+//import ProfileScreen from "../screens/ProfileScreen";
+//import SettingsScreen from "../screens/SettingsScreen";
 
 const Tab = createBottomTabNavigator();
+const { width } = Dimensions.get("window");
 
-const TAB_HEIGHT = 60;
+const MainAppNavigator = () => {
+  const translateX = useRef(new Animated.Value(0)).current;
 
-const AnimatedTabButton = ({ children, onPress, accessibilityState }) => {
-  const focused = accessibilityState.selected;
+  const tabWidths = width / 3; // 3 tabs
 
-  const animation = React.useRef(new Animated.Value(focused ? 1 : 0)).current;
-
-  React.useEffect(() => {
-    Animated.timing(animation, {
-      toValue: focused ? 1 : 0,
-      duration: 250,
-      useNativeDriver: false,
+  const handleTabPress = (index) => {
+    Animated.spring(translateX, {
+      toValue: tabWidths * index,
+      useNativeDriver: true,
     }).start();
-  }, [focused]);
-
-  const indicatorHeight = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 3], // height of the top highlight bar
-  });
-
-  const indicatorColor = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["transparent", "#0bc9da"],
-  });
+  };
 
   return (
-    <TouchableOpacity
-      style={styles.tabButton}
-      activeOpacity={0.7}
-      onPress={onPress}
-    >
-      <Animated.View
-        style={[styles.indicator, { height: indicatorHeight, backgroundColor: indicatorColor }]}
-      />
-      {children}
-    </TouchableOpacity>
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarShowLabel: false,
+          tabBarIcon: ({ color, size, focused }) => {
+            let iconName;
+            if (route.name === "Home") iconName = "home-outline";
+            //else if (route.name === "Profile") iconName = "person-outline";
+            //else if (route.name === "Settings") iconName = "settings-outline";
+
+            // color changes safely
+            return <Ionicons name={iconName} size={size} color={focused ? "#6200EE" : "#888"} />;
+          },
+        })}
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          listeners={{
+            tabPress: () => handleTabPress(0),
+          }}
+        />
+        {/*
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          listeners={{
+            tabPress: () => handleTabPress(1),
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          listeners={{
+            tabPress: () => handleTabPress(2),
+          }}
+        />
+        */}
+      </Tab.Navigator>
+      
+      
+      <View
+        style={{
+          position: "absolute",
+          bottom: 65,
+          flexDirection: "row",
+          width,
+        }}
+      >
+        <Animated.View
+          style={{
+            width: tabWidths,
+            height: 3,
+            backgroundColor: "#6200EE",
+            transform: [{ translateX }],
+          }}
+        />
+      </View>
+    </>
   );
 };
 
-export default function MainTabNavigator() {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: styles.tabBar,
-        tabBarShowLabel: true,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: "bold" },
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
-          tabBarButton: (props) => <AnimatedTabButton {...props} />,
-        }}
-      />
-      <Tab.Screen
-        name="Scan"
-        component={Scan}
-        options={{
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="qr-code-scanner" size={size} color={color} />,
-          tabBarButton: (props) => <AnimatedTabButton {...props} />,
-        }}
-      />
-      <Tab.Screen
-        name="Report"
-        component={ReportScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="description" size={size} color={color} />,
-          tabBarButton: (props) => <AnimatedTabButton {...props} />,
-        }}
-      />
-      <Tab.Screen
-        name="Chatbot"
-        component={Chatbot}
-        options={{
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="chat-bubble" size={size} color={color} />,
-          tabBarButton: (props) => <AnimatedTabButton {...props} />,
-        }}
-      />
-      <Tab.Screen
-        name="Badges"
-        component={Badges}
-        options={{
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
-          tabBarButton: (props) => <AnimatedTabButton {...props} />,
-        }}
-      />
-    </Tab.Navigator>
-  );
-}
-
-const styles = StyleSheet.create({
-  tabBar: {
-    height: TAB_HEIGHT,
-    paddingBottom: 5,
-    paddingTop: 5,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: "center",
-  },
-  indicator: {
-    width: 24,
-    borderRadius: 2,
-    marginBottom: 4,
-  },
-});
+export default MainAppNavigator;
