@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import SplashScreen from "../screens/SplashScreen";
 import AuthNavigator from "./AuthNavigator";
-import MainTabNavigator from "./MainTabNavigator";
+import MainTabNavigator from "./MainAppNavigator";
 import { AuthContext } from "../context/AuthContext";
 
 const Stack = createNativeStackNavigator();

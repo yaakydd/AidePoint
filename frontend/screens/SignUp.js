@@ -7,9 +7,9 @@ import {
   ScrollView,
   SafeAreaView,
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIeecons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import SignUp from "../styles/SignUp"; 
+import { signupStyles } from "../styles/SignUpStyles";
 
 const SignUp = () => {
   const [form, setForm] = useState({
@@ -55,83 +55,83 @@ const SignUp = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
+    <SafeAreaView style={signupStyles.container}>
+      <ScrollView contentContainerStyle={signupStyles.scrollContent}>
+        <View style={signupStyles.card}>
           {/* Logo/Header */}
-          <View style={styles.logoRow}>
-            <View style={styles.logoCircle}>
+          <View style={signupStyles.logoRow}>
+            <View style={signupStyles.logoCircle}>
               <MaterialCommunityIcons name="microscope" size={20} color="#00CFE8" />
             </View>
-            <Text style={styles.logoText}>AidePoint</Text>
+            <Text style={signupStyles.logoText}>AidePoint</Text>
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>Create Technician Account</Text>
-          <Text style={styles.subtitle}>
+          <Text style={signupStyles.title}>Create Technician Account</Text>
+          <Text style={signupStyles.subtitle}>
             Enter your professional details to get started.
           </Text>
 
           {/* Full Name */}
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputWrapper}>
+          <Text style={signupStyles.label}>Full Name</Text>
+          <View style={signupStyles.inputWrapper}>
             <Icon name="person" size={20} color="#888" />
             <TextInput
               placeholder="Full Name"
-              style={styles.input}
+              style={signupStyles.input}
               value={form.name}
               onChangeText={(text) => setForm({ ...form, name: text })}
             />
           </View>
-          {errors.name && <Text style={styles.error}>{errors.name}</Text>}
+          {errors.name && <Text style={signupStyles.error}>{errors.name}</Text>}
 
           {/* Professional ID */}
-          <Text style={styles.label}>Professional ID</Text>
-          <View style={styles.inputWrapper}>
+          <Text style={signupStyles.label}>Professional ID</Text>
+          <View style={signupStyles.inputWrapper}>
             <Icon name="badge" size={20} color="#888" />
             <TextInput
               placeholder="Professional ID"
-              style={styles.input}
+              style={signupStyles.input}
               value={form.id}
               onChangeText={(text) => setForm({ ...form, id: text })}
             />
           </View>
-          {errors.id && <Text style={styles.error}>{errors.id}</Text>}
+          {errors.id && <Text style={signupStyles.error}>{errors.id}</Text>}
 
           {/* Institution */}
-          <Text style={styles.label}>Institution</Text>
-          <View style={styles.inputWrapper}>
+          <Text style={signupStyles.label}>Institution</Text>
+          <View style={signupStyles.inputWrapper}>
             <Icon name="business" size={20} color="#888" />
             <TextInput
               placeholder="Institution"
-              style={styles.input}
+              style={signupStyles.input}
               value={form.institution}
               onChangeText={(text) => setForm({ ...form, institution: text })}
             />
           </View>
-          {errors.institution && <Text style={styles.error}>{errors.institution}</Text>}
+          {errors.institution && <Text style={signupStyles.error}>{errors.institution}</Text>}
 
           {/* Email */}
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrapper}>
+          <Text style={signupStyles.label}>Email</Text>
+          <View style={signupStyles.inputWrapper}>
             <Icon name="email" size={20} color="#888" />
             <TextInput
               placeholder="Email"
-              style={styles.input}
+              style={signupStyles.input}
               keyboardType="email-address"
               value={form.email}
               onChangeText={(text) => setForm({ ...form, email: text })}
             />
           </View>
-          {errors.email && <Text style={styles.error}>{errors.email}</Text>}
+          {errors.email && <Text style={signupStyles.error}>{errors.email}</Text>}
 
           {/* Password */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrapper}>
+          <Text style={signupStyles.label}>Password</Text>
+          <View style={signupStyles.inputWrapper}>
             <Icon name="lock" size={20} color="#888" />
             <TextInput
               placeholder="Password"
-              style={styles.input}
+              style={signupStyles.input}
               secureTextEntry={!showPassword}
               value={form.password}
               onChangeText={(text) => setForm({ ...form, password: text })}
@@ -144,17 +144,17 @@ const SignUp = () => {
               />
             </TouchableOpacity>
           </View>
-          {errors.password && <Text style={styles.error}>{errors.password}</Text>}
+          {errors.password && <Text style={signupStyles.error}>{errors.password}</Text>}
 
           {/* Register Button */}
-          <TouchableOpacity style={styles.registerBtn} onPress={handleSubmit}>
-            <Text style={styles.registerBtnText}>Register Account</Text>
+          <TouchableOpacity style={signupStyles.registerBtn} onPress={handleSubmit}>
+            <Text style={signupStyles.registerBtnText}>Register Account</Text>
             <Icon name="arrow-forward" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
 
         {/* Footer / Legal */}
-        <Text style={styles.footerLegal}>
+        <Text style={signupStyles.footerLegal}>
           © 2024 AidePoint Diagnostic Systems. All medical data is encrypted and HIPAA compliant.
         </Text>
       </ScrollView>

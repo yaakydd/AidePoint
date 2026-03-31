@@ -9,9 +9,9 @@ const cardShadow = {
   elevation: 5,
 };
 
-export default StyleSheet.create({
+export const signupStylese = StyleSheet.create({
 
-  // CONTAINER
+  // CONTAINERe
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
