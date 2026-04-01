@@ -1,3 +1,4 @@
+// ScanScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -5,14 +6,14 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Image,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { scanStyles as styles } from "../styles/SignInStyles";
+import { scanStyles as styles } from "../styles/ScanStyles"; // Make sure path is correct
 
 const Scan = () => {
 
@@ -145,8 +146,14 @@ const Scan = () => {
           <Text style={styles.buttonText}>Start Analysis</Text>
         </TouchableOpacity>
 
+        {/* HIPAA AGREEMENT TEXT */}
+        <Text style={styles.hipaaText}>
+          By clicking analysis, you agree to our processing of medical data according to HIPAA standards.
+        </Text>
+
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
+
 export default Scan;

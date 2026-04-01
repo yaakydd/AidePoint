@@ -1,9 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 export const scanStyles = StyleSheet.create({
-  container: { flex: 1, 
-    backgroundColor: '#F5F8F8' 
-    },
+  container: { flex: 1, backgroundColor: '#F5F8F8' },
   scroll: { padding: 20 },
 
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
@@ -90,5 +88,14 @@ export const scanStyles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '700',
+  },
+
+  hipaaText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 12,
+    lineHeight: 16,
+    paddingHorizontal: 8,
   },
 });
