@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
 import HomeScreen from "../screens/HomeScreen";
-import Scan from "../screens/Scan";
+import ScanScreenNavigator from "./ScanScreenNavigator";
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get("window");
@@ -47,7 +47,7 @@ const MainAppNavigator = () => {
 
         <Tab.Screen
           name="Scan"
-          component={Scan}
+          component={ScanScreenNavigator}
           listeners={{
             tabPress: () => handleTabPress(1),
           }}
