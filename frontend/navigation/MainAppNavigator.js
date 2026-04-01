@@ -5,8 +5,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
 import HomeScreen from "../screens/HomeScreen";
-//import ProfileScreen from "../screens/ProfileScreen";
-//import SettingsScreen from "../screens/SettingsScreen";
+import Scan from "../screens/Scan";
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get("window");
@@ -14,7 +13,7 @@ const { width } = Dimensions.get("window");
 const MainAppNavigator = () => {
   const translateX = useRef(new Animated.Value(0)).current;
 
-  const tabWidths = width / 3; // 3 tabs
+  const tabWidths = width / 2; // 2 tabs: Home + Scan
 
   const handleTabPress = (index) => {
     Animated.spring(translateX, {
@@ -32,10 +31,8 @@ const MainAppNavigator = () => {
           tabBarIcon: ({ color, size, focused }) => {
             let iconName;
             if (route.name === "Home") iconName = "home-outline";
-            //else if (route.name === "Profile") iconName = "person-outline";
-            //else if (route.name === "Settings") iconName = "settings-outline";
+            else if (route.name === "Scan") iconName = "scan-outline";
 
-            // color changes safely
             return <Ionicons name={iconName} size={size} color={focused ? "#6200EE" : "#888"} />;
           },
         })}
@@ -47,25 +44,17 @@ const MainAppNavigator = () => {
             tabPress: () => handleTabPress(0),
           }}
         />
-        {/*
+
         <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
+          name="Scan"
+          component={Scan}
           listeners={{
             tabPress: () => handleTabPress(1),
           }}
         />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsScreen}
-          listeners={{
-            tabPress: () => handleTabPress(2),
-          }}
-        />
-        */}
       </Tab.Navigator>
-      
-      
+
+      {/* Animated underline */}
       <View
         style={{
           position: "absolute",

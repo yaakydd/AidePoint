@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { scanStyles as styles } from "../styles/SignInStyles";
 
-export default function ScanScreen() {
+const Scan = () => {
 
   // FORM STATES
   const [patientName, setPatientName] = useState('');
@@ -148,3 +149,4 @@ export default function ScanScreen() {
     </SafeAreaView>
   );
 }
+export default Scan;

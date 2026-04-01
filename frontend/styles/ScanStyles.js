@@ -1,5 +1,9 @@
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F8F8' },
+import { StyleSheet } from 'react-native';
+
+export const scanStyles = StyleSheet.create({
+  container: { flex: 1, 
+    backgroundColor: '#F5F8F8' 
+    },
   scroll: { padding: 20 },
 
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
