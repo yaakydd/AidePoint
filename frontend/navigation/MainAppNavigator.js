@@ -13,7 +13,7 @@ const { width } = Dimensions.get("window");
 const MainAppNavigator = () => {
   const translateX = useRef(new Animated.Value(0)).current;
 
-  const tabWidths = width / 2; // 2 tabs: Home + Scan
+  const tabWidths = width / 2; 
 
   const handleTabPress = (index) => {
     Animated.spring(translateX, {
@@ -31,7 +31,7 @@ const MainAppNavigator = () => {
           tabBarIcon: ({ color, size, focused }) => {
             let iconName;
             if (route.name === "Home") iconName = "home-outline";
-            else if (route.name === "Scan") iconName = "scan-outline";
+            else if (route.name === "ScanScreenNavigator") iconName = "scan-outline";
 
             return <Ionicons name={iconName} size={size} color={focused ? "#6200EE" : "#888"} />;
           },
@@ -46,7 +46,7 @@ const MainAppNavigator = () => {
         />
 
         <Tab.Screen
-          name="Scan"
+          name="ScanScreenNavigator"
           component={ScanScreenNavigator}
           listeners={{
             tabPress: () => handleTabPress(1),

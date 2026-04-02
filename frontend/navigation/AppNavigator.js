@@ -30,13 +30,13 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          // Logged-in user → MainApp
+          // Logged-in user => MainApp
           <Stack.Screen name="MainApp" component={MainAppNavigator} />
         ) : isFirstLaunch ? (
-          // First-time user → SignUp
+          // First-time user => SignUp
           <Stack.Screen name="SignUp" component={SignUp} />
         ) : (
-          // Returning user → SignIn
+          // Returning user => SignIn
           <Stack.Screen name="SignIn" component={SignIn} />
         )}
       </Stack.Navigator>
