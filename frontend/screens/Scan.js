@@ -1,9 +1,7 @@
-// ScanScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
   ScrollView,
@@ -13,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { scanStyles as styles } from "../styles/ScanStyles"; // Make sure path is correct
+import { scanStyles as styles } from "../styles/ScanStyles"; // path correct
 
 const Scan = () => {
 
@@ -37,7 +35,6 @@ const Scan = () => {
   // CAMERA FUNCTION
   const takePicture = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-
     if (!permission.granted) {
       Alert.alert('Permission required', 'Camera access is needed.');
       return;
@@ -53,7 +50,7 @@ const Scan = () => {
     }
   };
 
-  // VALIDATION
+  // VALIDATION: Enable Start Analysis if image + inputs
   const isFormValid =
     patientName.trim() !== '' &&
     temperature.trim() !== '' &&
@@ -66,16 +63,7 @@ const Scan = () => {
 
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} />
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <View style={styles.logo}>
-              <MaterialIcons name="biotech" size={20} color="#fff" />
-            </View>
-            <Text style={styles.title}>AidePoint</Text>
-          </View>
+          <Text style={[styles.title, { textAlign: 'center', flex: 1 }]}>Scan</Text>
         </View>
 
         {/* SCAN ID */}
@@ -114,7 +102,7 @@ const Scan = () => {
             image && { backgroundColor: '#E5E7EB', borderColor: '#9CA3AF' }
           ]}
           onPress={takePicture}
-          disabled={!!image}
+          disabled={!!image} // disables after capture
         >
           <MaterialIcons name="photo-camera" size={24} color="#0bc9da" />
           <Text style={styles.cameraText}>
@@ -130,7 +118,6 @@ const Scan = () => {
           </View>
         )}
 
-        {/* SPACE */}
         <View style={{ height: 30 }} />
 
         {/* START ANALYSIS */}
@@ -139,7 +126,7 @@ const Scan = () => {
             styles.button,
             !isFormValid && styles.disabledButton
           ]}
-          disabled={!isFormValid}
+          disabled={!isFormValid} // now enabled if image + fields filled
           onPress={() => Alert.alert('Analysis Started')}
         >
           <MaterialIcons name="analytics" size={20} color="#fff" />

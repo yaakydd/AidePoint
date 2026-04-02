@@ -12,6 +12,13 @@ export const CameraStyles = StyleSheet.create({
     flex: 1,
   },
 
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  // Circular Alignment Guide
   viewfinder: {
     position: "absolute",
     top: "30%",
@@ -41,6 +48,7 @@ export const CameraStyles = StyleSheet.create({
     borderColor: "#0bc9da30",
   },
 
+  // AI Feedback badges
   feedbackContainer: {
     position: "absolute",
     top: 50,
@@ -64,6 +72,7 @@ export const CameraStyles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  // Bottom Controls
   bottomControls: {
     position: "absolute",
     bottom: 40,
@@ -71,9 +80,9 @@ export const CameraStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 20,
   },
 
+  // Capture Button
   captureButton: {
     width: 70,
     height: 70,
@@ -91,6 +100,32 @@ export const CameraStyles = StyleSheet.create({
     backgroundColor: "#0bc9da",
   },
 
+  // Confirm buttons after capture
+  confirmControls: {
+    flexDirection: "row",
+    gap: 20,
+  },
+
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    backgroundColor: "#f87171",
+    borderRadius: 8,
+  },
+
+  okButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    backgroundColor: "#22c55e",
+    borderRadius: 8,
+  },
+
+  confirmText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+
+  // Thumbnail (optional if using)
   thumbnail: {
     width: 50,
     height: 50,
@@ -98,6 +133,7 @@ export const CameraStyles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#fff",
+    marginLeft: 10,
   },
 
   thumbImage: {
