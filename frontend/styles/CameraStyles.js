@@ -125,19 +125,4 @@ export const CameraStyles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // Thumbnail (optional if using)
-  thumbnail: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#fff",
-    marginLeft: 10,
-  },
-
-  thumbImage: {
-    width: "100%",
-    height: "100%",
-  },
 });

@@ -22,7 +22,7 @@ const Scan = () => {
   const [image, setImage] = useState(null);
   const [scanId, setScanId] = useState('');
 
-  // AUTO GENERATE SCAN ID
+  //  Scan ID is auto-generated and cannot be edited by the user
   useEffect(() => {
     const generateScanId = () => {
       const random = Math.floor(1000 + Math.random() * 9000);
