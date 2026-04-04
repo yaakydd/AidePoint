@@ -14,7 +14,12 @@ export const scanStyles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 6
   },
-  title: { fontSize: 20, fontWeight: '700' },
+  title: { 
+    fontSize: 20, 
+    fontWeight: '700',
+    textAlign: 'center',
+    flex: 1
+   },
 
   scanBox: {
     flexDirection: 'row',

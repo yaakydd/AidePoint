@@ -50,7 +50,7 @@ const Scan = () => {
     }
   };
 
-  // VALIDATION: Enable Start Analysis if image + inputs
+  // VALIDATION: Enable Start Analysis if image + inputs are provided by the user 
   const isFormValid =
     patientName.trim() !== '' &&
     temperature.trim() !== '' &&
@@ -63,7 +63,8 @@ const Scan = () => {
 
         {/* HEADER */}
         <View style={styles.header}>
-          <Text style={[styles.title, { textAlign: 'center', flex: 1 }]}>Scan</Text>
+          <Text style={[styles.title]}>Scan</Text>
+          <Text>reset</Text>
         </View>
 
         {/* SCAN ID */}
