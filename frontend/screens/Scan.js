@@ -135,7 +135,7 @@ const Scan = () => {
 
         {/* HIPAA AGREEMENT TEXT */}
         <Text style={styles.hipaaText}>
-          By clicking analysis, you agree to our processing of medical data according to HIPAA standards.
+          By clicking analysis, you agree to our processing of medical data according to GHS standards.
         </Text>
 
       </ScrollView>
