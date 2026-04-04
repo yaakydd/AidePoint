@@ -32,7 +32,7 @@ const Scan = () => {
     setScanId(generateScanId());
   }, []);
 
-  // CAMERA FUNCTION
+  // Camera Function(User must allow permission before the image can be taken)
   const takePicture = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
