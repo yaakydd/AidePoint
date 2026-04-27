@@ -7,12 +7,12 @@ export const signInStyles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 30,
-    paddingVertical: 60,
+    paddingVertical: 150,
     alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 25,
   },
   brandTitle: {
     fontSize: 28,
@@ -28,17 +28,18 @@ export const signInStyles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: 'bold',
+    fontFamily: 'Plus Jakarta Sans',
     color: '#00CFE8',
   },
   form: {
     width: '100%',
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#475569',
     marginBottom: 10,
-    marginTop: 20,
+    marginTop: 10,
   },
   inputBox: {
     flexDirection: 'row',
@@ -56,14 +57,18 @@ export const signInStyles = StyleSheet.create({
     fontSize: 16,
     color: '#1E293B',
   },
+
   forgotBtn: {
     alignSelf: 'flex-end',
     marginTop: 15,
   },
+
   forgotText: {
     color: '#00CFE8',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '500',
+    fontSize: 15,
+    display: 'flex',
+
   },
   signInBtn: {
     backgroundColor: '#00CFE8',
@@ -82,85 +87,24 @@ export const signInStyles = StyleSheet.create({
   },
   signInBtnText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: 'bold',
     marginRight: 10,
-  },
-  dividerRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 40,
-    width: '100%',
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  dividerText: {
-    paddingHorizontal: 10,
-    color: '#94A3B8',
-    fontSize: 13,
-  },
-  ssoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  ssoButton: {
-    flex: 0.48,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 54,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    backgroundColor: '#FFF',
-  },
-  googleIcon: {
-    width: 18,
-    height: 18,
-    marginRight: 10,
-  },
-  ssoBtnText: {
-    fontWeight: '600',
-    color: '#475569',
-    fontSize: 14,
-  },
-  signUpLink: {
-    marginTop: 40,
-    marginBottom: 30,
-  },
-  footerBaseText: {
+
+  BaseText: {
     color: '#64748B',
+    marginTop: 35,
     fontSize: 15,
+    textAlign: 'center',
   },
-  footerLinkText: {
+  SignUpLinkText: {
     color: '#00CFE8',
     fontWeight: 'bold',
-  },
-  complianceBox: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  complianceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  complianceTitle: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    marginLeft: 6,
-    letterSpacing: 0.5,
-  },
-  complianceText: {
-    fontSize: 11,
-    color: '#CBD5E1',
     textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 20,
+    marginTop: 40,
+    display: 'flex',
+    alignSelf: 'flex-end',
   },
 });
