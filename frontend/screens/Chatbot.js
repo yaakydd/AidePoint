@@ -1,17 +1,15 @@
 import React from "react";
-// ADDED 'Text' below
-import { SafeAreaView, View, Text } from 'react-native'; 
+import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, TextInput, TouchableOpacity } from 'react-native'; 
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 
 const Chatbot = () => {
     return(
         <SafeAreaView style={styles.container}>
-            {/* Header Parent */}
+            {/* Header and the Left SIde Group */}
             <View style={styles.leftHeader}>
-                
-                {/* Left Side Group */}
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={styles.leftContent}>
                     <MaterialIcons name="arrow-back" size={24} color="#00BCD4" />
                     <View style={styles.titleLayout}>
                         <Text style={styles.title}>AideBot AI</Text>
@@ -29,12 +27,11 @@ const Chatbot = () => {
 
              {/* Chat Body (Middle) */}
             <View style={{ flex: 1 }}>
-                {/* We will put the FlatList here next */}
             </View>
 
             {/* Input Layout (Bottom) */}
-            <View>
-                {/* We will build the input bar here */}
+            <View style={styles.inputLayout}>
+                <TextInput></TextInput>
             </View>
         </SafeAreaView>
     );
