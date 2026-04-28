@@ -14,6 +14,8 @@ const Chatbot = () => {
                     <Text style={styles.title}>AideBot AI</Text>
                     <Text style={styles.subTitle}>Lab Assistant Online</Text>
                 </View>
+                <MaterialIcons name="info-outline" size={24} color="#4A5568" style={{ marginRight: 15 }} />
+                <MaterialIcons name="more-vert" size={24} color="#4A5568" />
             </View>
 
              {/* Chat Body */}

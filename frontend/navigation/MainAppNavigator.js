@@ -6,12 +6,14 @@ import { Ionicons } from "@expo/vector-icons";
 import HomeScreen from "../screens/HomeScreen";
 import ScanScreenNavigator from "./ScanScreenNavigator";
 
+import Chatbot from "../screens/Chatbot";
+
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get("window");
 
 const MainAppNavigator = () => {
   const translateX = useRef(new Animated.Value(0)).current;
-  const tabWidth = width / 2;
+  const tabWidth = width / 5;
 
   const animateTab = (index) => {
     Animated.spring(translateX, {
@@ -35,6 +37,15 @@ const MainAppNavigator = () => {
                 break;
               case "Scan":
                 iconName = "scan-outline";
+                break;
+              case "Report":
+                iconName = "report-outline";
+                break;
+              case "Chatbot":
+                iconName = "chatbot-outline";
+                break;
+              case "Profile":
+                iconName = "profile-outline";
                 break;
               default:
                 iconName = "ellipse";
@@ -61,6 +72,26 @@ const MainAppNavigator = () => {
           component={ScanScreenNavigator}
           listeners={{ tabPress: () => animateTab(1) }}
         />
+
+        <Tab.Screen
+          name="Report"
+          component={ReportScreen}
+          listeners={{ tabPress: () => animateTab(2) }}
+        />
+
+        <Tab.Screen
+          name="Chatbot"
+          component={Chatbot}
+          listeners={{ tabPress: () => animateTab(3) }}
+        />
+
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          listeners={{ tabPress: () => animateTab(4) }}
+        />
+
+
       </Tab.Navigator>
 
       {/* Animated underline */}
