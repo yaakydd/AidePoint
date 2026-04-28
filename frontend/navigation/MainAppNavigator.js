@@ -5,8 +5,10 @@ import { Ionicons } from "@expo/vector-icons";
 
 import HomeScreen from "../screens/HomeScreen";
 import ScanScreenNavigator from "./ScanScreenNavigator";
-
+import ReportScreen from "../screens/ReportScreen";
 import Chatbot from "../screens/Chatbot";
+import ProfileScreen from "../screens/ProfileScreen";
+
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get("window");
@@ -39,13 +41,13 @@ const MainAppNavigator = () => {
                 iconName = "scan-outline";
                 break;
               case "Report":
-                iconName = "report-outline";
+                iconName = "document-text-outline";
                 break;
               case "Chatbot":
-                iconName = "chatbot-outline";
+                iconName = "chatbubble-ellipses-outline";
                 break;
               case "Profile":
-                iconName = "profile-outline";
+                iconName = "person-outline";
                 break;
               default:
                 iconName = "ellipse";
