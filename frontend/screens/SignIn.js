@@ -94,16 +94,17 @@ const SignIn = () => {
           <Text style={styles.signInBtnText}>Sign In</Text>
           <Feather name="arrow-right" size={20} color="#FFF" />
         </TouchableOpacity>
-    </View>
 
-        <Text style={styles.BaseText}>Don't have an account?</Text>
         {/* SIGN UP NAVIGATION */}
         <TouchableOpacity
           onPress={() => navigation.navigate("SignUp")}
         >
-          <Text style={styles.SignUpLinkText}>Sign Up</Text>
+          <Text style={styles.BaseText}>
+            Don't have an account?
+            <Text style={styles.SignUpLinkText}>Sign Up</Text>
+          </Text>
         </TouchableOpacity>
-
+      </View>
     </ScrollView>
   );
 };

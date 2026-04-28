@@ -59,7 +59,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   forgotBtn: {
-    alignSelf: 'flex-end',
+        alignSelf: 'flex-end',
     marginTop: 15,
   },
 
@@ -93,6 +93,12 @@ export const signInStyles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  signUpLink: {
+    display: 'flex',
+    alignSelf: 'flex-end',
+    gap: 12,
+
+  },
   BaseText: {
     color: '#64748B',
     marginTop: 35,
@@ -103,8 +109,6 @@ export const signInStyles = StyleSheet.create({
     color: '#00CFE8',
     fontWeight: 'bold',
     textAlign: 'center',
-    marginTop: 40,
-    display: 'flex',
-    alignSelf: 'flex-end',
+    marginLeft: 12,
   },
 });
