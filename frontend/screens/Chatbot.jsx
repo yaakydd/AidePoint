@@ -31,7 +31,16 @@ const Chatbot = () => {
 
             {/* Input Layout (Bottom) */}
             <View style={styles.inputLayout}>
-                <TextInput></TextInput>
+                <MaterialIcons name="attach-file" size={22} color="#94A3B8" />
+                <TextInput
+                placeholder="Ask Aidebot ..."
+                placeholderTextColor="#94A3B8"
+                style={styles.input}
+                ></TextInput>
+
+                <TouchableOpacity style={styles.sendButton}>
+                    <MaterialIcons name="send" size={25} color="#FFF" />
+                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
