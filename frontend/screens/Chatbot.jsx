@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, TouchableOpacity, FlatList } from 'react-native'; 
+import { View, Text, TextInput, TouchableOpacity, FlatList, Modal } from 'react-native'; 
 import { useNavigation } from '@react-navigation/native';
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -17,6 +17,8 @@ const Chatbot = () => {
         },
     ]);
 
+    const [isInfoVisible, setIsInfoVisible] = useState(false);
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Header Area */}
@@ -31,7 +33,9 @@ const Chatbot = () => {
                     </View>
                 </View>
                 <View style={styles.headerIconsRight}>
-                    <MaterialIcons name="info-outline" size={24} color="#4A5568" />
+                    <TouchableOpacity onPress={() => setIsInfoVisible(true)}>
+                        <MaterialIcons name="info-outline" size={24} color="#4A5568" />
+                    </TouchableOpacity>
                     <MaterialIcons name="more-vert" size={24} color="#4A5568" />
                 </View>
             </View>
@@ -100,6 +104,32 @@ const Chatbot = () => {
                     <MaterialIcons name="send" size={20} color="#FFF" />
                 </TouchableOpacity>
             </View>
+
+            <Modal
+  animationType="fade"
+  transparent={true}
+  visible={isInfoVisible}
+  onRequestClose={() => setIsInfoVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      <Text style={styles.modalTitle}>About AideBot AI</Text>
+      <Text style={styles.modalDescription}>
+        AideBot is an AI assistant designed to help interpret lab results. 
+        It is not a substitute for professional medical advice, diagnosis, or treatment.
+      </Text>
+      
+      <TouchableOpacity 
+        style={styles.closeButton} 
+        onPress={() => setIsInfoVisible(false)}
+      >
+        <Text style={styles.closeButtonText}>Got it</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
+
         </SafeAreaView>
     );
 };

@@ -182,4 +182,41 @@ export const ChatStyles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)', // Dims the background
+    justifyContent: 'center',
+    alignItems: 'center',
+},
+modalContent: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    elevation: 5,
+},
+modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 10,
+},
+modalDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+},
+closeButton: {
+    backgroundColor: '#00BCD4',
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    borderRadius: 10,
+},
+closeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+},
 });
