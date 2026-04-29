@@ -57,4 +57,28 @@ export const ChatStyles = StyleSheet.create({
             justifyContent: 'center',
             alignItems: 'center',
         },
+        userContainer: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#00BCD4',
+    padding: 12,
+    borderRadius: 15,
+    borderBottomRightRadius: 2, // The "tail" pointing to the user
+    marginVertical: 5,
+    maxWidth: '80%',
+},
+botContainer: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 15,
+    borderBottomLeftRadius: 2, // The "tail" pointing to the bot
+    marginVertical: 5,
+    maxWidth: '80%',
+    // Add a tiny shadow for the white bubble
+    elevation: 1,
+},
+messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+},
 });

@@ -1,10 +1,15 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, TouchableOpacity } from 'react-native'; 
+import { View, Text, TextInput, TouchableOpacity, FlatList } from 'react-native'; 
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 
 const Chatbot = () => {
+
+    const [messages, setMessages] = React.useState([
+    { id: '1', type: 'bot', text: 'Hello! I am AideBot. Please upload a blood sample image for analysis.' },
+]);
+
     return(
         <SafeAreaView style={styles.container}>
             {/* Header and the Left SIde Group */}
@@ -26,8 +31,20 @@ const Chatbot = () => {
             </View>
 
              {/* Chat Body (Middle) */}
-            <View style={{ flex: 1 }}>
+             <View style={{ flex: 1 }}>
+                <FlatList
+                    data={messages} // This is the 'memory' array we will create
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                    // This function decides what each message looks like
+                <View style={item.type === 'user' ? styles.userContainer : styles.botContainer}>
+                    <Text style={styles.messageText}>{item.text}</Text>
+                </View>
+                )}
+                contentContainerStyle={{ padding: 15 }} 
+                />
             </View>
+
 
             {/* Input Layout (Bottom) */}
             <View style={styles.inputLayout}>
