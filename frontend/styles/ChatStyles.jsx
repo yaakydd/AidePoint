@@ -16,12 +16,31 @@ export const ChatStyles = StyleSheet.create({
         elevation: 4, 
         zIndex: 10,
     },
-    leftContent: { flexDirection: 'row', alignItems: 'center' },
-    titleLayout: { marginLeft: 15 },
-    title: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
-    subTitle: { color: '#00BCD4', fontSize: 13, fontWeight: '400' },
-    backButton: { padding: 5 },
-    headerIconsRight: { flexDirection: 'row', gap: 15, alignItems: 'center' },
+    leftContent: { 
+        flexDirection: 'row', 
+        alignItems: 'center' 
+    },
+    titleLayout: { 
+        marginLeft: 15 
+    },
+    title: { 
+        fontSize: 18, 
+        fontWeight: 'bold', 
+        color: '#1E293B' 
+    },
+    subTitle: { 
+        color: '#00BCD4', 
+        fontSize: 13, 
+        fontWeight: '400' 
+    },
+    backButton: { 
+        padding: 5 
+    },
+    headerIconsRight: { 
+        flexDirection: 'row', 
+        gap: 15, 
+        alignItems: 'center' 
+    },
 
     // Menu
     dropdownMenu: {
@@ -39,23 +58,86 @@ export const ChatStyles = StyleSheet.create({
         shadowRadius: 5,
         zIndex: 100,
     },
-    menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, gap: 12 },
-    menuText: { fontSize: 14, color: '#334155', fontWeight: '600' },
+    menuItem: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingVertical: 12, 
+        paddingHorizontal: 15, 
+        gap: 12 },
+    menuText: { 
+        fontSize: 14, 
+        color: '#334155', 
+        fontWeight: '600' 
+    },
 
     // Chat Body
-    chatBodyContainer: { flex: 1, zIndex: 1 },
-    todayText: { textAlign: 'center', color: '#94A3B8', fontSize: 12, fontWeight: '700', marginVertical: 20, letterSpacing: 1 },
-    flatListContent: { paddingHorizontal: 15, paddingBottom: 20 },
+    chatBodyContainer: { 
+        flex: 1, 
+        zIndex: 1 
+    },
+    todayText: { 
+        textAlign: 'center', 
+        color: '#94A3B8', 
+        fontSize: 12, 
+        fontWeight: '700', 
+        marginVertical: 20, 
+        letterSpacing: 1 
+    },
+    flatListContent: { 
+        paddingHorizontal: 15, 
+        paddingBottom: 20 
+    },
     
     // Messages
-    botWrapper: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, maxWidth: '85%' },
-    userWrapper: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'flex-end', marginBottom: 20, alignSelf: 'flex-end', maxWidth: '85%' },
-    messageGroup: { flexDirection: 'column', flex: 1 },
-    botName: { color: '#00BCD4', fontWeight: 'bold', fontSize: 14, marginBottom: 5 },
-    userName: { color: '#94A3B8', fontWeight: 'bold', fontSize: 14, marginBottom: 5, textAlign: 'right' },
-    botBubble: { backgroundColor: '#FFFFFF', padding: 15, borderRadius: 20, borderTopLeftRadius: 2, elevation: 1 },
-    userBubble: { backgroundColor: '#00BCD4', padding: 15, borderRadius: 20, borderTopRightRadius: 2 },
-    botText: { fontSize: 15, lineHeight: 22, color: '#334155' },
+    botWrapper: { 
+        flexDirection: 'row', 
+        alignItems: 'flex-start', 
+        marginBottom: 20, 
+        maxWidth: '85%' 
+    },
+    userWrapper: { 
+        flexDirection: 'row', 
+        alignItems: 'flex-start', 
+        justifyContent: 'flex-end', 
+        marginBottom: 20, 
+        alignSelf: 'flex-end', 
+        maxWidth: '85%' 
+    },
+    messageGroup: { 
+        flexDirection: 'column', 
+        flex: 1 
+    },
+    botName: { 
+        color: '#00BCD4', 
+        fontWeight: 'bold', 
+        fontSize: 14, 
+        marginBottom: 5 
+    },
+    userName: { 
+        color: '#94A3B8', 
+        fontWeight: 'bold', 
+        fontSize: 14, 
+        marginBottom: 5, 
+        textAlign: 'right' 
+    },
+    botBubble: { 
+        backgroundColor: '#FFFFFF', 
+        padding: 15, 
+        borderRadius: 20, 
+        borderTopLeftRadius: 2, 
+        elevation: 1 
+    },
+    userBubble: { 
+        backgroundColor: '#00BCD4', 
+        padding: 15, 
+        borderRadius: 20, 
+        borderTopRightRadius: 2 
+    },
+    botText: { 
+        fontSize: 15, 
+        lineHeight: 22, 
+        color: '#334155' 
+    },
     userText: { fontSize: 15, lineHeight: 22, color: '#FFFFFF' },
 
     // Avatars
