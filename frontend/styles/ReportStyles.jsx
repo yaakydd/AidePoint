@@ -1,6 +1,6 @@
-const styles = StyleSheet.create({
+import { StyleSheet } from "react-native";
+export const ReportStyles = StyleSheet.create({
 
-  // ── Screen ────────────────────────────────────────────────────────────────
   screen: {
     flex:            1,
     backgroundColor: '#F7F8FA',
@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F8FA',
   },
 
-  // ── Top Bar ───────────────────────────────────────────────────────────────
+  // Top Bar
   topBar: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // ── List ──────────────────────────────────────────────────────────────────
+  // List 
   listContent: {
     padding:       16,
     paddingBottom: 40,

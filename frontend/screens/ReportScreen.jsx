@@ -43,15 +43,16 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Platform,
   Animated,
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ReportStyles as styles } from '../styles/ReportStyles';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -829,5 +830,4 @@ export default function ReportsScreen({ navigation, route }) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
