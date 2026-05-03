@@ -1,18 +1,56 @@
-import React, { useContext } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import React, { useContext, useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { homeStyles } from "../styles/HomeStyles";
 import { AuthContext } from "../context/AuthContext";
+// import { supabase } from "../lib/supabase"; 
 
 const HomeScreen = () => {
+  // 1. DYNAMIC USER DATA: We pull 'user' from your AuthContext
   const { user } = useContext(AuthContext);
+  
+  const [loading, setLoading] = useState(false); // Set to false since we aren't fetching yet
+  const [stats, setStats] = useState({ total: 0, pending: 0, avg: 0 });
+  const [recentScans, setRecentScans] = useState([]);
 
-  // Fallback dummy user if context is empty
+  // Use the name from AuthContext, fallback to "Joshua" only if null
   const displayName = user?.name || "Joshua";
+  const userRole = user?.role || "Lab Technician";
 
-  // Helper function to render list items (Logic preserved, but not currently called in JSX)
+ useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // 1. Fetch Total Scans & Pending for this specific user/lab
+      const { data: scans, error } = await supabase
+        .from('scans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (scans) {
+        const pendingCount = scans.filter(s => s.status === 'pending').length;
+        setStats({
+          total: scans.length,
+          pending: pendingCount,
+          avg: scans.length > 0 ? (scans.length / 7).toFixed(1) : 0 // Simple 7-day avg logic
+        });
+        setRecentScans(scans.slice(0, 3)); // Only take the 3 most recent
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderPatientItem = (name, status, type, time, id) => (
-    <View style={homeStyles.patientCard}>
+    <View key={id} style={homeStyles.patientCard}>
       <View style={homeStyles.patientInfo}>
         <View style={[
           homeStyles.patientIcon, 
@@ -29,12 +67,10 @@ const HomeScreen = () => {
           <Text style={homeStyles.patientTime}>{time} • Patient {id}</Text>
         </View>
       </View>
-      <View
-        style={[
+      <View style={[
           homeStyles.statusBadge,
           { backgroundColor: type === "red" ? "#FEE2E2" : type === "green" ? "#D1FAE5" : "#FEF3C7" },
-        ]}
-      >
+        ]}>
         <Text style={[
           homeStyles.statusText, 
           { color: type === "red" ? "#EF4444" : type === "green" ? "#10B981" : "#F59E0B" }
@@ -47,16 +83,13 @@ const HomeScreen = () => {
 
   return (
     <View style={homeStyles.container}>
-      {/* Header */}
+      {/* HEADER: Updated to show real name and role */}
       <View style={homeStyles.header}>
         <View style={homeStyles.profileRow}>
-          <Image 
-            source={{ uri: 'https://i.pravatar.cc/100' }} 
-            style={homeStyles.avatar} 
-          />
+          <Image source={{ uri: 'https://i.pravatar.cc/100' }} style={homeStyles.avatar} />
           <View>
             <Text style={homeStyles.greeting}>Hey, {displayName}</Text>
-            <Text style={homeStyles.subGreeting}>Welcome back, Dr. {displayName}</Text>
+            <Text style={homeStyles.subGreeting}>Welcome back, {userRole}</Text>
           </View>
         </View>
         <TouchableOpacity>
@@ -64,58 +97,75 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={homeStyles.content} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 30 }}
-      >
+      <ScrollView style={homeStyles.content} showsVerticalScrollIndicator={false}>
         <Text style={homeStyles.sectionTitle}>Dashboard Overview</Text>
 
-        {/* Stats Row */}
+        {/* STATS: These will be 0 for new users */}
         <View style={homeStyles.statsRow}>
           <View style={homeStyles.statCard}>
             <Text style={homeStyles.statLabel}>TOTAL SCANS</Text>
-            <Text style={homeStyles.statValue}>128</Text>
-            <Text style={homeStyles.statTrend}>
-              <Ionicons name="trending-up" size={14} color="#10B981" /> +12%
-            </Text>
+            <Text style={homeStyles.statValue}>{stats.total}</Text>
+            {stats.total > 0 && (
+              <Text style={homeStyles.statTrend}>
+                <Ionicons name="trending-up" size={14} color="#10B981" /> +100%
+              </Text>
+            )}
           </View>
           <View style={homeStyles.statCard}>
             <Text style={homeStyles.statLabel}>PENDING</Text>
-            <Text style={homeStyles.statValue}>5</Text>
-            <Text style={homeStyles.statCritical}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#EF4444" /> ! Critical
+            <Text style={homeStyles.statValue}>{stats.pending}</Text>
+            <Text style={stats.pending > 0 ? homeStyles.statCritical : homeStyles.statLabel}>
+               {stats.pending > 0 ? "! Action Required" : "All Clear"}
             </Text>
           </View>
         </View>
 
-        {/* Chart Placeholder */}
+        {/* CHART: Conditional rendering for the graph */}
         <View style={homeStyles.chartCard}>
           <Text style={homeStyles.statLabel}>Patients Analyzed per Day</Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <Text style={homeStyles.statValue}>42</Text>
+            <Text style={homeStyles.statValue}>{stats.avg}</Text>
             <Text style={[homeStyles.avgText, { marginLeft: 4 }]}>avg.</Text>
           </View>
-          <View style={homeStyles.placeholderChart} />
+          
+          {/* LOGIC: If scans are 0, show a flat line. If > 0, show the wavy chart */}
+          {stats.total === 0 ? (
+            <View style={{ 
+              height: 2, 
+              backgroundColor: '#E2E8F0', 
+              marginTop: 50, 
+              width: '100%',
+              borderRadius: 1 
+            }} />
+          ) : (
+            <View style={homeStyles.placeholderChart} />
+          )}
         </View>
 
-        {/* Recent Scans Header */}
         <View style={homeStyles.listHeader}>
           <Text style={homeStyles.sectionTitle}>Recent Scans</Text>
-          <TouchableOpacity>
-            <Text style={homeStyles.viewAll}>View All</Text>
-          </TouchableOpacity>
+          {recentScans.length > 0 && (
+            <TouchableOpacity><Text style={homeStyles.viewAll}>View All</Text></TouchableOpacity>
+          )}
         </View>
 
-        {/* Patient items are commented out below. 
-          To enable them, remove the curly braces and forward slashes.
-        */}
-
-        {/* {renderPatientItem("Amara Okafor", "SICKLE CELL DETECTED", "red", "10 mins ago", "#8291")}
-        {renderPatientItem("David Chen", "NORMAL", "green", "2 hours ago", "#8288")}
-        {renderPatientItem("Sarah Jenkins", "MALARIA DETECTED", "yellow", "2 hours ago", "#8287")}
-        */}
-        
+        {/* RECENT SCANS: Conditional rendering for the list */}
+        {loading ? (
+          <ActivityIndicator color="#10B981" style={{ marginTop: 20 }} />
+        ) : recentScans.length > 0 ? (
+          recentScans.map(scan => renderPatientItem(
+            scan.patient_name, 
+            scan.result, 
+            scan.severity, 
+            "Just now", 
+            scan.id.toString().slice(0,4)
+          ))
+        ) : (
+          <View style={{ alignItems: 'center', marginTop: 20 }}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={48} color="#CBD5E1" />
+            <Text style={{ color: '#64748B', marginTop: 10 }}>No scans recorded yet.</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

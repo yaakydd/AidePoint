@@ -84,3 +84,8 @@ export const ChatStyles = StyleSheet.create({
     bugButtonContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
     bugButton: { flex: 1, backgroundColor: '#00BCD4', paddingVertical: 12, borderRadius: 10, alignItems: 'center' }
 });
+
+
+
+
+
