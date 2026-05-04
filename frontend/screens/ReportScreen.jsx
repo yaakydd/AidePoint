@@ -64,7 +64,7 @@ const STORAGE_KEY = '@aidepoint_reports';
 // When the Scan screen sends condition: 'sickle', this object drives
 // every colour, badge text, and icon automatically.
 
-const CONDITIONS = {
+const blood_conditions = {
   sickle: {
     label:       'Sickle Cell Detected',
     badgeBg:     '#FFF0F0',
@@ -99,10 +99,10 @@ const CONDITIONS = {
   },
 };
 
-const FILTERS = ['All', 'Sickle Cell', 'Malaria', 'Anaemia', 'Normal'];
+const filters = ['All', 'Sickle Cell', 'Malaria', 'Anaemia', 'Normal'];
 
-// Maps filter pill label → condition key used in report objects
-const FILTER_KEY_MAP = {
+// Maps filter pill label to the bloood condition key used in report objects
+const filter_key_map = {
   'All':         null,
   'Sickle Cell': 'sickle',
   'Malaria':     'malaria',
@@ -110,7 +110,7 @@ const FILTER_KEY_MAP = {
   'Normal':      'normal',
 };
 
-// ─── Sample / Seed Data ───────────────────────────────────────────────────────
+// Sample / Seed Data 
 // Shown on first launch only. Once real reports arrive from the Scan screen
 // they will be prepended to this list and persisted.
 
@@ -216,7 +216,7 @@ function formatTime(isoString) {
   });
 }
 
-// ─── SVG Condition Icons ──────────────────────────────────────────────────────
+//  SVG Condition Icons 
 // Each icon visually represents the blood condition so lab techs can identify
 // the result at a glance without reading the badge text.
 
@@ -312,28 +312,28 @@ const NormalIcon = ({ size = 56 }) => (
   </Svg>
 );
 
-// Map condition key → icon component
-const ICON_MAP = {
+// Map condition key to its icon component
+const icon_map = {
   sickle:  SickleCellIcon,
   malaria: MalariaIcon,
   anaemia: AnaemiaIcon,
   normal:  NormalIcon,
 };
 
-// ─── Reusable Small Components ────────────────────────────────────────────────
+//  Reusable Small Components 
 
 const ConditionIcon = ({ condition, size = 56 }) => {
-  const Icon = ICON_MAP[condition] ?? NormalIcon;
+  const Icon = icon_map[condition] ?? NormalIcon;
   return <Icon size={size} />;
 };
 
 const ConditionBadge = ({ condition }) => {
-  const cfg = CONDITIONS[condition];
+  const config = blood_conditions[condition];
   return (
-    <View style={[styles.badge, { backgroundColor: cfg.badgeBg }]}>
-      <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot }]} />
-      <Text style={[styles.badgeLabel, { color: cfg.badgeText }]}>
-        {cfg.label}
+    <View style={[styles.badge, { backgroundColor: config.badgeBg }]}>
+      <View style={[styles.badgeDot, { backgroundColor: config.badgeDot }]} />
+      <Text style={[styles.badgeLabel, { color: config.badgeText }]}>
+        {config.label}
       </Text>
     </View>
   );
@@ -367,12 +367,12 @@ const Chevron = () => (
   </Svg>
 );
 
-// ─── ReportCard ───────────────────────────────────────────────────────────────
+//  ReportCard 
 // Wrapped in React.memo so FlatList only re-renders cards whose data changed.
 // useRef + Animated give the press-scale micro-interaction without triggering
 // a re-render (Animated drives the native driver directly).
 
-const ReportCard = React.memo(({ report, onPress }) => {
+const ReportCard = useMemo(({ report, onPress }) => {
   // useRef: holds the animated value without causing re-renders when it changes.
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -400,10 +400,10 @@ const ReportCard = React.memo(({ report, onPress }) => {
       onPressOut={pressOut}
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`Report for ${report.patientName}, ${CONDITIONS[report.condition].label}`}
+      accessibilityLabel={`Report for ${report.patientName}, ${blood_conditions[report.condition].label}`}
     >
       <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
-        {/* Condition icon — replaces the blood sample photo */}
+        {/* Condition icon — replaces the blood sample photo in the UI */}
         <View style={styles.cardIconWrap}>
           <ConditionIcon condition={report.condition} size={56} />
         </View>
@@ -431,7 +431,7 @@ const ReportCard = React.memo(({ report, onPress }) => {
   );
 });
 
-// ─── DetailModal ──────────────────────────────────────────────────────────────
+//  DetailModal 
 // Bottom-sheet modal that slides up when a report card is tapped.
 //
 // How the animation works:
@@ -465,7 +465,7 @@ const DetailModal = ({ report, visible, onClose }) => {
   // Don't render anything if there's no report selected yet
   if (!report) return null;
 
-  const cfg = CONDITIONS[report.condition];
+  const config = blood_conditions[report.condition];
 
   // The rows displayed inside the modal
   const infoRows = [
@@ -483,7 +483,7 @@ const DetailModal = ({ report, visible, onClose }) => {
       visible={visible}
       transparent
       animationType="none"        // we handle animation ourselves
-      statusBarTranslucent        // modal covers the status bar on Android
+      // statusBarTranslucent        // modal covers the status bar on Android
       onRequestClose={onClose}    // Android hardware back button
     >
       <View style={styles.modalOverlay}>
@@ -557,7 +557,7 @@ const DetailModal = ({ report, visible, onClose }) => {
   );
 };
 
-// ─── EmptyState ───────────────────────────────────────────────────────────────
+// EmptyState 
 
 const EmptyState = ({ searchActive }) => (
   <View style={styles.emptyWrap}>
@@ -582,32 +582,32 @@ const EmptyState = ({ searchActive }) => (
   </View>
 );
 
-// ─── ReportsScreen ────────────────────────────────────────────────────────────
+// ReportsScreen 
 
 export default function ReportsScreen({ navigation, route }) {
-  // ── State ──────────────────────────────────────────────────────────────────
+  // State 
 
   // useState: the full list of reports held in memory for this render cycle.
-  const [reports,        setReports]       = useState([]);
-  const [loading,        setLoading]       = useState(true);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Search / filter state
-  const [query,          setQuery]         = useState('');
-  const [activeFilter,   setActiveFilter]  = useState('All');
+  const [query, setQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('All');
 
   // Modal state: which report is being shown, and whether the modal is open.
   // Keeping them separate lets the slide-out animation finish before we clear
   // `selectedReport` (clearing it immediately would make the modal blank mid-slide).
   const [selectedReport, setSelectedReport] = useState(null);
-  const [modalVisible,   setModalVisible]   = useState(false);
+  const [modalVisible, setModalVisible]   = useState(false);
 
   // useRef: direct access to the TextInput — no re-render needed to focus it.
   const searchInputRef = useRef(null);
 
-  // ── Effects ────────────────────────────────────────────────────────────────
+  // Effects 
 
   // Load persisted reports from AsyncStorage when the screen first mounts.
-  // useEffect with [] runs exactly once — equivalent to componentDidMount.
+  // useEffect with [] runs exactly once which is  equivalent to componentDidMount.
   useEffect(() => {
     loadReports();
   }, []);
@@ -624,7 +624,7 @@ export default function ReportsScreen({ navigation, route }) {
     }
   }, [route?.params?.newReport]);
 
-  // ── AsyncStorage Helpers ───────────────────────────────────────────────────
+  // AsyncStorage Helpers 
 
   const loadReports = async () => {
     try {
@@ -655,9 +655,9 @@ export default function ReportsScreen({ navigation, route }) {
     }
   };
 
-  // ── Callbacks ──────────────────────────────────────────────────────────────
+  //  Callbacks 
 
-  // useCallback: stable function reference — ReportCard won't re-render just
+  // useCallback: stable function reference to ReportCard won't re-render just
   // because ReportsScreen re-renders (important for long lists).
   const handleCardPress = useCallback((report) => {
     setSelectedReport(report);
@@ -676,7 +676,7 @@ export default function ReportsScreen({ navigation, route }) {
     searchInputRef.current?.blur();
   }, []);
 
-  // ── Derived Data ───────────────────────────────────────────────────────────
+  //  Derived Data 
 
   // useMemo: the filtered list is recomputed ONLY when reports, query, or
   // activeFilter change. Without this, it would re-run on every render
@@ -697,7 +697,7 @@ export default function ReportsScreen({ navigation, route }) {
     });
   }, [reports, query, activeFilter]);
 
-  // ── FlatList Helpers ───────────────────────────────────────────────────────
+  // FlatList Helpers 
 
   // useCallback + React.memo on ReportCard together = zero wasted renders
   const renderItem = useCallback(
@@ -712,7 +712,7 @@ export default function ReportsScreen({ navigation, route }) {
     [],
   );
 
-  // ── Loading State ──────────────────────────────────────────────────────────
+  // Loading State 
 
   if (loading) {
     return (
@@ -722,13 +722,13 @@ export default function ReportsScreen({ navigation, route }) {
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Render
 
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ── Top Bar ── */}
+      {/* Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.backButton}
