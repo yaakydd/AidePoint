@@ -1,108 +1,68 @@
-/**
- * ReportsScreen.js — Aidepoint Medical App
- *
- * Displays all blood-sample analysis reports.
- * Reports are persisted in AsyncStorage and populated
- * from the Scan screen via navigation params.
- *
- * ─── INSTALL THESE BEFORE RUNNING ────────────────────────
- *   expo install react-native-svg
- *   expo install @react-native-async-storage/async-storage
- * ──────────────────────────────────────────────────────────
- *
- * NAVIGATION USAGE (from Scan screen):
- *   navigation.navigate('Reports', { newReport: reportObject });
- *
- * REPORT OBJECT SHAPE (what Scan screen must produce):
- *   {
- *     id:           string,   // unique — use Date.now().toString() or uuid
- *     patientName:  string,
- *     patientId:    string,   // e.g. "AP-2025-8821"
- *     condition:    'sickle' | 'malaria' | 'anaemia' | 'normal',
- *     confidence:   number,   // 0–100, AI model certainty
- *     timestamp:    string,   // ISO 8601 e.g. new Date().toISOString()
- *     labTechName:  string,   // logged-in user's name
- *     notes:        string,   // auto-generated or typed by lab tech
- *     imageUri:     string | null, // local URI of the captured sample image
- *   }
- */
+// ReportsScreen.js
+// Shows all reports generated from scans.
+// New users see an empty state. Reports appear after scans are completed.
+//
+// Required installs:
+//   expo install react-native-svg
+//   expo install @react-native-async-storage/async-storage
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  StatusBar,
-  Platform,
-  Animated,
-  Dimensions,
-  ActivityIndicator,
+  View, Text, FlatList, TextInput, TouchableOpacity,
+  Modal, ScrollView, StatusBar, Platform,
+  Animated, Dimensions, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ReportStyles as styles } from '../styles/ReportStyles';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STORAGE_KEY = '@aidepoint_reports';
 
-// ─── Condition Configuration ──────────────────────────────────────────────────
-// All colours, labels, and icon mappings for each condition live here.
-// When the Scan screen sends condition: 'sickle', this object drives
-// every colour, badge text, and icon automatically.
+// ─────────────────────────────────────────────────────────────────────────────
+// CONDITION CONFIG
+// The AI model returns one of: 'sickle' | 'malaria' | 'anaemia' | 'normal'
+// This object drives every badge colour and urgency label automatically.
+// ─────────────────────────────────────────────────────────────────────────────
 
-const blood_conditions = {
+const CONDITIONS = {
   sickle: {
-    label:       'Sickle Cell Detected',
-    badgeBg:     '#FFF0F0',
-    badgeText:   '#C0392B',
-    badgeDot:    '#E74C3C',
-    iconBg:      '#FFF0F0',
-    urgency:     'High — refer to haematologist',
+    label:     'Sickle Cell Detected',
+    badgeBg:   '#FFF0F0',
+    badgeText: '#C0392B',
+    badgeDot:  '#E74C3C',
+    iconBg:    '#FFF0F0',
+    urgency:   'High — refer to haematologist',
   },
   malaria: {
-    label:       'Malaria Detected',
-    badgeBg:     '#FFF8EC',
-    badgeText:   '#B07D00',
-    badgeDot:    '#F39C12',
-    iconBg:      '#FFF8EC',
-    urgency:     'High — commence anti-malarial treatment',
+    label:     'Malaria Detected',
+    badgeBg:   '#FFF8EC',
+    badgeText: '#B07D00',
+    badgeDot:  '#F39C12',
+    iconBg:    '#FFF8EC',
+    urgency:   'High — commence anti-malarial treatment',
   },
   anaemia: {
-    label:       'Anaemia Detected',
-    badgeBg:     '#F5F0FF',
-    badgeText:   '#6C3EC1',
-    badgeDot:    '#8E44AD',
-    iconBg:      '#F5F0FF',
-    urgency:     'Moderate — iron panel recommended',
+    label:     'Anaemia Detected',
+    badgeBg:   '#F5F0FF',
+    badgeText: '#6C3EC1',
+    badgeDot:  '#8E44AD',
+    iconBg:    '#F5F0FF',
+    urgency:   'Moderate — iron panel recommended',
   },
   normal: {
-    label:       'Normal Result',
-    badgeBg:     '#EEFBF3',
-    badgeText:   '#1A7340',
-    badgeDot:    '#27AE60',
-    iconBg:      '#EEFBF3',
-    urgency:     'None — routine follow-up only',
+    label:     'Normal Result',
+    badgeBg:   '#EEFBF3',
+    badgeText: '#1A7340',
+    badgeDot:  '#27AE60',
+    iconBg:    '#EEFBF3',
+    urgency:   'None — routine follow-up only',
   },
 };
 
-const filters = ['All', 'Sickle Cell', 'Malaria', 'Anaemia', 'Normal'];
+const FILTER_OPTIONS = ['All', 'Sickle Cell', 'Malaria', 'Anaemia', 'Normal'];
 
-// Maps filter pill label to the bloood condition key used in report objects
-const filter_key_map = {
+const FILTER_TO_KEY = {
   'All':         null,
   'Sickle Cell': 'sickle',
   'Malaria':     'malaria',
@@ -110,586 +70,366 @@ const filter_key_map = {
   'Normal':      'normal',
 };
 
-// Sample / Seed Data 
-// Shown on first launch only. Once real reports arrive from the Scan screen
-// they will be prepended to this list and persisted.
+// ─────────────────────────────────────────────────────────────────────────────
+// DATE HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-const SEED_REPORTS = [
-  {
-    id:          'seed-1',
-    patientName: 'Amara Okoro',
-    patientId:   'AP-2024-8821',
-    condition:   'sickle',
-    confidence:  94.2,
-    timestamp:   new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    labTechName: 'K. Mensah',
-    notes:       'Crescent-shaped cells confirmed under microscopy. Patient referred to haematologist for further evaluation.',
-    imageUri:    null,
-  },
-  {
-    id:          'seed-2',
-    patientName: 'David Mensah',
-    patientId:   'AP-2024-9012',
-    condition:   'normal',
-    confidence:  98.1,
-    timestamp:   new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-    labTechName: 'A. Boateng',
-    notes:       'No anomalies detected. All blood parameters within normal range. Routine follow-up in 6 months.',
-    imageUri:    null,
-  },
-  {
-    id:          'seed-3',
-    patientName: 'Kofi Annan',
-    patientId:   'AP-2024-1102',
-    condition:   'malaria',
-    confidence:  91.7,
-    timestamp:   '2024-10-24T09:15:00.000Z',
-    labTechName: 'E. Asante',
-    notes:       'Plasmodium ring forms present in multiple red cells. Anti-malarial treatment commenced immediately.',
-    imageUri:    null,
-  },
-  {
-    id:          'seed-4',
-    patientName: 'Sarah Boateng',
-    patientId:   'AP-2024-5541',
-    condition:   'normal',
-    confidence:  97.4,
-    timestamp:   '2024-10-22T14:30:00.000Z',
-    labTechName: 'K. Mensah',
-    notes:       'Routine check. All parameters satisfactory. No action required.',
-    imageUri:    null,
-  },
-  {
-    id:          'seed-5',
-    patientName: 'Esi Nyarko',
-    patientId:   'AP-2025-0312',
-    condition:   'anaemia',
-    confidence:  89.5,
-    timestamp:   '2025-03-03T11:00:00.000Z',
-    labTechName: 'J. Owusu',
-    notes:       'Low haemoglobin levels observed. Iron deficiency anaemia suspected. Iron panel and dietary assessment ordered.',
-    imageUri:    null,
-  },
-  {
-    id:          'seed-6',
-    patientName: 'Kwame Asare',
-    patientId:   'AP-2025-0765',
-    condition:   'sickle',
-    confidence:  96.3,
-    timestamp:   '2025-04-14T08:45:00.000Z',
-    labTechName: 'A. Boateng',
-    notes:       'Sickling confirmed under hypoxic conditions. Urgent specialist referral letter issued to KATH haematology unit.',
-    imageUri:    null,
-  },
-];
+function getRelativeTime(isoString) {
+  const date    = new Date(isoString);
+  const now     = new Date();
+  const minutes = (now - date) / (1000 * 60);
+  const hours   = minutes / 60;
+  const days    = hours / 24;
 
-// ─── Utility: Date & Time Formatting ─────────────────────────────────────────
-
-function formatRelativeTime(isoString) {
-  const date = new Date(isoString);
-  const now   = new Date();
-  const diffMs  = now - date;
-  const diffMin = diffMs / (1000 * 60);
-  const diffHrs = diffMs / (1000 * 60 * 60);
-  const diffDay = diffMs / (1000 * 60 * 60 * 24);
-
-  if (diffMin  < 1)  return 'Just now';
-  if (diffMin  < 60) return `${Math.floor(diffMin)} min ago`;
-  if (diffHrs  < 24) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (diffDay  < 2)  return 'Yesterday';
+  if (minutes < 1)  return 'Just now';
+  if (minutes < 60) return `${Math.floor(minutes)} min ago`;
+  if (hours   < 24) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (days    < 2)  return 'Yesterday';
   return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function formatFullDate(isoString) {
+function getFullDate(isoString) {
   return new Date(isoString).toLocaleDateString([], {
-    weekday: 'long',
-    day:     'numeric',
-    month:   'long',
-    year:    'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 }
 
-function formatTime(isoString) {
-  return new Date(isoString).toLocaleTimeString([], {
-    hour:   '2-digit',
-    minute: '2-digit',
-  });
+function getTime(isoString) {
+  return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-//  SVG Condition Icons 
-// Each icon visually represents the blood condition so lab techs can identify
-// the result at a glance without reading the badge text.
+// ─────────────────────────────────────────────────────────────────────────────
+// SVG CONDITION ICONS
+// ─────────────────────────────────────────────────────────────────────────────
 
-const SickleCellIcon = ({ size = 56 }) => (
-  <Svg width={size} height={size} viewBox="0 0 56 56">
-    {/* Background tile */}
-    <Rect width="56" height="56" rx="14" fill="#FFF0F0" />
-    {/* Pale normal cell (contrast) */}
-    <Ellipse cx="16" cy="28" rx="11" ry="7" fill="#F5B7B7"
-      transform="rotate(-30 16 28)" />
-    {/* Sickle / crescent-shaped cell */}
-    <Path
-      d="M14 22 Q38 10 42 29 Q39 44 22 39"
-      fill="#E74C3C"
-      opacity="0.88"
-    />
-    <Ellipse
-      cx="23" cy="32" rx="9" ry="5.5"
-      fill="#C0392B" opacity="0.55"
-      transform="rotate(-20 23 32)"
-    />
-    {/* Second sickle cell, upper right */}
-    <Circle cx="42" cy="16" r="7" fill="#F5B7B7" />
-    <Ellipse cx="42" cy="16" rx="5.5" ry="3.5" fill="#E74C3C" opacity="0.72" />
-  </Svg>
-);
-
-const MalariaIcon = ({ size = 56 }) => (
-  <Svg width={size} height={size} viewBox="0 0 56 56">
-    <Rect width="56" height="56" rx="14" fill="#FFF8EC" />
-    {/* Red blood cell outline */}
-    <Circle cx="28" cy="30" r="15" fill="#FDEBD0" />
-    <Circle cx="28" cy="30" r="15" fill="none" stroke="#F39C12" strokeWidth="3" />
-    {/* Parasite ring stage inside cell */}
-    <Circle cx="28" cy="30" r="7" fill="#F39C12" opacity="0.18" />
-    <Circle cx="33" cy="25" r="5"  fill="#E67E22" />
-    <Circle cx="33" cy="25" r="2.8" fill="#D35400" />
-    {/* Second ring form */}
-    <Circle cx="22" cy="36" r="3.5" fill="#F39C12" opacity="0.82" />
-    {/* Parasite flagellum / tail */}
-    <Path
-      d="M33 25 Q42 16 47 13"
-      stroke="#C0392B" strokeWidth="2"
-      fill="none" strokeLinecap="round"
-    />
-    <Circle cx="47" cy="13" r="3" fill="#C0392B" />
-  </Svg>
-);
-
-const AnaemiaIcon = ({ size = 56 }) => (
-  <Svg width={size} height={size} viewBox="0 0 56 56">
-    <Rect width="56" height="56" rx="14" fill="#F5F0FF" />
-    {/* Three pale, washed-out cells indicating low haemoglobin */}
-    <Ellipse cx="18" cy="28" rx="11" ry="8"
-      fill="#D7C9F7" stroke="#9B6FE0" strokeWidth="1.5" />
-    <Ellipse cx="18" cy="28" rx="5.5" ry="3.5"
-      fill="#B89CED" opacity="0.45" />
-
-    <Ellipse cx="39" cy="21" rx="10" ry="7.5"
-      fill="#E8DEFF" stroke="#9B6FE0" strokeWidth="1.5" opacity="0.85" />
-    <Ellipse cx="39" cy="21" rx="5" ry="3"
-      fill="#C4ADEE" opacity="0.4" />
-
-    <Ellipse cx="35" cy="39" rx="9" ry="6.5"
-      fill="#DDD1FB" stroke="#9B6FE0" strokeWidth="1.5" opacity="0.9" />
-    {/* Warning crosses — colour loss indicator */}
-    <Line x1="10" y1="10" x2="18" y2="18" stroke="#E74C3C" strokeWidth="2"
-      strokeLinecap="round" opacity="0.65" />
-    <Line x1="18" y1="10" x2="10" y2="18" stroke="#E74C3C" strokeWidth="2"
-      strokeLinecap="round" opacity="0.65" />
-  </Svg>
-);
-
-const NormalIcon = ({ size = 56 }) => (
-  <Svg width={size} height={size} viewBox="0 0 56 56">
-    <Rect width="56" height="56" rx="14" fill="#EEFBF3" />
-    {/* Two healthy, biconcave red blood cells */}
-    <Ellipse cx="18" cy="30" rx="11" ry="8"
-      fill="#A9DFBF" stroke="#27AE60" strokeWidth="1.5" />
-    <Ellipse cx="18" cy="30" rx="5.5" ry="3.5"
-      fill="#6DBF8B" opacity="0.6" />
-
-    <Ellipse cx="38" cy="22" rx="11" ry="8"
-      fill="#82D6A2" stroke="#27AE60" strokeWidth="1.5" />
-    <Ellipse cx="38" cy="22" rx="5.5" ry="3.5"
-      fill="#52B978" opacity="0.6" />
-    {/* Check mark */}
-    <Path
-      d="M30 40 l5 5 l9-11"
-      stroke="#1A7340" strokeWidth="2.5"
-      fill="none" strokeLinecap="round" strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-// Map condition key to its icon component
-const icon_map = {
-  sickle:  SickleCellIcon,
-  malaria: MalariaIcon,
-  anaemia: AnaemiaIcon,
-  normal:  NormalIcon,
-};
-
-//  Reusable Small Components 
-
-const ConditionIcon = ({ condition, size = 56 }) => {
-  const Icon = icon_map[condition] ?? NormalIcon;
-  return <Icon size={size} />;
-};
-
-const ConditionBadge = ({ condition }) => {
-  const config = blood_conditions[condition];
+function SickleCellIcon({ size = 56 }) {
   return (
-    <View style={[styles.badge, { backgroundColor: config.badgeBg }]}>
-      <View style={[styles.badgeDot, { backgroundColor: config.badgeDot }]} />
-      <Text style={[styles.badgeLabel, { color: config.badgeText }]}>
-        {config.label}
-      </Text>
+    <Svg width={size} height={size} viewBox="0 0 56 56">
+      <Rect width="56" height="56" rx="14" fill="#FFF0F0" />
+      <Ellipse cx="16" cy="28" rx="11" ry="7" fill="#F5B7B7" transform="rotate(-30 16 28)" />
+      <Path d="M14 22 Q38 10 42 29 Q39 44 22 39" fill="#E74C3C" opacity="0.88" />
+      <Ellipse cx="23" cy="32" rx="9" ry="5.5" fill="#C0392B" opacity="0.55" transform="rotate(-20 23 32)" />
+      <Circle cx="42" cy="16" r="7" fill="#F5B7B7" />
+      <Ellipse cx="42" cy="16" rx="5.5" ry="3.5" fill="#E74C3C" opacity="0.72" />
+    </Svg>
+  );
+}
+
+function MalariaIcon({ size = 56 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 56 56">
+      <Rect width="56" height="56" rx="14" fill="#FFF8EC" />
+      <Circle cx="28" cy="30" r="15" fill="#FDEBD0" />
+      <Circle cx="28" cy="30" r="15" fill="none" stroke="#F39C12" strokeWidth="3" />
+      <Circle cx="28" cy="30" r="7" fill="#F39C12" opacity="0.18" />
+      <Circle cx="33" cy="25" r="5" fill="#E67E22" />
+      <Circle cx="33" cy="25" r="2.8" fill="#D35400" />
+      <Circle cx="22" cy="36" r="3.5" fill="#F39C12" opacity="0.82" />
+      <Path d="M33 25 Q42 16 47 13" stroke="#C0392B" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <Circle cx="47" cy="13" r="3" fill="#C0392B" />
+    </Svg>
+  );
+}
+
+function AnaemiaIcon({ size = 56 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 56 56">
+      <Rect width="56" height="56" rx="14" fill="#F5F0FF" />
+      <Ellipse cx="18" cy="28" rx="11" ry="8" fill="#D7C9F7" stroke="#9B6FE0" strokeWidth="1.5" />
+      <Ellipse cx="18" cy="28" rx="5.5" ry="3.5" fill="#B89CED" opacity="0.45" />
+      <Ellipse cx="39" cy="21" rx="10" ry="7.5" fill="#E8DEFF" stroke="#9B6FE0" strokeWidth="1.5" opacity="0.85" />
+      <Ellipse cx="39" cy="21" rx="5" ry="3" fill="#C4ADEE" opacity="0.4" />
+      <Ellipse cx="35" cy="39" rx="9" ry="6.5" fill="#DDD1FB" stroke="#9B6FE0" strokeWidth="1.5" opacity="0.9" />
+      <Line x1="10" y1="10" x2="18" y2="18" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" opacity="0.65" />
+      <Line x1="18" y1="10" x2="10" y2="18" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" opacity="0.65" />
+    </Svg>
+  );
+}
+
+function NormalIcon({ size = 56 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 56 56">
+      <Rect width="56" height="56" rx="14" fill="#EEFBF3" />
+      <Ellipse cx="18" cy="30" rx="11" ry="8" fill="#A9DFBF" stroke="#27AE60" strokeWidth="1.5" />
+      <Ellipse cx="18" cy="30" rx="5.5" ry="3.5" fill="#6DBF8B" opacity="0.6" />
+      <Ellipse cx="38" cy="22" rx="11" ry="8" fill="#82D6A2" stroke="#27AE60" strokeWidth="1.5" />
+      <Ellipse cx="38" cy="22" rx="5.5" ry="3.5" fill="#52B978" opacity="0.6" />
+      <Path d="M30 40 l5 5 l9-11" stroke="#1A7340" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+const CONDITION_ICONS = { sickle: SickleCellIcon, malaria: MalariaIcon, anaemia: AnaemiaIcon, normal: NormalIcon };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED SMALL COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ConditionIcon({ condition, size = 56 }) {
+  const Icon = CONDITION_ICONS[condition] ?? NormalIcon;
+  return <Icon size={size} />;
+}
+
+function ConditionBadge({ condition }) {
+  const cfg = CONDITIONS[condition];
+  return (
+    <View style={[styles.badge, { backgroundColor: cfg.badgeBg }]}>
+      <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot }]} />
+      <Text style={[styles.badgeLabel, { color: cfg.badgeText }]}>{cfg.label}</Text>
     </View>
   );
-};
+}
 
-// Inline SVG icons for navigation chrome
-const BackArrow = () => (
-  <Svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-    <Path
-      d="M12 3L6 9l6 6"
-      stroke="#1A1B2E" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round"
-    />
-  </Svg>
-);
+function BackArrow() {
+  return (
+    <Svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <Path d="M12 3L6 9l6 6" stroke="#1A1B2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
-const SearchGlass = () => (
-  <Svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <Circle cx="7" cy="7" r="5.5" stroke="#9799A8" strokeWidth="1.5" />
-    <Path d="M11 11L15 15" stroke="#9799A8" strokeWidth="1.5" strokeLinecap="round" />
-  </Svg>
-);
+function SearchIcon() {
+  return (
+    <Svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <Circle cx="7" cy="7" r="5.5" stroke="#9799A8" strokeWidth="1.5" />
+      <Path d="M11 11L15 15" stroke="#9799A8" strokeWidth="1.5" strokeLinecap="round" />
+    </Svg>
+  );
+}
 
-const Chevron = () => (
-  <Svg width="8" height="14" viewBox="0 0 8 14" fill="none">
-    <Path
-      d="M1 1l6 6-6 6"
-      stroke="#C8CAD5" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round"
-    />
-  </Svg>
-);
+function ChevronRight() {
+  return (
+    <Svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+      <Path d="M1 1l6 6-6 6" stroke="#C8CAD5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
-//  ReportCard 
-// Wrapped in React.memo so FlatList only re-renders cards whose data changed.
-// useRef + Animated give the press-scale micro-interaction without triggering
-// a re-render (Animated drives the native driver directly).
+// ─────────────────────────────────────────────────────────────────────────────
+// REPORT CARD
+// ─────────────────────────────────────────────────────────────────────────────
 
-const ReportCard = useMemo(({ report, onPress }) => {
-  // useRef: holds the animated value without causing re-renders when it changes.
+const ReportCard = React.memo(function ReportCard({ report, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 
-  const pressIn = () =>
-    Animated.spring(scale, {
-      toValue:        0.97,
-      useNativeDriver: true,
-      tension:         300,
-      friction:        20,
-    }).start();
+  function handlePressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 20 }).start();
+  }
 
-  const pressOut = () =>
-    Animated.spring(scale, {
-      toValue:        1,
-      useNativeDriver: true,
-      tension:         300,
-      friction:        20,
-    }).start();
+  function handlePressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 300, friction: 20 }).start();
+  }
 
   return (
     <TouchableOpacity
       activeOpacity={1}
       onPress={() => onPress(report)}
-      onPressIn={pressIn}
-      onPressOut={pressOut}
-      accessible
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       accessibilityRole="button"
-      accessibilityLabel={`Report for ${report.patientName}, ${blood_conditions[report.condition].label}`}
+      accessibilityLabel={`Report for ${report.patientName}, ${CONDITIONS[report.condition]?.label}`}
     >
       <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
-        {/* Condition icon — replaces the blood sample photo in the UI */}
-        <View style={styles.cardIconWrap}>
+        <View style={styles.cardIcon}>
           <ConditionIcon condition={report.condition} size={56} />
         </View>
-
-        {/* Patient info + badge */}
         <View style={styles.cardBody}>
-          <Text style={styles.cardName} numberOfLines={1}>
-            {report.patientName}
-          </Text>
-          <Text style={styles.cardPatientId}>
-            ID: {report.patientId}
-          </Text>
+          <Text style={styles.cardName} numberOfLines={1}>{report.patientName}</Text>
+          <Text style={styles.cardId}>ID: {report.patientId}</Text>
           <ConditionBadge condition={report.condition} />
         </View>
-
-        {/* Timestamp + chevron */}
         <View style={styles.cardTrailing}>
-          <Text style={styles.cardTime}>
-            {formatRelativeTime(report.timestamp)}
-          </Text>
-          <Chevron />
+          <Text style={styles.cardTime}>{getRelativeTime(report.timestamp)}</Text>
+          <ChevronRight />
         </View>
       </Animated.View>
     </TouchableOpacity>
   );
 });
 
-//  DetailModal 
-// Bottom-sheet modal that slides up when a report card is tapped.
-//
-// How the animation works:
-//   • slideY starts at SCREEN_HEIGHT (off the bottom of the screen).
-//   • When `visible` becomes true, Animated.spring() moves it to 0 (on screen).
-//   • When `visible` becomes false, Animated.timing() slides it back down.
-//   • useNativeDriver: true means the animation runs on the UI thread —
-//     no JavaScript involvement per frame, so it's silky smooth.
+// ─────────────────────────────────────────────────────────────────────────────
+// DETAIL MODAL
+// ─────────────────────────────────────────────────────────────────────────────
 
-const DetailModal = ({ report, visible, onClose }) => {
+function DetailModal({ report, visible, onClose }) {
   const slideY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
-  // useEffect: runs the slide animation whenever `visible` changes.
   useEffect(() => {
     if (visible) {
-      Animated.spring(slideY, {
-        toValue:         0,
-        useNativeDriver: true,
-        tension:         65,
-        friction:        11,
-      }).start();
+      Animated.spring(slideY, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     } else {
-      Animated.timing(slideY, {
-        toValue:         SCREEN_HEIGHT,
-        duration:        240,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(slideY, { toValue: SCREEN_HEIGHT, duration: 240, useNativeDriver: true }).start();
     }
   }, [visible]);
 
-  // Don't render anything if there's no report selected yet
   if (!report) return null;
 
-  const config = blood_conditions[report.condition];
+  const cfg = CONDITIONS[report.condition];
 
-  // The rows displayed inside the modal
-  const infoRows = [
-    { label: 'Date',           value: formatFullDate(report.timestamp) },
-    { label: 'Time',           value: formatTime(report.timestamp) },
-    { label: 'Condition',      value: cfg.label },
-    { label: 'AI Confidence',  value: `${Number(report.confidence).toFixed(1)}%` },
-    { label: 'Urgency',        value: cfg.urgency },
-    { label: 'Lab Technician', value: report.labTechName },
-    { label: 'Notes',          value: report.notes },
+  const detailRows = [
+    { label: 'Date',            value: getFullDate(report.timestamp) },
+    { label: 'Time',            value: getTime(report.timestamp) },
+    { label: 'Condition',       value: cfg.label },
+    { label: 'AI Confidence',   value: `${Number(report.confidence).toFixed(1)}%` },
+    { label: 'Urgency',         value: cfg.urgency },
+    { label: 'Temperature',     value: report.temperature  ? `${report.temperature} °C` : '—' },
+    { label: 'Blood Pressure',  value: report.bloodPressure ?? '—' },
+    { label: 'Doctor Assigned', value: report.doctorName   ?? '—' },
+    { label: 'Lab Technician',  value: report.labTechName },
+    { label: 'Notes',           value: report.notes },
   ];
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"        // we handle animation ourselves
-      // statusBarTranslucent        // modal covers the status bar on Android
-      onRequestClose={onClose}    // Android hardware back button
-    >
-      <View style={styles.modalOverlay}>
-        {/* Tap the dim area to dismiss */}
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          activeOpacity={1}
-        />
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: slideY }] }]}>
 
-        <Animated.View
-          style={[
-            styles.modalSheet,
-            { transform: [{ translateY: slideY }] },
-          ]}
-        >
-          {/* Drag handle */}
-          <View style={styles.modalHandle} />
+          <View style={styles.handle} />
 
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <View style={[styles.modalIconBg, { backgroundColor: cfg.iconBg }]}>
+          <View style={styles.sheetHeader}>
+            <View style={[styles.sheetIconBg, { backgroundColor: cfg.iconBg }]}>
               <ConditionIcon condition={report.condition} size={62} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.modalPatientName}>{report.patientName}</Text>
-              <Text style={styles.modalPatientId}>{report.patientId}</Text>
+              <Text style={styles.sheetName}>{report.patientName}</Text>
+              <Text style={styles.sheetId}>{report.patientId}</Text>
               <ConditionBadge condition={report.condition} />
             </View>
           </View>
 
-          {/* Scrollable detail rows */}
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            {infoRows.map(({ label, value }, index) => (
-              <View
-                key={label}
-                style={[
-                  styles.modalRow,
-                  index === infoRows.length - 1 && { borderBottomWidth: 0 },
-                ]}
-              >
-                <Text style={styles.modalRowLabel}>{label}</Text>
-                <Text
-                  style={[
-                    styles.modalRowValue,
-                    label === 'Notes'   && styles.modalNotesValue,
-                    label === 'Urgency' && { color: cfg.badgeText },
-                  ]}
-                >
+          <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false} bounces={false}>
+            {detailRows.map(({ label, value }, index) => (
+              <View key={label} style={[styles.detailRow, index === detailRows.length - 1 && { borderBottomWidth: 0 }]}>
+                <Text style={styles.detailLabel}>{label}</Text>
+                <Text style={[
+                  styles.detailValue,
+                  label === 'Notes'   && styles.notesValue,
+                  label === 'Urgency' && { color: cfg.badgeText },
+                ]}>
                   {value}
                 </Text>
               </View>
             ))}
           </ScrollView>
 
-          {/* Close button */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.closeButtonText}>Close Report</Text>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={styles.closeBtnText}>Close Report</Text>
           </TouchableOpacity>
+
         </Animated.View>
       </View>
     </Modal>
   );
-};
+}
 
-// EmptyState 
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATE
+// ─────────────────────────────────────────────────────────────────────────────
 
-const EmptyState = ({ searchActive }) => (
-  <View style={styles.emptyWrap}>
-    <Svg width="64" height="64" viewBox="0 0 64 64" fill="none" style={{ marginBottom: 14 }}>
-      <Circle cx="32" cy="32" r="30" stroke="#E5E8EF" strokeWidth="2" />
-      <Path
-        d="M22 32h20M32 22v20"
-        stroke="#D0D4DC"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        transform="rotate(45 32 32)"
-      />
-    </Svg>
-    <Text style={styles.emptyTitle}>
-      {searchActive ? 'No matching reports' : 'No reports yet'}
-    </Text>
-    <Text style={styles.emptySubtitle}>
-      {searchActive
-        ? 'Try a different name or patient ID'
-        : 'Reports from completed scans will appear here'}
-    </Text>
-  </View>
-);
+function EmptyState({ isFiltering }) {
+  return (
+    <View style={styles.emptyContainer}>
+      <Svg width="72" height="72" viewBox="0 0 72 72" fill="none" style={{ marginBottom: 16 }}>
+        <Circle cx="36" cy="36" r="34" stroke="#E5E8EF" strokeWidth="2" />
+        <Path d="M24 36h24M36 24v24" stroke="#D0D4DC" strokeWidth="2.5" strokeLinecap="round" transform="rotate(45 36 36)" />
+      </Svg>
+      <Text style={styles.emptyTitle}>
+        {isFiltering ? 'No matching reports' : 'No reports yet'}
+      </Text>
+      <Text style={styles.emptySubtitle}>
+        {isFiltering
+          ? 'Try a different name, ID, or filter'
+          : 'Complete a scan and your reports will appear here'}
+      </Text>
+    </View>
+  );
+}
 
-// ReportsScreen 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReportsScreen({ navigation, route }) {
-  // State 
 
-  // useState: the full list of reports held in memory for this render cycle.
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Search / filter state
-  const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('All');
-
-  // Modal state: which report is being shown, and whether the modal is open.
-  // Keeping them separate lets the slide-out animation finish before we clear
-  // `selectedReport` (clearing it immediately would make the modal blank mid-slide).
+  const [reports,        setReports]        = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [query,          setQuery]          = useState('');
+  const [activeFilter,   setActiveFilter]   = useState('All');
   const [selectedReport, setSelectedReport] = useState(null);
-  const [modalVisible, setModalVisible]   = useState(false);
+  const [modalVisible,   setModalVisible]   = useState(false);
 
-  // useRef: direct access to the TextInput — no re-render needed to focus it.
-  const searchInputRef = useRef(null);
+  const searchRef = useRef(null);
 
-  // Effects 
-
-  // Load persisted reports from AsyncStorage when the screen first mounts.
-  // useEffect with [] runs exactly once which is  equivalent to componentDidMount.
+  // Load all saved reports when the screen first mounts
   useEffect(() => {
     loadReports();
   }, []);
 
-  // React to a newReport arriving from the Scan screen via navigation params.
-  // useEffect watches route.params so it triggers whenever the Scan screen
-  // calls navigation.navigate('Reports', { newReport: {...} }).
+  // When the Scan screen finishes an analysis it navigates here with a newReport param.
+  // This effect watches for that param and saves the new report.
   useEffect(() => {
-    const newReport = route?.params?.newReport;
-    if (newReport) {
-      handleIncomingReport(newReport);
-      // Clear the param so navigating back and forward doesn't re-trigger
+    const incoming = route?.params?.newReport;
+    if (incoming) {
+      saveIncomingReport(incoming);
       navigation?.setParams({ newReport: undefined });
     }
   }, [route?.params?.newReport]);
 
-  // AsyncStorage Helpers 
+  // ── Storage ───────────────────────────────────────────────────────────────
 
-  const loadReports = async () => {
+  async function loadReports() {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        setReports(JSON.parse(raw));
-      } else {
-        // First-ever launch: seed with sample data
-        setReports(SEED_REPORTS);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_REPORTS));
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        setReports(JSON.parse(stored));
       }
-    } catch (err) {
-      console.warn('[Aidepoint] Failed to load reports:', err);
-      setReports(SEED_REPORTS); // graceful fallback
+      // If nothing stored, reports stays [] and the empty state is shown
+    } catch (error) {
+      console.warn('[Aidepoint] Could not load reports:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleIncomingReport = async (newReport) => {
+  async function saveIncomingReport(newReport) {
     try {
-      // Prepend the new report so it appears at the top of the list
-      const updated = [newReport, ...reports];
+      const updated = [newReport, ...reports]; // newest report at the top
       setReports(updated);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.warn('[Aidepoint] Failed to save new report:', err);
+    } catch (error) {
+      console.warn('[Aidepoint] Could not save report:', error);
     }
-  };
+  }
 
-  //  Callbacks 
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // useCallback: stable function reference to ReportCard won't re-render just
-  // because ReportsScreen re-renders (important for long lists).
-  const handleCardPress = useCallback((report) => {
+  const openReport = useCallback((report) => {
     setSelectedReport(report);
     setModalVisible(true);
   }, []);
 
-  const handleModalClose = useCallback(() => {
+  const closeModal = useCallback(() => {
     setModalVisible(false);
-    // Wait for the slide-out animation to finish before clearing the report
-    setTimeout(() => setSelectedReport(null), 280);
+    setTimeout(() => setSelectedReport(null), 280); // wait for slide-out animation
   }, []);
 
-  const handleFilterPress = useCallback((filter) => {
+  const selectFilter = useCallback((filter) => {
     setActiveFilter(filter);
-    // Dismiss keyboard if search was open
-    searchInputRef.current?.blur();
+    searchRef.current?.blur();
   }, []);
 
-  //  Derived Data 
+  // ── Filtered list ─────────────────────────────────────────────────────────
 
-  // useMemo: the filtered list is recomputed ONLY when reports, query, or
-  // activeFilter change. Without this, it would re-run on every render
-  // (e.g. every keypress in an unrelated input elsewhere on screen).
-  const filteredReports = useMemo(() => {
-    const conditionKey = FILTER_KEY_MAP[activeFilter];
-    const lowerQuery   = query.toLowerCase().trim();
+  const visibleReports = useMemo(() => {
+    const conditionKey = FILTER_TO_KEY[activeFilter];
+    const search       = query.toLowerCase().trim();
 
     return reports.filter((r) => {
       const matchesSearch =
-        !lowerQuery ||
-        r.patientName.toLowerCase().includes(lowerQuery) ||
-        r.patientId.toLowerCase().includes(lowerQuery);
+        !search ||
+        r.patientName.toLowerCase().includes(search) ||
+        r.patientId.toLowerCase().includes(search);
 
       const matchesFilter = !conditionKey || r.condition === conditionKey;
 
@@ -697,137 +437,143 @@ export default function ReportsScreen({ navigation, route }) {
     });
   }, [reports, query, activeFilter]);
 
-  // FlatList Helpers 
+  // ── FlatList helpers ──────────────────────────────────────────────────────
 
-  // useCallback + React.memo on ReportCard together = zero wasted renders
-  const renderItem = useCallback(
-    ({ item }) => <ReportCard report={item} onPress={handleCardPress} />,
-    [handleCardPress],
-  );
+  const renderCard    = useCallback(({ item }) => <ReportCard report={item} onPress={openReport} />, [openReport]);
+  const getKey        = useCallback((item) => item.id, []);
 
-  const keyExtractor = useCallback((item) => item.id, []);
-
-  const ListHeader = useMemo(
-    () => <Text style={styles.sectionLabel}>RECENT REPORTS</Text>,
-    [],
-  );
-
-  // Loading State 
+  // ── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#1A2F6E" />
+      <SafeAreaView style={styles.screen}>
+        <ActivityIndicator size="large" color="#1A2F6E" style={{ marginTop: 60 }} />
       </SafeAreaView>
     );
   }
 
-  // Render
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Top Bar */}
+      {/* Top bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation?.goBack()}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.goBack()} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <BackArrow />
         </TouchableOpacity>
-
         <Text style={styles.screenTitle}>Medical Reports</Text>
-
-        {/* Invisible spacer keeps the title centred */}
-        <View style={styles.backButton} />
+        <View style={styles.backBtn} />
       </View>
 
-      {/* ── Search Bar ── */}
+      {/* Search bar */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchBar}>
-          <SearchGlass />
+          <SearchIcon />
           <TextInput
-            ref={searchInputRef}
+            ref={searchRef}
             style={styles.searchInput}
             placeholder="Search by patient name or ID"
             placeholderTextColor="#9799A8"
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
-            clearButtonMode="while-editing"   // iOS only; Android uses the X below
+            clearButtonMode="while-editing"
             autoCapitalize="words"
             autoCorrect={false}
           />
-          {/* Android clear button */}
           {Platform.OS === 'android' && query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.clearBtn}>✕</Text>
+              <Text style={styles.clearText}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* ── Filter Pills ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterRow}
-        keyboardShouldPersistTaps="handled"
-      >
-        {FILTERS.map((f) => (
+      {/* Filter pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterStrip} contentContainerStyle={styles.filterContent} keyboardShouldPersistTaps="handled">
+        {FILTER_OPTIONS.map((option) => (
           <TouchableOpacity
-            key={f}
-            style={[
-              styles.filterPill,
-              activeFilter === f && styles.filterPillActive,
-            ]}
-            onPress={() => handleFilterPress(f)}
+            key={option}
+            style={[styles.pill, activeFilter === option && styles.pillActive]}
+            onPress={() => selectFilter(option)}
             activeOpacity={0.75}
           >
-            <Text
-              style={[
-                styles.filterPillText,
-                activeFilter === f && styles.filterPillTextActive,
-              ]}
-            >
-              {f} ▾
-            </Text>
+            <Text style={[styles.pillText, activeFilter === option && styles.pillTextActive]}>{option}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* ── Report List ── */}
+      {/* Report list */}
       <FlatList
-        data={filteredReports}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={
-          <EmptyState searchActive={query.length > 0 || activeFilter !== 'All'} />
-        }
+        data={visibleReports}
+        renderItem={renderCard}
+        keyExtractor={getKey}
+        ListHeaderComponent={reports.length > 0 ? <Text style={styles.sectionLabel}>RECENT REPORTS</Text> : null}
+        ListEmptyComponent={<EmptyState isFiltering={query.length > 0 || activeFilter !== 'All'} />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        // Performance tuning for large lists
         initialNumToRender={8}
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={Platform.OS === 'android'}
       />
 
-      {/* ── Detail Modal ── */}
-      <DetailModal
-        report={selectedReport}
-        visible={modalVisible}
-        onClose={handleModalClose}
-      />
+      <DetailModal report={selectedReport} visible={modalVisible} onClose={closeModal} />
+
     </SafeAreaView>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 
+const styles = StyleSheet.create({
+  screen:         { flex: 1, backgroundColor: '#F7F8FA' },
+  topBar:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#E5E8EF' },
+  backBtn:        { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F1F5', justifyContent: 'center', alignItems: 'center' },
+  screenTitle:    { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600', color: '#1A1B2E' },
+  searchWrapper:  { backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 },
+  searchBar:      { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F1F5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 10 : 8, gap: 10 },
+  searchInput:    { flex: 1, fontSize: 14, color: '#1A1B2E', padding: 0 },
+  clearText:      { fontSize: 14, color: '#9799A8' },
+  filterStrip:    { backgroundColor: '#FFF', borderBottomWidth: 0.5, borderBottomColor: '#E5E8EF', flexGrow: 0 },
+  filterContent:  { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  pill:           { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: '#D8DAE5', backgroundColor: '#FFF' },
+  pillActive:     { backgroundColor: '#1A2F6E', borderColor: '#1A2F6E' },
+  pillText:       { fontSize: 13, fontWeight: '500', color: '#4A4B60' },
+  pillTextActive: { color: '#FFF' },
+  listContent:    { padding: 16, paddingBottom: 40, flexGrow: 1 },
+  sectionLabel:   { fontSize: 11, fontWeight: '600', letterSpacing: 0.9, color: '#9799A8', marginBottom: 12, marginLeft: 4 },
+  card:           { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 0.5, borderColor: '#E5E8EF', padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 12 },
+  cardIcon:       { borderRadius: 14, overflow: 'hidden' },
+  cardBody:       { flex: 1, gap: 3 },
+  cardName:       { fontSize: 15, fontWeight: '600', color: '#1A1B2E' },
+  cardId:         { fontSize: 11, color: '#9799A8', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+  cardTrailing:   { alignItems: 'flex-end', alignSelf: 'stretch', justifyContent: 'space-between', paddingVertical: 2 },
+  cardTime:       { fontSize: 11, color: '#B0B2BE' },
+  badge:          { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, gap: 5, marginTop: 2 },
+  badgeDot:       { width: 6, height: 6, borderRadius: 3 },
+  badgeLabel:     { fontSize: 11, fontWeight: '600' },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 32 },
+  emptyTitle:     { fontSize: 17, fontWeight: '600', color: '#4A4B60', marginBottom: 8 },
+  emptySubtitle:  { fontSize: 14, color: '#9799A8', textAlign: 'center', lineHeight: 22 },
+  overlay:        { flex: 1, backgroundColor: 'rgba(20,22,40,0.55)', justifyContent: 'flex-end' },
+  sheet:          { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: SCREEN_HEIGHT * 0.88 },
+  handle:         { width: 36, height: 4, backgroundColor: '#D8DAE5', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 },
+  sheetHeader:    { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 14, borderBottomWidth: 0.5, borderBottomColor: '#F0F1F5' },
+  sheetIconBg:    { width: 72, height: 72, borderRadius: 18, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  sheetName:      { fontSize: 18, fontWeight: '700', color: '#1A1B2E', marginBottom: 2 },
+  sheetId:        { fontSize: 12, color: '#9799A8', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', marginBottom: 6 },
+  sheetScroll:    { paddingHorizontal: 20, flexGrow: 0 },
+  detailRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 13, borderBottomWidth: 0.5, borderBottomColor: '#F0F1F5' },
+  detailLabel:    { fontSize: 13, color: '#9799A8', fontWeight: '500', flex: 1 },
+  detailValue:    { fontSize: 13, color: '#1A1B2E', fontWeight: '500', maxWidth: '58%', textAlign: 'right', lineHeight: 19 },
+  notesValue:     { fontSize: 12, lineHeight: 18, color: '#4A4B60' },
+  closeBtn:       { marginHorizontal: 20, marginTop: 16, paddingVertical: 15, borderRadius: 14, backgroundColor: '#1A2F6E', alignItems: 'center' },
+  closeBtnText:   { color: '#FFF', fontSize: 15, fontWeight: '600' },
+});
