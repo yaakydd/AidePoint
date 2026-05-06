@@ -3,9 +3,7 @@
 // selects a doctor, then starts the AI analysis.
 // When analysis completes, a report is built and sent to the Reports screen.
 //
-// Required installs:
-//   expo install expo-image-picker
-//   npx expo install @expo/vector-icons
+
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -26,13 +24,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { buildReport, saveReport } from '../utils/reportUtils';
 import { scanStyles as styles } from '../styles/ScanStyles';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // MOCK DOCTORS LIST
 // These are placeholder doctors shown in the selector.
 // When the backend is ready, replace this array with an API call:
 //   const doctors = await fetch('/api/doctors').then(r => r.json());
 // The admin website will manage which doctors appear here.
-// ─────────────────────────────────────────────────────────────────────────────
 
 const MOCK_DOCTORS = [
   { id: 'doc-1', name: 'Dr. Kwame Asante',  specialty: 'Haematology' },
@@ -42,7 +38,7 @@ const MOCK_DOCTORS = [
   { id: 'doc-5', name: 'Dr. Yaw Darko',     specialty: 'Haematology' },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // MOCK AI MODEL
 // Simulates the AI prediction while the real model is being integrated.
 // Returns a condition key and a confidence score after a short delay.
@@ -52,7 +48,7 @@ const MOCK_DOCTORS = [
 //   formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'sample.jpg' });
 //   const result = await fetch('https://your-api.com/predict', { method: 'POST', body: formData });
 //   return result.json(); // { condition: 'sickle', confidence: 94.2 }
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 function runAIAnalysis(imageUri) {
   return new Promise((resolve) => {
@@ -63,18 +59,18 @@ function runAIAnalysis(imageUri) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // CURRENT LAB TECH
 // Hardcoded for now. When auth is built, replace with the logged-in user:
 //   const { user } = useAuthContext();
 //   const labTechName = user.name;
-// ─────────────────────────────────────────────────────────────────────────────
 
-const CURRENT_LAB_TECH = 'K. Mensah';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+const CURRENT_LAB_TECH = 'JOSHUA';
+
+
+// HELPER FUNCTIONS FOR SCAN ID GENERATION
+
 
 function generateScanId() {
   const year   = new Date().getFullYear();
@@ -82,32 +78,29 @@ function generateScanId() {
   return `AP-${year}-${serial}`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
 
-export default function ScanScreen({ navigation, route }) {
+const ScanScreen = ({ navigation, route }) => {
 
-  // ── Form state ────────────────────────────────────────────────────────────
+  // Patient Form state 
   const [patientName,   setPatientName]   = useState('');
   const [temperature,   setTemperature]   = useState('');
   const [bloodPressure, setBloodPressure] = useState('');
   const [image,         setImage]         = useState(null);
   const [scanId,        setScanId]        = useState('');
 
-  // ── Doctor selector state ─────────────────────────────────────────────────
+  // Doctor selector state 
   const [selectedDoctor,      setSelectedDoctor]      = useState(null);
   const [doctorModalVisible,  setDoctorModalVisible]  = useState(false);
 
-  // ── Analysis state ────────────────────────────────────────────────────────
+  //  Analysis state 
   const [isAnalysing, setIsAnalysing] = useState(false);
 
-  // ── Generate a Scan ID on first mount ────────────────────────────────────
+  // Generate a Scan ID on first mount 
   useEffect(() => {
     setScanId(generateScanId());
   }, []);
 
-  // ── Receive photo back from CameraView ────────────────────────────────────
+  // Receive photo back from CameraView 
   // CameraView calls navigation.navigate('ScanHome', { capturedPhoto: uri })
   // This effect picks it up and stores it in state.
   useEffect(() => {
@@ -118,7 +111,7 @@ export default function ScanScreen({ navigation, route }) {
     }
   }, [route?.params?.capturedPhoto]);
 
-  // ── Form validation ───────────────────────────────────────────────────────
+  // Patient Form validation 
   // All five conditions must be true before the button becomes active
   const isFormValid =
     patientName.trim()   !== '' &&
@@ -127,7 +120,7 @@ export default function ScanScreen({ navigation, route }) {
     selectedDoctor       !== null &&
     image                !== null;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // Handlers 
 
   function openCamera() {
     navigation.navigate('CameraView');
@@ -166,10 +159,10 @@ export default function ScanScreen({ navigation, route }) {
     setIsAnalysing(true);
 
     try {
-      // Step 1 — Run the AI model (mocked for now)
+      // Step 1: First run the AI model (mocked for now)
       const prediction = await runAIAnalysis(image);
 
-      // Step 2 — Build the structured report object
+      // Step 2: Build the structured report object
       const report = buildReport({
         patientName:   patientName.trim(),
         patientId:     scanId,
@@ -183,14 +176,14 @@ export default function ScanScreen({ navigation, route }) {
         doctorName:    selectedDoctor.name,
       });
 
-      // Step 3 — Persist report to the device (AsyncStorage)
+      // Step 3: Persist report to the device (AsyncStorage)
       await saveReport(report);
 
-      // Step 4 — Navigate to the Reports tab and pass the new report.
+      // Step 4: Navigate to the Reports tab and pass the new report.
       // ReportsScreen watches for route.params.newReport and prepends it.
       navigation.navigate('Reports', { newReport: report });
 
-      // Step 5 — Reset form for the next scan
+      // Step 5: Reset form for the next scan
       setPatientName('');
       setTemperature('');
       setBloodPressure('');
@@ -206,7 +199,6 @@ export default function ScanScreen({ navigation, route }) {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.container}>
@@ -216,7 +208,7 @@ export default function ScanScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.title}>New Scan</Text>
           <TouchableOpacity onPress={handleReset} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -224,13 +216,13 @@ export default function ScanScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        {/* ── SCAN ID (read-only, auto-generated) ── */}
+        {/* SCAN ID is read-only and auto-generated)  */}
         <View style={styles.scanBox}>
           <Text style={styles.scanLabel}>Scan ID</Text>
           <Text style={styles.scanId}>{scanId}</Text>
         </View>
 
-        {/* ── PATIENT NAME ── */}
+        {/* PATIENT NAME */}
         <TextInput
           placeholder="Patient Name"
           placeholderTextColor="#9CA3AF"
@@ -241,7 +233,7 @@ export default function ScanScreen({ navigation, route }) {
           returnKeyType="next"
         />
 
-        {/* ── TEMPERATURE + BLOOD PRESSURE ── */}
+        {/* TEMPERATURE and BLOOD PRESSURE */}
         <View style={styles.row}>
           <TextInput
             placeholder="Temperature (°C)"
@@ -263,7 +255,7 @@ export default function ScanScreen({ navigation, route }) {
           />
         </View>
 
-        {/* ── DOCTOR SELECTOR ── */}
+        {/* DOCTOR SELECTOR LIST */}
         <TouchableOpacity
           style={styles.selectorButton}
           onPress={() => setDoctorModalVisible(true)}
@@ -291,7 +283,7 @@ export default function ScanScreen({ navigation, route }) {
           <MaterialIcons name="keyboard-arrow-down" size={22} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* ── CAMERA SECTION ── */}
+        {/* CAMERA SECTION */}
         {!image ? (
           // Show "Take Picture" button if no image yet
           <TouchableOpacity
@@ -303,7 +295,7 @@ export default function ScanScreen({ navigation, route }) {
             <Text style={styles.cameraText}>Take Blood Sample Picture</Text>
           </TouchableOpacity>
         ) : (
-          // Show preview + retake option when image is captured
+          // Show preview and retake option when image is captured
           <View style={styles.previewBox}>
             <Image source={{ uri: image }} style={styles.previewImage} />
             <View style={styles.previewFooter}>
@@ -316,7 +308,7 @@ export default function ScanScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* ── VALIDATION HINT ── */}
+        {/* FORM VALIDATION HINT */}
         {!isFormValid && (
           <Text style={styles.validationHint}>
             {!patientName.trim()   ? '• Enter patient name'              :
@@ -329,7 +321,7 @@ export default function ScanScreen({ navigation, route }) {
 
         <View style={{ height: 20 }} />
 
-        {/* ── START ANALYSIS BUTTON ── */}
+        {/* START ANALYSIS BUTTON */}
         <TouchableOpacity
           style={[
             styles.button,
@@ -352,7 +344,7 @@ export default function ScanScreen({ navigation, route }) {
           )}
         </TouchableOpacity>
 
-        {/* ── GHS NOTICE ── */}
+        {/* GHS NOTICE */}
         <Text style={styles.hipaaText}>
           By clicking Start Analysis, you agree to the processing of medical
           data in accordance with GHS standards.
@@ -360,7 +352,7 @@ export default function ScanScreen({ navigation, route }) {
 
       </ScrollView>
 
-      {/* ── DOCTOR SELECTION MODAL ── */}
+      {/* DOCTOR SELECTION MODAL */}
       <Modal
         visible={doctorModalVisible}
         transparent
@@ -419,7 +411,7 @@ export default function ScanScreen({ navigation, route }) {
         </View>
       </Modal>
 
-      {/* ── AI ANALYSIS LOADING OVERLAY ── */}
+      {/* AI ANALYSIS LOADING OVERLAY  */}
       {/* Covers the whole screen while AI is running so user can't interact */}
       {isAnalysing && (
         <View style={styles.analysisOverlay}>
