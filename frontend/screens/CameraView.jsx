@@ -2,9 +2,6 @@
 // Full-screen camera used by the Scan screen to capture blood sample images.
 // After the user confirms the photo, it navigates back to ScanScreen
 // and passes the image URI via navigation params.
-//
-// Required installs:
-//   expo install expo-camera
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -25,11 +22,11 @@ const { width } = Dimensions.get('window');
 export default function CameraView({ navigation }) {
 
   const [hasPermission, setHasPermission] = useState(null);
-  const [photo,         setPhoto]         = useState(null); // URI of captured photo
-  const [lightOk,       setLightOk]       = useState(true);
-  const [focusOk,       setFocusOk]       = useState(false);
-  const cameraRef                          = useRef(null);
-  const pulseAnim                          = useRef(new Animated.Value(1)).current;
+  const [photo, setPhoto]         = useState(null); // URI of captured photo
+  const [lightOk, setLightOk]       = useState(true);
+  const [focusOk, setFocusOk]       = useState(false);
+  const cameraRef = useRef(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Request camera permission and start the pulse animation on mount
   useEffect(() => {
@@ -47,15 +44,15 @@ export default function CameraView({ navigation }) {
     ).start();
   }, []);
 
-  // ── Capture ───────────────────────────────────────────────────────────────
+  //  Capturing the image
 
   async function takePicture() {
     if (!cameraRef.current) return;
     const data = await cameraRef.current.takePictureAsync({ quality: 0.8 });
-    setPhoto(data.uri); // show preview — user then confirms or retakes
+    setPhoto(data.uri); // show preview to the user,then user confirms or retakes
   }
 
-  // ── Confirm: send photo back to ScanScreen ────────────────────────────────
+  // Confirm: send photo back to ScanScreen 
   // navigation.navigate('ScanHome', { capturedPhoto: uri }) puts the URI into
   // route.params on ScanScreen, which has a useEffect watching for it.
 
@@ -73,8 +70,7 @@ export default function CameraView({ navigation }) {
     navigation.goBack();
   }
 
-  // ── Permission states ─────────────────────────────────────────────────────
-
+  //Camera Permission states 
   if (hasPermission === null) {
     return <View style={localStyles.blank} />;
   }
@@ -94,7 +90,7 @@ export default function CameraView({ navigation }) {
     );
   }
 
-  // ── Photo preview (after capture) ────────────────────────────────────────
+  // Photo preview (after capture)
 
   if (photo) {
     return (
@@ -132,7 +128,7 @@ export default function CameraView({ navigation }) {
     );
   }
 
-  // ── Live camera viewfinder ────────────────────────────────────────────────
+  // Live camera viewfinder
 
   return (
     <SafeAreaView style={localStyles.container}>
@@ -181,9 +177,8 @@ export default function CameraView({ navigation }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // STYLES
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const localStyles = StyleSheet.create({
 
