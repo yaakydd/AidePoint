@@ -18,7 +18,7 @@ const Chatbot = () => {
     const navigation = useNavigation();
     const flatListRef = useRef(null);
     
-    // --- State Management ---
+    // State Management
     const [showMenu, setShowMenu] = useState(false);
     const [isInfoVisible, setIsInfoVisible] = useState(false);
     const [isBugModalVisible, setIsBugModalVisible] = useState(false);
@@ -33,7 +33,7 @@ const Chatbot = () => {
 
     const [messages, setMessages] = useState([welcomeMessage]);
 
-    // --- Action Handlers ---
+    // Action Handlers
 
     const handleSend = (textToSend = inputText) => {
         const messageText = typeof textToSend === 'string' ? textToSend : inputText;
