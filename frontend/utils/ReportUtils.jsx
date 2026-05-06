@@ -1,94 +1,87 @@
-/**
- * reportUtils.js — Aidepoint Medical App
- *
- * Shared constants and helpers used by BOTH the Scan screen
- * (to build a report after AI prediction) and the Reports screen
- * (to display and persist reports).
- *
- * Import in Scan screen:
- *   import { buildReport, STORAGE_KEY } from '../utils/reportUtils';
- *
- * Import in Reports screen:
- *   import { STORAGE_KEY, CONDITIONS } from '../utils/reportUtils';
- */
+// reportUtils.js
+// Shared helpers used by ScanScreen to build and save reports,
+// and by ReportsScreen to read them.
+//
+// Import in ScanScreen:
+//   import { buildReport, saveReport } from '../utils/reportUtils';
+//
+// Import in ReportsScreen (only needs STORAGE_KEY):
+//   import { STORAGE_KEY } from '../utils/reportUtils';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ─── Storage Key ──────────────────────────────────────────────────────────────
-// Single source of truth — both screens must use this exact key.
+// ─────────────────────────────────────────────────────────────────────────────
+// STORAGE KEY
+// One key for the entire reports list. Both screens must use this exact string.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const STORAGE_KEY = '@aidepoint_reports';
 
-// ─── Condition Config ─────────────────────────────────────────────────────────
-// The Scan screen's AI model returns one of these four keys.
+// ─────────────────────────────────────────────────────────────────────────────
+// CONDITION CONFIG
+// The AI model returns one of the four keys below.
+// Each entry holds the display label, badge colours, urgency text,
+// and auto-generated clinical note.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const CONDITIONS = {
   sickle: {
-    label:    'Sickle Cell Detected',
-    badgeBg:  '#FFF0F0',
-    badgeText:'#C0392B',
-    badgeDot: '#E74C3C',
-    iconBg:   '#FFF0F0',
-    urgency:  'High — refer to haematologist',
-    autoNote: 'Crescent-shaped red blood cells detected by AI analysis. Please confirm under microscopy and refer to a haematologist.',
+    label:     'Sickle Cell Detected',
+    badgeBg:   '#FFF0F0',
+    badgeText: '#C0392B',
+    badgeDot:  '#E74C3C',
+    iconBg:    '#FFF0F0',
+    urgency:   'High — refer to haematologist',
+    autoNote:  'Crescent-shaped red blood cells detected by AI analysis. Please confirm under microscopy and refer to a haematologist.',
   },
   malaria: {
-    label:    'Malaria Detected',
-    badgeBg:  '#FFF8EC',
-    badgeText:'#B07D00',
-    badgeDot: '#F39C12',
-    iconBg:   '#FFF8EC',
-    urgency:  'High — commence anti-malarial treatment',
-    autoNote: 'Plasmodium parasites detected within red blood cells. Commence treatment protocol and notify attending physician.',
+    label:     'Malaria Detected',
+    badgeBg:   '#FFF8EC',
+    badgeText: '#B07D00',
+    badgeDot:  '#F39C12',
+    iconBg:    '#FFF8EC',
+    urgency:   'High — commence anti-malarial treatment',
+    autoNote:  'Plasmodium parasites detected within red blood cells. Commence treatment protocol and notify attending physician.',
   },
   anaemia: {
-    label:    'Anaemia Detected',
-    badgeBg:  '#F5F0FF',
-    badgeText:'#6C3EC1',
-    badgeDot: '#8E44AD',
-    iconBg:   '#F5F0FF',
-    urgency:  'Moderate — iron panel recommended',
-    autoNote: 'Pale, hypochromic red blood cells indicate possible iron deficiency anaemia. Iron panel and dietary assessment recommended.',
+    label:     'Anaemia Detected',
+    badgeBg:   '#F5F0FF',
+    badgeText: '#6C3EC1',
+    badgeDot:  '#8E44AD',
+    iconBg:    '#F5F0FF',
+    urgency:   'Moderate — iron panel recommended',
+    autoNote:  'Pale, hypochromic red blood cells indicate possible iron deficiency anaemia. Iron panel and dietary assessment recommended.',
   },
   normal: {
-    label:    'Normal Result',
-    badgeBg:  '#EEFBF3',
-    badgeText:'#1A7340',
-    badgeDot: '#27AE60',
-    iconBg:   '#EEFBF3',
-    urgency:  'None — routine follow-up only',
-    autoNote: 'No abnormalities detected. Red blood cell morphology and distribution within normal parameters.',
+    label:     'Normal Result',
+    badgeBg:   '#EEFBF3',
+    badgeText: '#1A7340',
+    badgeDot:  '#27AE60',
+    iconBg:    '#EEFBF3',
+    urgency:   'None — routine follow-up only',
+    autoNote:  'No abnormalities detected. Red blood cell morphology and distribution within normal parameters.',
   },
 };
 
-// ─── Patient ID Generator ─────────────────────────────────────────────────────
-// Generates IDs in the format AP-YYYY-XXXX (e.g. AP-2025-4821)
-
-export function generatePatientId() {
-  const year   = new Date().getFullYear();
-  const serial = Math.floor(1000 + Math.random() * 9000);
-  return `AP-${year}-${serial}`;
-}
-
-// ─── Report Builder ───────────────────────────────────────────────────────────
-// Call this in the Scan screen once the AI model returns its prediction.
+// ─────────────────────────────────────────────────────────────────────────────
+// buildReport
 //
-// Usage example in ScanScreen.js:
+// Assembles a complete report object from scan inputs + AI prediction.
+// Called in ScanScreen immediately after runAIAnalysis() returns.
 //
-//   import { buildReport } from '../utils/reportUtils';
-//
-//   const report = buildReport({
-//     patientName: formValues.name,        // from the form the lab tech fills
-//     patientId:   formValues.id,          // typed in, or auto-generated
-//     condition:   prediction.label,       // 'sickle' | 'malaria' | 'anaemia' | 'normal'
-//     confidence:  prediction.confidence,  // e.g. 94.2
-//     labTechName: currentUser.name,       // from auth context
-//     imageUri:    capturedPhoto.uri,      // from expo-camera
-//     extraNotes:  formValues.notes,       // optional notes from the lab tech
-//   });
-//
-//   // Navigate to Reports screen — it will prepend this report to the list
-//   navigation.navigate('Reports', { newReport: report });
+// Parameters:
+//   patientName   — from the patient name TextInput
+//   patientId     — the auto-generated Scan ID (AP-YYYY-XXXX)
+//   condition     — AI prediction key: 'sickle' | 'malaria' | 'anaemia' | 'normal'
+//   confidence    — AI confidence score (0–100)
+//   labTechName   — logged-in lab tech name (will come from auth later)
+//   imageUri      — local file path from CameraView
+//   temperature   — from the temperature TextInput
+//   bloodPressure — from the blood pressure TextInput
+//   doctorId      — id of the selected doctor
+//   doctorName    — full name of the selected doctor
+//   extraNotes    — any optional extra notes typed by the lab tech (default: '')
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function buildReport({
   patientName,
@@ -96,32 +89,58 @@ export function buildReport({
   condition,
   confidence,
   labTechName,
-  imageUri    = null,
-  extraNotes  = '',
+  imageUri      = null,
+  temperature   = '',
+  bloodPressure = '',
+  doctorId      = null,
+  doctorName    = null,
+  extraNotes    = '',
 }) {
   const cfg      = CONDITIONS[condition] ?? CONDITIONS.normal;
-  const autoNote = cfg.autoNote;
-  const notes    = extraNotes
-    ? `${autoNote} Additional notes: ${extraNotes}`
-    : autoNote;
+  const baseNote = cfg.autoNote;
+  const notes    = extraNotes.trim()
+    ? `${baseNote} Additional notes: ${extraNotes.trim()}`
+    : baseNote;
 
   return {
-    id:          `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    patientName: patientName.trim(),
-    patientId:   patientId   || generatePatientId(),
-    condition,                      // 'sickle' | 'malaria' | 'anaemia' | 'normal'
-    confidence:  Number(confidence),
-    timestamp:   new Date().toISOString(),
-    labTechName: labTechName.trim(),
+    // Unique ID combining timestamp + random suffix to prevent duplicates
+    id:           `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+
+    // Patient identifiers
+    patientName:  patientName.trim(),
+    patientId,
+
+    // AI result
+    condition,                       // 'sickle' | 'malaria' | 'anaemia' | 'normal'
+    confidence:   Number(confidence),
+
+    // Vital signs captured before scanning
+    temperature:  temperature.trim(),
+    bloodPressure: bloodPressure.trim(),
+
+    // Who created the report
+    labTechName:  labTechName.trim(),
+
+    // Doctor the report is sent to
+    doctorId,
+    doctorName,
+
+    // Auto-generated clinical notes
     notes,
+
+    // Image
     imageUri,
+
+    // Creation time — used for sorting and display
+    timestamp:    new Date().toISOString(),
   };
 }
 
-// ─── Persistence Helpers ──────────────────────────────────────────────────────
-// Optional: call these directly from ScanScreen if you want to save
-// without navigating away first.
+// ─────────────────────────────────────────────────────────────────────────────
+// PERSISTENCE HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
+// Save a new report to the top of the stored list
 export async function saveReport(report) {
   try {
     const raw      = await AsyncStorage.getItem(STORAGE_KEY);
@@ -135,6 +154,7 @@ export async function saveReport(report) {
   }
 }
 
+// Get all stored reports
 export async function getAllReports() {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -145,6 +165,7 @@ export async function getAllReports() {
   }
 }
 
+// Delete a specific report by its ID
 export async function deleteReport(reportId) {
   try {
     const raw      = await AsyncStorage.getItem(STORAGE_KEY);
@@ -158,6 +179,7 @@ export async function deleteReport(reportId) {
   }
 }
 
+// Wipe all reports (useful for testing or logout)
 export async function clearAllReports() {
   try {
     await AsyncStorage.removeItem(STORAGE_KEY);
