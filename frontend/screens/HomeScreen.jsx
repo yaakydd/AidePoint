@@ -13,8 +13,8 @@ const HomeScreen = () => {
   const [stats, setStats] = useState({ total: 0, pending: 0, avg: 0 });
   const [recentScans, setRecentScans] = useState([]);
 
-  // Use the name from AuthContext, fallback to "Joshua" only if null
-  const displayName = user?.name || "Joshua";
+  // Use the name from AuthContext, fallback to "Name" only if null
+  const displayName = user?.name || "Name";
   const userRole = user?.role || "Lab Technician";
 
  useEffect(() => {
@@ -25,7 +25,7 @@ const HomeScreen = () => {
     try {
       setLoading(true);
       
-      // 1. Fetch Total Scans & Pending for this specific user/lab
+      // 1. Fetch Total Scans & Pending for this specific user /lab tecnician
       const { data: scans, error } = await supabase
         .from('scans')
         .select('*')
