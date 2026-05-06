@@ -1,10 +1,7 @@
 // ReportsScreen.js
 // Shows all reports generated from scans.
 // New users see an empty state. Reports appear after scans are completed.
-//
-// Required installs:
-//   expo install react-native-svg
-//   expo install @react-native-async-storage/async-storage
+
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
@@ -19,11 +16,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STORAGE_KEY = '@aidepoint_reports';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CONDITION CONFIG
+// BLOOD CONDITION CONFIG
 // The AI model returns one of: 'sickle' | 'malaria' | 'anaemia' | 'normal'
 // This object drives every badge colour and urgency label automatically.
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const CONDITIONS = {
   sickle: {
@@ -70,9 +66,7 @@ const FILTER_TO_KEY = {
   'Normal':      'normal',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DATE HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+// DATE HELPERS FUNCTIONS
 
 function getRelativeTime(isoString) {
   const date    = new Date(isoString);
@@ -98,9 +92,8 @@ function getTime(isoString) {
   return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // SVG CONDITION ICONS
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 function SickleCellIcon({ size = 56 }) {
   return (
@@ -161,9 +154,9 @@ function NormalIcon({ size = 56 }) {
 
 const CONDITION_ICONS = { sickle: SickleCellIcon, malaria: MalariaIcon, anaemia: AnaemiaIcon, normal: NormalIcon };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // SHARED SMALL COMPONENTS
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 function ConditionIcon({ condition, size = 56 }) {
   const Icon = CONDITION_ICONS[condition] ?? NormalIcon;
@@ -205,9 +198,9 @@ function ChevronRight() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // REPORT CARD
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const ReportCard = React.memo(function ReportCard({ report, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -247,9 +240,8 @@ const ReportCard = React.memo(function ReportCard({ report, onPress }) {
   );
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // DETAIL MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 function DetailModal({ report, visible, onClose }) {
   const slideY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -376,7 +368,7 @@ export default function ReportsScreen({ navigation, route }) {
     }
   }, [route?.params?.newReport]);
 
-  // ── Storage ───────────────────────────────────────────────────────────────
+  //  Storage 
 
   async function loadReports() {
     try {
@@ -402,7 +394,7 @@ export default function ReportsScreen({ navigation, route }) {
     }
   }
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // Handlers
 
   const openReport = useCallback((report) => {
     setSelectedReport(report);
@@ -419,7 +411,7 @@ export default function ReportsScreen({ navigation, route }) {
     searchRef.current?.blur();
   }, []);
 
-  // ── Filtered list ─────────────────────────────────────────────────────────
+  // Filtered list 
 
   const visibleReports = useMemo(() => {
     const conditionKey = FILTER_TO_KEY[activeFilter];
@@ -437,12 +429,12 @@ export default function ReportsScreen({ navigation, route }) {
     });
   }, [reports, query, activeFilter]);
 
-  // ── FlatList helpers ──────────────────────────────────────────────────────
+  //  FlatList helpers 
 
   const renderCard    = useCallback(({ item }) => <ReportCard report={item} onPress={openReport} />, [openReport]);
   const getKey        = useCallback((item) => item.id, []);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+  // Loading 
 
   if (loading) {
     return (
@@ -451,8 +443,6 @@ export default function ReportsScreen({ navigation, route }) {
       </SafeAreaView>
     );
   }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.screen}>
