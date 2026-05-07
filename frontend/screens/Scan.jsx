@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { buildReport, saveReport } from '../utils/reportUtils';
+import { buildReport, saveReport } from '../utils/ReportUtils';
 import { scanStyles as styles } from '../styles/ScanStyles';
 
 // MOCK DOCTORS LIST
@@ -79,7 +79,7 @@ function generateScanId() {
 }
 
 
-const ScanScreen = ({ navigation, route }) => {
+const Scan = ({ navigation, route }) => {
 
   // Patient Form state 
   const [patientName,   setPatientName]   = useState('');
@@ -428,3 +428,5 @@ const ScanScreen = ({ navigation, route }) => {
     </SafeAreaView>
   );
 }
+
+export default Scan
