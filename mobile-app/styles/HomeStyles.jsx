@@ -155,4 +155,39 @@ export const homeStyles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  patientCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    marginVertical: 8,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    ...cardShadow,
+  },
+  patientInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  patientIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  patientName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1E293B",
+  },
+  patientTime: {
+    fontSize: 12,
+    color: "#94A3B8",
+  },
 });

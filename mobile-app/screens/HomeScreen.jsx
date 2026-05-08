@@ -25,23 +25,16 @@ const HomeScreen = () => {
     try {
       setLoading(true);
       
-      // 1. Fetch Total Scans & Pending for this specific user /lab tecnician
-      const { data: scans, error } = await supabase
-        .from('scans')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (scans) {
-        const pendingCount = scans.filter(s => s.status === 'pending').length;
-        setStats({
-          total: scans.length,
-          pending: pendingCount,
-          avg: scans.length > 0 ? (scans.length / 7).toFixed(1) : 0 // Simple 7-day avg logic
-        });
-        setRecentScans(scans.slice(0, 3)); // Only take the 3 most recent
-      }
+      // TODO: Connect to Supabase when backend is ready
+      // Placeholder data for now
+      const mockScans = [];
+      
+      setStats({
+        total: 0,
+        pending: 0,
+        avg: 0
+      });
+      setRecentScans(mockScans);
     } catch (error) {
       console.error("Error fetching dashboard:", error.message);
     } finally {

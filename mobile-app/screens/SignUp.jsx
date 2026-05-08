@@ -14,7 +14,7 @@ const SignUp = () => {
   const handleRegister = () => {
     const dummyUser = { name: "Dr. Joshua", email: "joshua@hospital.org" };
     login(dummyUser);                // Save to AsyncStorage
-    navigation.replace("MainAppNavigator");   // Go to MainApp navigator
+    // Navigation will be handled automatically by AppNavigator based on auth state
   };
 
   return (
