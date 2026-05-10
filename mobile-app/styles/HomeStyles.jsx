@@ -26,7 +26,7 @@ export const homeStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 0,
     backgroundColor: "#FFF",
   },
   profileRow: {

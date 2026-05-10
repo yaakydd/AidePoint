@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { homeStyles } from "../styles/HomeStyles";
 import { AuthContext } from "../context/AuthContext";
@@ -75,6 +76,7 @@ const HomeScreen = () => {
   );
 
   return (
+    <SafeAreaView>
     <View style={homeStyles.container}>
       {/* HEADER: Updated to show real name and role */}
       <View style={homeStyles.header}>
@@ -161,6 +163,7 @@ const HomeScreen = () => {
         )}
       </ScrollView>
     </View>
+    </SafeAreaView>
   );
 };
 
