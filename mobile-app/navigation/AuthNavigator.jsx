@@ -1,11 +1,6 @@
-// navigation/AuthNavigator.js
-
 import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
 import { AuthContext } from "../context/AuthContext";
-
-// These screens live in a subfolder — keep auth screens together
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
 import UserTypeScreen   from "../screens/auth/UserTypeScreen";
 import SignIn           from "../screens/auth/SignIn";
@@ -17,18 +12,18 @@ const AuthNavigator = () => {
   const { isFirstLaunch } = useContext(AuthContext);
 
   // initialRouteName tells the stack which screen to open first.
-  // If it's a new install → Onboarding.
-  // If user has been here before but logged out → SignIn directly.
-  // This is the fix for bug #2.
+  // If it's a new install goes to Onboarding screen.
+  // If user has been here before but logged out goes to SignIn directly.
+
   return (
     <Stack.Navigator
       initialRouteName={isFirstLaunch ? "Onboarding" : "SignIn"}
       screenOptions={{ headerShown: false, animation: "slide_from_right" }}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="UserType"   component={UserTypeScreen} />
-      <Stack.Screen name="SignIn"     component={SignIn} />
-      <Stack.Screen name="SignUp"     component={SignUp} />
+      <Stack.Screen name="UserType" component={UserTypeScreen} />
+      <Stack.Screen name="SignIn" component={SignIn} />
+      <Stack.Screen name="SignUp" component={SignUp} />
     </Stack.Navigator>
   );
 };

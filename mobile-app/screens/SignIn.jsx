@@ -1,5 +1,3 @@
-// screens/auth/SignIn.js
-
 import React, { useContext, useState } from "react";
 import {
   View,
@@ -20,9 +18,9 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { AuthContext } from "../../context/AuthContext";
 
 const SignIn = () => {
-  // Controlled input state — every character the user types is
-  // tracked here so we can read it, validate it, and send it.
-  const [email, setEmail]       = useState("");
+  // Controlled input state, every character the user types in the input textboxes is
+  // tracked here so we can read it, validate it and send it.
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -36,15 +34,15 @@ const SignIn = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation();
 
-  // useRoute lets us read params passed from other screens.
-  // UserTypeScreen passes { userType: 'hospital' | 'solo' }
+  // useRoute enables us to read params passed from other screens.
+  // UserTypeScreen passes { userType: 'hospital' | 'personal' }
   // so we can customise the placeholder text accordingly.
   const route = useRoute();
   const userType = route.params?.userType ?? "hospital";
 
-  // ─── VALIDATION ────────────────────────────────────────────────────────────
+  // VALIDATION 
   // Returns true if all fields pass, false if anything fails.
-  // Also populates the 'errors' state so the UI can show messages.
+  // Also the 'errors' state is populated so the UI can show messages.
   const validate = () => {
     const newErrors = {};
 
@@ -66,13 +64,13 @@ const SignIn = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ─── SIGN IN HANDLER ───────────────────────────────────────────────────────
+  // SIGN IN HANDLER 
   const handleSignIn = async () => {
     if (!validate()) return; // stops here if any field fails
 
     setIsSubmitting(true);
     try {
-      // ─── TODO: Replace block below with real API call ───────────────────
+      //  TODO: Replace block below with real API call 
       // Example with your future backend:
       //
       //   const response = await fetch('https://your-api.com/auth/login', {
@@ -84,7 +82,7 @@ const SignIn = () => {
       //   if (!response.ok) throw new Error(data.message);
       //   await login(data.user);
       //
-      // ─── Mock: simulates a 1-second network delay ────────────────────────
+      //  Mock: simulates a 1-second network delay 
       await new Promise((res) => setTimeout(res, 1000));
 
       // This is what your backend will eventually return in data.user
@@ -113,7 +111,7 @@ const SignIn = () => {
     }
   };
 
-  // ─── RENDER ────────────────────────────────────────────────────────────────
+  // RENDER 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -122,8 +120,8 @@ const SignIn = () => {
         KeyboardAvoidingView pushes the form UP when the keyboard opens,
         so the active TextInput is never hidden behind it.
 
-        iOS uses "padding" — it adds padding to the bottom.
-        Android uses "height" — it shrinks the view height.
+        iOS uses "padding" so it adds padding to the bottom.
+        Android uses "height" so it shrinks the view height.
         These behave differently per OS, which is why we check Platform.OS.
       */}
       <KeyboardAvoidingView
@@ -132,7 +130,7 @@ const SignIn = () => {
       >
         {/*
           keyboardShouldPersistTaps="handled" means tapping the Sign In button
-          while the keyboard is open won't dismiss the keyboard first — it will
+          while the keyboard is open won't dismiss the keyboard first so it will
           immediately fire the button's onPress. Without this, users have to
           tap twice: once to dismiss keyboard, once to submit.
         */}
@@ -141,7 +139,7 @@ const SignIn = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Header ── */}
+          {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoRow}>
               <MaterialCommunityIcons name="microscope" size={28} color="#0EA5E9" />
@@ -151,10 +149,10 @@ const SignIn = () => {
             <Text style={styles.subtitle}>Sign in to continue your work</Text>
           </View>
 
-          {/* ── Form ── */}
+          {/* Form  */}
           <View style={styles.form}>
 
-            {/* EMAIL */}
+            {/* Email */}
             <View style={styles.fieldGroup}>
               <Text style={styles.inputLabel}>
                 {userType === "hospital" ? "Hospital Email" : "Email Address"}
@@ -189,7 +187,7 @@ const SignIn = () => {
               ) : null}
             </View>
 
-            {/* PASSWORD */}
+            {/* Password */}
             <View style={styles.fieldGroup}>
               <Text style={styles.inputLabel}>Password</Text>
               <View style={[styles.inputBox, errors.password && styles.inputBoxError]}>
@@ -211,7 +209,7 @@ const SignIn = () => {
                   returnKeyType="done"
                   onSubmitEditing={handleSignIn} // pressing "Done" on keyboard submits
                 />
-                {/* Eye toggle — hitSlop makes the tap area larger than the icon itself */}
+                {/* Eye toggle: hitSlop makes the tap area larger than the icon itself */}
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -228,7 +226,7 @@ const SignIn = () => {
               ) : null}
             </View>
 
-            {/* FORGOT PASSWORD */}
+            {/* Forgot Password */}
             <TouchableOpacity
               style={styles.forgotBtn}
               onPress={() =>
