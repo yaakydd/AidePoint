@@ -1,5 +1,3 @@
-// context/AuthContext.js
-
 import React, { createContext, useState, useEffect, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -22,19 +20,19 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser]               = useState(null);   // logged-in user object or null
-  const [isLoading, setIsLoading]     = useState(true);   // true while reading AsyncStorage
+  const [user, setUser] = useState(null);   // logged-in user object or null
+  const [isLoading, setIsLoading] = useState(true);   // true while reading AsyncStorage
   const [isFirstLaunch, setIsFirstLaunch] = useState(null); // null = not yet determined
-  const [authError, setAuthError]     = useState(null);   // holds login/signup error messages
+  const [authError, setAuthError] = useState(null);   // holds login/signup error messages
 
-  // ─── BOOT CHECK ──────────────────────────────────────────────────────────────
+  // APP STARTUP CHECK 
   // Every time the app starts, we check AsyncStorage for a saved session.
-  // AsyncStorage is like localStorage for React Native — it persists across
+  // AsyncStorage is like localStorage for React Native, it persists across
   // app restarts. The [] dependency array means this runs ONCE on mount.
   useEffect(() => {
     const loadData = async () => {
       try {
-        // multiGet fetches multiple keys in one disk read — more efficient
+        // multiGet fetches multiple keys in one disk read and its more efficient
         // than two separate getItem() calls.
         // Result: [ ['user', '{"name":"..."}'], ['isFirstLaunch', 'false'] ]
         const [[, storedUser], [, firstLaunch]] = await AsyncStorage.multiGet([
@@ -48,7 +46,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         // If 'isFirstLaunch' key was never written, firstLaunch === null.
-        // That only happens on a brand-new install — so isFirstLaunch = true.
+        // That only happens on a brand-new installed app so isFirstLaunch = true.
         // Once the user completes auth, we write 'false' to this key.
         setIsFirstLaunch(firstLaunch === null);
 
@@ -63,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     loadData();
   }, []);
 
-  // ─── LOGIN ────────────────────────────────────────────────────────────────────
+  //  LOGIN SETUP
   // Call this after a successful API response.
   // Pass in the user object from the backend (id, name, email, role, etc).
   const login = async (userData) => {
@@ -87,9 +85,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ─── LOGOUT ───────────────────────────────────────────────────────────────────
+  //  LOGOUT SETUP
   // Clears state and removes the persisted session.
-  // Notice: we do NOT remove 'isFirstLaunch' — the user has already
+  // Notice: we do NOT remove 'isFirstLaunch' rather the user has already
   // seen onboarding, no need to show it again if they log out and back in.
   const logout = async () => {
     try {
