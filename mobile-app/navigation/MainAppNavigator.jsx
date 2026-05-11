@@ -1,10 +1,3 @@
-// navigation/MainAppNavigator.js
-//
-// A Bottom Tab Navigator shows all screens simultaneously.
-// Switching tabs does NOT unmount/remount screens (unlike a Stack).
-// Each screen keeps its state — if you type something on the Scan
-// screen and switch to Home, your typing is still there when you
-// switch back. That's intentional behaviour for a medical app.
 
 import React, { useRef } from "react";
 import {

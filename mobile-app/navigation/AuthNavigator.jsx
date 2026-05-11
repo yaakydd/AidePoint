@@ -1,10 +1,10 @@
 import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthContext } from "../context/AuthContext";
-import OnboardingScreen from "../screens/auth/OnboardingScreen";
-import UserTypeScreen   from "../screens/auth/UserTypeScreen";
-import SignIn           from "../screens/auth/SignIn";
-import SignUp           from "../screens/auth/SignUp";
+import Onboarding from "../auth/Onboarding";
+import UserTypeScreen   from "../auth/UserTypeScreen";
+import SignIn from "../auth/SignIn";
+import SignUp from "../auth/SignUp";
 
 const Stack = createNativeStackNavigator();
 
@@ -20,7 +20,7 @@ const AuthNavigator = () => {
       initialRouteName={isFirstLaunch ? "Onboarding" : "SignIn"}
       screenOptions={{ headerShown: false, animation: "slide_from_right" }}
     >
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="Onboarding" component={Onboarding} />
       <Stack.Screen name="UserType" component={UserTypeScreen} />
       <Stack.Screen name="SignIn" component={SignIn} />
       <Stack.Screen name="SignUp" component={SignUp} />
