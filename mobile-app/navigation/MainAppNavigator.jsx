@@ -137,11 +137,11 @@ function MainAppNavigator() {
           We call animateTab(index) in the listener so the underline
           moves when the user taps. The index matches the tab position: 0-4.
         */}
-        <Tab.Screen name="Home"    component={HomeScreen}          listeners={{ tabPress: () => animateTab(0) }} />
-        <Tab.Screen name="Scan"    component={ScanScreenNavigator} listeners={{ tabPress: () => animateTab(1) }} />
-        <Tab.Screen name="Report"  component={ReportScreen}        listeners={{ tabPress: () => animateTab(2) }} />
-        <Tab.Screen name="Chatbot" component={Chatbot}             listeners={{ tabPress: () => animateTab(3) }} />
-        <Tab.Screen name="Profile" component={ProfileScreen}       listeners={{ tabPress: () => animateTab(4) }} />
+        <Tab.Screen name="Home"    component={HomeScreen}          listeners={{ tabPress: () => animateTab(0), focus: () => animateTab(0) }} />
+        <Tab.Screen name="Scan"    component={ScanScreenNavigator} listeners={{ tabPress: () => animateTab(1), focus: () => animateTab(1), }} />
+        <Tab.Screen name="Report"  component={ReportScreen}        listeners={{ tabPress: () => animateTab(2), focus: () => animateTab(2), }} />
+        <Tab.Screen name="Chatbot" component={Chatbot}             listeners={{ tabPress: () => animateTab(3), focus: () => animateTab(3), }} />
+        <Tab.Screen name="Profile" component={ProfileScreen}       listeners={{ tabPress: () => animateTab(4), focus: () => animateTab(4), }} />
       </Tab.Navigator>
 
       {/*
