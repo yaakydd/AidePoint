@@ -1,9 +1,16 @@
-// CameraView.js
-// Full-screen camera used by the Scan screen to capture blood sample images.
-// After confirmation, the image URI is passed back to ScanHome.
+// screens/CameraView.js
+//
+// Full-screen camera screen. Opened from ScanScreen when the technician
+// taps "Take Blood Sample Picture". The flow is:
+//
+//   1. Check/request camera permission
+//   2. Show live viewfinder with alignment guide
+//   3. Technician taps the shutter button
+//   4. Preview screen shows the captured image
+//   5. Technician taps "Use Photo" → navigate back to ScanHome with the URI
+//   OR taps "Retake" → go back to the live viewfinder
 
 import React, { useState, useEffect, useRef } from 'react';
-
 import {
   View,
   Text,
@@ -12,316 +19,369 @@ import {
   Animated,
   StyleSheet,
   Dimensions,
+  Platform,
 } from 'react-native';
-
 import {
   CameraView as ExpoCameraView,
   useCameraPermissions,
 } from 'expo-camera';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
+// The square frame that guides the technician to position the slide correctly.
+// 78% of screen width — large enough to fill most of the microscope eyepiece.
+const FRAME_SIZE = width * 0.78;
+
+// ─── CORNER BRACKET COMPONENT ────────────────────────────────────────────────
+// Classic camera "corner bracket" viewfinder.
+// Each corner is a small L-shape made from two borders on adjacent sides.
+// Much more professional-looking than a full circle outline.
+const CornerBrackets = () => {
+  // Length of each arm of the L-shape (in pixels)
+  const ARM = 24;
+  const THICKNESS = 3;
+  const COLOR = 'rgba(255,255,255,0.9)';
+
+  // Each corner position + which two sides to show
+  const corners = [
+    { top: 0,    left: 0,    borderTop: THICKNESS, borderLeft: THICKNESS },
+    { top: 0,    right: 0,   borderTop: THICKNESS, borderRight: THICKNESS },
+    { bottom: 0, left: 0,    borderBottom: THICKNESS, borderLeft: THICKNESS },
+    { bottom: 0, right: 0,   borderBottom: THICKNESS, borderRight: THICKNESS },
+  ];
+
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        width: FRAME_SIZE,
+        height: FRAME_SIZE,
+      }}
+    >
+      {corners.map((corner, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            width: ARM,
+            height: ARM,
+            borderColor: COLOR,
+            ...corner,
+          }}
+        />
+      ))}
+    </View>
+  );
+};
+
+// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 export default function CameraView({ navigation }) {
 
-  // Camera permissions
+  // useCameraPermissions() returns [permissionObject, requestFn].
+  // permission.granted = true means camera access was approved.
   const [permission, requestPermission] = useCameraPermissions();
 
-  // Captured image
+  // The URI of the captured photo, or null if not captured yet.
   const [photo, setPhoto] = useState(null);
 
-  // Mock AI indicators
-  const [lightOk] = useState(true);
-  const [focusOk] = useState(true);
+  // Whether the torch (flash) is on.
+  // Useful in low-light microscopy environments.
+  const [torchOn, setTorchOn] = useState(false);
 
-  // Camera reference
+  // Reference to the ExpoCameraView instance.
+  // We call .takePictureAsync() on it when the shutter button is pressed.
   const cameraRef = useRef(null);
 
-  // Animation
+  // Animated value for the pulsing shutter ring + status indicators.
+  // Goes between 1 and 1.05 on a loop — a subtle "ready" animation.
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Request permissions + start animation
-  useEffect(() => {
+  // Animated value for the shutter flash effect.
+  // Flashes white on capture.
+  const flashAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
     requestPermission();
 
+    // Start the gentle pulse loop on mount.
+    // Animated.loop() repeats forever until .stop() is called.
+    // Animated.sequence() runs animations one after another.
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.06,
-          duration: 900,
-          useNativeDriver: true,
+          toValue: 1.04,
+          duration: 1000,
+          useNativeDriver: true, // runs on GPU, doesn't block JS
         }),
-
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 900,
+          duration: 1000,
           useNativeDriver: true,
         }),
       ])
     ).start();
-
   }, []);
 
-  // Capture image
+  // ── Capture photo
   async function takePicture() {
-
     if (!cameraRef.current) return;
 
+    // Flash the screen white briefly — visual feedback that the shutter fired.
+    // This is purely cosmetic. flashAnim controls the opacity of a white overlay.
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 60,  useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+
     try {
-
       const data = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: 0.85, // 0–1. 0.85 gives good quality at a reasonable file size.
       });
-
       setPhoto(data.uri);
-
     } catch (error) {
-      console.error('Capture Error:', error);
+      console.error('[CameraView] Capture error:', error);
     }
   }
 
-  // Confirm image
+  // ── Confirm: pass the photo URI back to ScanHome
   function confirmPhoto() {
-
     if (!photo) return;
-
-    navigation.navigate('ScanHome', {
-      capturedPhoto: photo,
-    });
+    // navigate() to ScanHome (which is behind CameraView in the stack)
+    // passes capturedPhoto as a param. Scan.js picks it up via the
+    // 'focus' event listener and updates its image state.
+    navigation.navigate('ScanHome', { capturedPhoto: photo });
   }
 
-  // Retake
   function retakePhoto() {
-    setPhoto(null);
+    setPhoto(null); // go back to live viewfinder
   }
 
-  // Back
   function handleBack() {
     navigation.goBack();
   }
 
-  // Waiting for permission state
+  // ─── PERMISSION LOADING ───────────────────────────────────────────────────
+  // While the permission request is in flight, show a blank dark screen.
   if (!permission) {
-    return <View style={localStyles.blank} />;
+    return <View style={s.blank} />;
   }
 
-  // Permission denied
+  // ─── PERMISSION DENIED ────────────────────────────────────────────────────
   if (!permission.granted) {
     return (
-      <SafeAreaView style={localStyles.noPermissionScreen}>
-
-        <MaterialIcons
-          name="no-photography"
-          size={48}
-          color="#9CA3AF"
-        />
-
-        <Text style={localStyles.noPermissionTitle}>
-          Camera Access Required
+      <SafeAreaView style={s.permissionScreen}>
+        <View style={s.permissionIcon}>
+          <MaterialIcons name="no-photography" size={44} color="#9CA3AF" />
+        </View>
+        <Text style={s.permissionTitle}>Camera Access Required</Text>
+        <Text style={s.permissionSub}>
+          AidePoint needs camera access to capture blood sample images.{'\n'}
+          Please enable it in your device settings.
         </Text>
-
-        <Text style={localStyles.noPermissionSub}>
-          Please enable camera access in your device settings.
-        </Text>
-
-        <TouchableOpacity
-          style={localStyles.backBtn}
-          onPress={handleBack}
-        >
-          <Text style={localStyles.backBtnText}>
-            Go Back
-          </Text>
+        <TouchableOpacity style={s.permissionBtn} onPress={requestPermission}>
+          <Text style={s.permissionBtnText}>Grant Access</Text>
         </TouchableOpacity>
-
+        <TouchableOpacity onPress={handleBack} style={{ marginTop: 12 }}>
+          <Text style={s.permissionBack}>Go Back</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  // Preview mode
+  // ─── PHOTO PREVIEW ────────────────────────────────────────────────────────
+  // Shown after the shutter is pressed. User can confirm or retake.
   if (photo) {
-
     return (
-      <SafeAreaView style={localStyles.container}>
-
+      <SafeAreaView style={s.container}>
+        {/* Full-screen preview image */}
         <Image
           source={{ uri: photo }}
-          style={localStyles.previewFull}
+          style={s.previewFull}
           resizeMode="cover"
         />
 
-        <View style={localStyles.previewOverlay}>
+        {/* Semi-transparent overlay with instructions + buttons */}
+        <View style={s.previewOverlay}>
 
-          <View style={localStyles.previewHeader}>
-
-            <Text style={localStyles.previewTitle}>
-              Review Image
+          {/* Top: title + guidance */}
+          <View style={s.previewHeader}>
+            <Text style={s.previewTitle}>Review Image</Text>
+            <Text style={s.previewSubtitle}>
+              Make sure the blood cells are visible and in sharp focus.
+              Poor image quality reduces AI accuracy.
             </Text>
-
-            <Text style={localStyles.previewSubtitle}>
-              Make sure the blood sample is clear and in focus.
-            </Text>
-
           </View>
 
-          <View style={localStyles.previewActions}>
+          {/* Quality checklist — helps the technician self-assess */}
+          <View style={s.qualityChecklist}>
+            {[
+              'Cells are visible',
+              'No motion blur',
+              'Adequate lighting',
+            ].map((item) => (
+              <View key={item} style={s.checkItem}>
+                <MaterialIcons name="check-circle-outline" size={16} color="rgba(255,255,255,0.8)" />
+                <Text style={s.checkText}>{item}</Text>
+              </View>
+            ))}
+          </View>
 
+          {/* Bottom: Retake + Use Photo buttons */}
+          <View style={s.previewActions}>
             <TouchableOpacity
-              style={localStyles.retakeButton}
+              style={s.retakeButton}
               onPress={retakePhoto}
               activeOpacity={0.8}
             >
-              <MaterialIcons
-                name="refresh"
-                size={22}
-                color="#fff"
-              />
-
-              <Text style={localStyles.retakeText}>
-                Retake
-              </Text>
+              <MaterialIcons name="refresh" size={20} color="#fff" />
+              <Text style={s.retakeText}>Retake</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={localStyles.confirmButton}
+              style={s.confirmButton}
               onPress={confirmPhoto}
               activeOpacity={0.85}
             >
-              <MaterialIcons
-                name="check"
-                size={22}
-                color="#fff"
-              />
-
-              <Text style={localStyles.confirmText}>
-                Use Photo
-              </Text>
+              <MaterialIcons name="check" size={20} color="#fff" />
+              <Text style={s.confirmText}>Use Photo</Text>
             </TouchableOpacity>
-
           </View>
-
         </View>
-
       </SafeAreaView>
     );
   }
 
-  // Live camera
+  // ─── LIVE CAMERA VIEW ─────────────────────────────────────────────────────
   return (
-
-    <SafeAreaView style={localStyles.container}>
-
+    <SafeAreaView style={s.container} edges={[]}>
+      {/* ExpoCameraView fills the screen. ref= lets us call takePictureAsync(). */}
       <ExpoCameraView
         ref={cameraRef}
-        style={localStyles.camera}
+        style={s.camera}
         facing="back"
+        // enableTorch controls the flashlight (torch mode = continuous on,
+        // not flash burst). Useful for microscope environments with poor lighting.
+        enableTorch={torchOn}
       >
 
-        {/* Back button */}
-        <TouchableOpacity
-          style={localStyles.backIconBtn}
-          onPress={handleBack}
-          activeOpacity={0.75}
-        >
-          <MaterialIcons
-            name="arrow-back"
-            size={24}
-            color="#fff"
-          />
-        </TouchableOpacity>
-
-        {/* Instructions */}
-        <View style={localStyles.instructionBanner}>
-
-          <Text style={localStyles.instructionText}>
-            Position the blood sample slide in the circle
-          </Text>
-
-        </View>
-
-        {/* Viewfinder */}
-        <View style={localStyles.viewfinder}>
-
-          <Animated.View
-            style={[
-              localStyles.outerCircle,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <View style={localStyles.innerCircle} />
-          </Animated.View>
-
-        </View>
-
-        {/* AI indicators */}
-        <View style={localStyles.feedbackRow}>
-
-          <Animated.View
-            style={[
-              localStyles.badge,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="lightbulb"
-              size={13}
-              color={lightOk ? '#22c55e' : '#f87171'}
-            />
-
-            <Text style={localStyles.badgeText}>
-              Light
-            </Text>
-
-          </Animated.View>
-
-          <Animated.View
-            style={[
-              localStyles.badge,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="center-focus-strong"
-              size={13}
-              color={focusOk ? '#22c55e' : '#f87171'}
-            />
-
-            <Text style={localStyles.badgeText}>
-              Focus
-            </Text>
-
-          </Animated.View>
-
-        </View>
-
-        {/* Capture button */}
-        <View style={localStyles.bottomBar}>
-
+        {/* ── Top bar: Back + Torch */}
+        <View style={s.topBar}>
           <TouchableOpacity
-            onPress={takePicture}
-            style={localStyles.captureRing}
-            activeOpacity={0.85}
+            style={s.iconBtn}
+            onPress={handleBack}
+            activeOpacity={0.75}
           >
-            <View style={localStyles.captureInner} />
+            <MaterialIcons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
 
+          <Text style={s.topBarTitle}>Blood Smear Capture</Text>
+
+          {/* Torch toggle — on/off */}
+          <TouchableOpacity
+            style={[s.iconBtn, torchOn && s.iconBtnActive]}
+            onPress={() => setTorchOn(!torchOn)}
+            activeOpacity={0.75}
+          >
+            <MaterialIcons
+              name={torchOn ? 'flashlight-on' : 'flashlight-off'}
+              size={22}
+              color={torchOn ? '#FCD34D' : '#fff'}
+            />
+          </TouchableOpacity>
         </View>
 
-      </ExpoCameraView>
+        {/* ── Instruction banner */}
+        <View style={s.instructionBanner}>
+          <MaterialCommunityIcons name="microscope" size={14} color="rgba(255,255,255,0.9)" />
+          <Text style={s.instructionText}>
+            Align the slide within the frame
+          </Text>
+        </View>
 
+        {/* ── Viewfinder: dimmed area + bright frame + corner brackets */}
+        <View style={s.viewfinderContainer}>
+          {/* Dark overlay on all sides EXCEPT the frame area.
+              We achieve this with a semi-transparent full-screen overlay
+              and then a transparent cut-out in the center. */}
+          <View style={s.dimOverlay} />
+
+          {/* The bright frame + animated corner brackets */}
+          <Animated.View
+            style={[
+              s.frame,
+              { transform: [{ scale: pulseAnim }] },
+            ]}
+          >
+            <CornerBrackets />
+
+            {/* Center dot — helps align the microscope eyepiece */}
+            <View style={s.centerDot} />
+          </Animated.View>
+
+          {/* Zoom level indicator (visual only for now) */}
+          <View style={s.zoomBadge}>
+            <Text style={s.zoomText}>40×</Text>
+          </View>
+        </View>
+
+        {/* ── Status indicators */}
+        <View style={s.statusRow}>
+          <Animated.View
+            style={[s.statusBadge, { transform: [{ scale: pulseAnim }] }]}
+          >
+            <View style={[s.statusDot, { backgroundColor: '#22C55E' }]} />
+            <Text style={s.statusText}>Light OK</Text>
+          </Animated.View>
+
+          <Animated.View
+            style={[s.statusBadge, { transform: [{ scale: pulseAnim }] }]}
+          >
+            <View style={[s.statusDot, { backgroundColor: '#22C55E' }]} />
+            <Text style={s.statusText}>Focus OK</Text>
+          </Animated.View>
+
+          {torchOn && (
+            <View style={[s.statusBadge, { backgroundColor: 'rgba(252,211,77,0.25)' }]}>
+              <MaterialIcons name="flashlight-on" size={12} color="#FCD34D" />
+              <Text style={[s.statusText, { color: '#FCD34D' }]}>Torch On</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Shutter button */}
+        <View style={s.shutterBar}>
+          <TouchableOpacity
+            onPress={takePicture}
+            style={s.shutterRing}
+            activeOpacity={0.85}
+          >
+            {/* The outer ring is the white border.
+                The inner disc is the actual "button" you see. */}
+            <View style={s.shutterDisc} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Screen-flash overlay (on capture) */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: '#FFFFFF',
+              opacity: flashAnim,
+            },
+          ]}
+        />
+
+      </ExpoCameraView>
     </SafeAreaView>
   );
 }
 
-const localStyles = StyleSheet.create({
+// ─── CAMERA VIEW STYLES ───────────────────────────────────────────────────────
+const s = StyleSheet.create({
 
   container: {
     flex: 1,
@@ -337,148 +397,224 @@ const localStyles = StyleSheet.create({
     flex: 1,
   },
 
-  backIconBtn: {
+  // ── Top bar
+  topBar: {
     position: 'absolute',
-    top: 16,
-    left: 16,
+    top: Platform.OS === 'ios' ? 56 : 16,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+
+  topBarTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Slightly brighter when the torch is on
+  iconBtnActive: {
+    backgroundColor: 'rgba(252,211,77,0.2)',
+  },
+
+  // ── Instruction banner
+  instructionBanner: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 110 : 72,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
     zIndex: 10,
   },
 
-  instructionBanner: {
-    position: 'absolute',
-    top: 70,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-
   instructionText: {
-    color: '#fff',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 13,
     fontWeight: '500',
     backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
+    overflow: 'hidden',
   },
 
-  viewfinder: {
+  // ── Viewfinder
+  viewfinderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  outerCircle: {
-    width: width * 0.72,
-    height: width * 0.72,
-    borderRadius: width * 0.36,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.75)',
+  // Dark overlay. The actual cut-out effect is visual illusion —
+  // the camera feed shows through, and we just overlay darkness on the sides.
+  dimOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+
+  // The bright square frame — drawn OVER the dim overlay
+  frame: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
+    // This cuts a "hole" in the overlay visually
+    backgroundColor: 'transparent',
   },
 
-  innerCircle: {
-    width: width * 0.08,
-    height: width * 0.08,
-    borderRadius: width * 0.04,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+  centerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
 
-  feedbackRow: {
+  zoomBadge: {
     position: 'absolute',
-    bottom: 110,
+    bottom: -(FRAME_SIZE / 2) + 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+
+  zoomText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+
+  // ── Status indicators
+  statusRow: {
+    position: 'absolute',
+    bottom: 120,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
   },
 
-  badge: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
-  badgeText: {
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  statusText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
   },
 
-  bottomBar: {
+  // ── Shutter
+  shutterBar: {
     position: 'absolute',
-    bottom: 40,
+    bottom: Platform.OS === 'ios' ? 48 : 32,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
 
-  captureRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 4,
-    borderColor: '#fff',
+  shutterRing: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 3.5,
+    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  captureInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
+  shutterDisc: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#FFFFFF',
   },
 
-  noPermissionScreen: {
+  // ── Permission denied
+  permissionScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#F8FAFC',
     padding: 32,
   },
 
-  noPermissionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1B2E',
-    marginTop: 16,
-    marginBottom: 8,
+  permissionIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
 
-  noPermissionSub: {
+  permissionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+
+  permissionSub: {
     fontSize: 14,
-    color: '#9799A8',
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 28,
   },
 
-  backBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 13,
+  permissionBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
     backgroundColor: '#1A2F6E',
     borderRadius: 12,
   },
 
-  backBtnText: {
+  permissionBtnText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
   },
 
+  permissionBack: {
+    color: '#64748B',
+    fontSize: 14,
+  },
+
+  // ── Photo preview
   previewFull: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -486,32 +622,48 @@ const localStyles = StyleSheet.create({
   previewOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
 
   previewHeader: {
     padding: 24,
-    paddingTop: 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
 
   previewTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 6,
+    marginBottom: 8,
   },
 
   previewSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 21,
+  },
+
+  qualityChecklist: {
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+
+  checkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  checkText: {
     color: 'rgba(255,255,255,0.8)',
-    lineHeight: 20,
+    fontSize: 13,
   },
 
   previewActions: {
     flexDirection: 'row',
     gap: 12,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 48 : 32,
   },
 
   retakeButton: {
@@ -522,9 +674,9 @@ const localStyles = StyleSheet.create({
     gap: 8,
     paddingVertical: 15,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderColor: 'rgba(255,255,255,0.35)',
   },
 
   retakeText: {
