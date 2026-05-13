@@ -1,5 +1,3 @@
-// screens/HomeScreen.js
-
 import React, { useContext, useState, useEffect } from "react";
 import {
   View,
@@ -15,47 +13,45 @@ import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../context/AuthContext";
 import { homeStyles } from "../styles/HomeStyles";
 
-// ─── TAB BAR HEIGHT CONSTANT ─────────────────────────────────────────────────
+//  TAB BAR HEIGHT CONSTANT 
 // Every screen that uses MainAppNavigator's absolute tab bar must add
 // this amount of padding to the bottom of its scrollable content.
 // Without it, the last card sits under the tab bar and can't be tapped.
 const TAB_BAR_CLEARANCE = Platform.OS === "ios" ? 105 : 90;
 
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-// This data shapes the entire UI while the backend is being built.
-// When the real API is ready, just replace MOCK_STATS and MOCK_SCANS
-// with the fetch response. The UI code below doesn't need to change at all.
+// MOCK DATA 
+
 const MOCK_STATS = {
-  todayCount:  12,     // scans performed today
-  pending:      3,     // scans waiting for doctor review
-  thisWeek:    47,     // total scans this week
+  todayCount: 12,     // scans performed today
+  pending: 3,     // scans waiting for doctor review
+  thisWeek: 47,     // total scans this week
   // dayIndex matches JavaScript's Date.getDay(): 0=Sun, 1=Mon ... 6=Sat
   weeklyData: [
-    { day: "Mon", dayIndex: 1, count:  6 },
-    { day: "Tue", dayIndex: 2, count:  9 },
-    { day: "Wed", dayIndex: 3, count:  4 },
+    { day: "Mon", dayIndex: 1, count: 6 },
+    { day: "Tue", dayIndex: 2, count: 9 },
+    { day: "Wed", dayIndex: 3, count: 4 },
     { day: "Thu", dayIndex: 4, count: 11 },
-    { day: "Fri", dayIndex: 5, count:  8 },
-    { day: "Sat", dayIndex: 6, count:  5 },
-    { day: "Sun", dayIndex: 0, count:  4 },
+    { day: "Fri", dayIndex: 5, count: 8 },
+    { day: "Sat", dayIndex: 6, count: 5 },
+    { day: "Sun", dayIndex: 0, count: 4 },
   ],
 };
 
-// The four most recent scans — shown in the "Recent Scans" list.
+// The four most recent scans is shown in the "Recent Scans" list.
 // severity "red" = critical condition found
 // severity "green" = no condition / normal
 // severity "yellow" = pending / inconclusive
 const MOCK_SCANS = [
-  { id: "1001", patientName: "Kwame Asante",   condition: "Iron Deficiency Anemia",  severity: "red",    time: "2 min ago"  },
-  { id: "1002", patientName: "Ama Owusu",      condition: "Normal — No Condition",   severity: "green",  time: "18 min ago" },
-  { id: "1003", patientName: "Kofi Mensah",    condition: "Sickle Cell Anemia",      severity: "red",    time: "1 hr ago"   },
-  { id: "1004", patientName: "Abena Frimpong", condition: "Pending Review",          severity: "yellow", time: "2 hrs ago"  },
+  { id: "1001", patientName: "Kwame Asante", condition: "Iron Deficiency Anemia", severity: "red", time: "2 min ago" },
+  { id: "1002", patientName: "Ama Owusu", condition: "Normal - No Condition", severity: "green", time: "18 min ago" },
+  { id: "1003", patientName: "Kofi Mensah", condition: "Sickle Cell Anemia", severity: "red", time: "1 hr ago" },
+  { id: "1004", patientName: "Abena Frimpong", condition: "Pending Review", severity: "yellow", time: "2 hrs ago" },
 ];
 
-// ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
+//  HELPER FUNCTIONS 
 
 // Returns "Good morning", "Good afternoon", or "Good evening"
-// based on the current device time. Looks professional in a medical app.
+// based on the current device time. 
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -63,8 +59,7 @@ const getGreeting = () => {
   return "Good evening";
 };
 
-// Converts a name like "Kwame Asante" into initials "KA".
-// Used for the avatar circle instead of hitting an external image URL.
+// Converts a names into initials to be displayed in the avatar.
 // The ?. and || guards handle null/undefined names safely.
 const getInitials = (name) => {
   if (!name?.trim()) return "?";
@@ -87,7 +82,7 @@ const getSeverityStyle = (severity) => {
   }
 };
 
-// ─── WEEKLY BAR CHART ─────────────────────────────────────────────────────────
+// WEEKLY BAR CHART 
 // This is a self-contained sub-component. Notice it starts with a CAPITAL W —
 // that makes it a React component, not a regular function.
 // It receives the weekly data array and renders a bar for each day.
@@ -105,8 +100,8 @@ const WeeklyBarChart = ({ data }) => {
 
   // The maximum pixel height a bar can reach.
   // A bar with count === maxCount gets this height.
-  // Other bars get (count / maxCount) * BAR_MAX_H pixels.
-  const BAR_MAX_H = 72;
+  // Other bars get (count / maxCount) * Bar_Max_Height pixels.
+  const Bar_Max_Height= 72;
 
   // Today's day index (0=Sunday, 1=Monday ... 6=Saturday).
   // We highlight today's bar differently.
@@ -117,15 +112,15 @@ const WeeklyBarChart = ({ data }) => {
     // justifyContent: "space-between" spreads them evenly across the card width.
     <View style={chartStyles.barsRow}>
       {data.map((item) => {
-        const isToday   = item.dayIndex === todayIndex;
+        const isToday = item.dayIndex === todayIndex;
         // Math.max(..., 3) ensures even a count of 0 shows a tiny visible nub.
-        const barHeight = Math.max((item.count / maxCount) * BAR_MAX_H, 3);
+        const barHeight = Math.max((item.count / maxCount) * Bar_Max_Height, 3);
 
         return (
           // Each column: count label on top, bar in middle, day label at bottom.
           <View key={item.day} style={chartStyles.barColumn}>
 
-            {/* Count number above the bar — only shown if > 0 */}
+            {/* Count number above the bar, only shown if > 0 */}
             {item.count > 0 && (
               <Text style={[chartStyles.barCount, isToday && chartStyles.barCountToday]}>
                 {item.count}
@@ -133,7 +128,7 @@ const WeeklyBarChart = ({ data }) => {
             )}
 
             {/* The bar track (grey background) + the coloured fill */}
-            <View style={[chartStyles.barTrack, { height: BAR_MAX_H }]}>
+            <View style={[chartStyles.barTrack, { height: Bar_Max_Height}]}>
               <View
                 style={[
                   chartStyles.barFill,
@@ -157,8 +152,7 @@ const WeeklyBarChart = ({ data }) => {
     </View>
   );
 };
-
-// ─── SCAN CARD ─────────────────────────────────────────────────────────────────
+// SCAN CARD
 // A single row in the "Recent Scans" list.
 // Accepts a SINGLE scan object — not positional arguments.
 // This is much safer: { patientName, condition, severity, time, id }
@@ -206,7 +200,7 @@ const HomeScreen = () => {
   const displayName = user?.name || "there";
   const userRole    = user?.role  || "Lab Technician";
 
-  // ─── FETCH DATA ─────────────────────────────────────────────────────────────
+  //  FETCH DATA 
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -214,14 +208,14 @@ const HomeScreen = () => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // ── TODO: Replace this block with a real API call ────────────────────
+      //  TODO: Replace this block with a real API call 
       // Example:
       //   const res  = await fetch(`${API_URL}/dashboard?userId=${user.id}`);
       //   const data = await res.json();
       //   setStats(data.stats);
       //   setRecentScans(data.recentScans);
       //
-      // ── Simulate network delay ────────────────────────────────────────────
+      //  Simulate network delay 
       await new Promise((resolve) => setTimeout(resolve, 800));
       setStats(MOCK_STATS);
       setRecentScans(MOCK_SCANS);
@@ -251,7 +245,7 @@ const HomeScreen = () => {
 
       <View style={homeStyles.container}>
 
-        {/* ── HEADER ────────────────────────────────────────────────────────── */}
+        {/* HEADER  */}
         <View style={homeStyles.header}>
 
           {/* Avatar (initials-based) + greeting */}

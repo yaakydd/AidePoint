@@ -1,8 +1,5 @@
 import { StyleSheet } from "react-native";
 
-/**
- * Shared card shadow
- */
 const cardShadow = {
   shadowColor: "#000",
   shadowOffset: {
@@ -15,32 +12,21 @@ const cardShadow = {
 };
 
 export const homeStyles = StyleSheet.create({
-  /**
-   * SAFE AREA
-   */
+
   safeArea: {
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
 
-  /**
-   * MAIN CONTAINER
-   */
   container: {
     flex: 1,
   },
 
-  /**
-   * SCROLL CONTENT
-   */
   content: {
     flex: 1,
     paddingHorizontal: 20,
   },
 
-  /**
-   * HEADER
-   */
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -198,9 +184,6 @@ export const homeStyles = StyleSheet.create({
     color: "#00CFE8",
   },
 
-  /**
-   * PATIENT CARD
-   */
   patientCard: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -268,9 +251,7 @@ export const homeStyles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /**
-   * EMPTY STATE
-   */
+
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
