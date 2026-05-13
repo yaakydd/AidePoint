@@ -53,6 +53,7 @@ const Chatbot = () => {
             const botResponse = {
                 id: (Date.now() + 1).toString(),
                 type: 'bot',
+                // Will write code so that it animates as a code from left to right
                 text: "...",
             };
             setMessages((prev) => [...prev, botResponse]);
