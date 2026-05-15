@@ -90,7 +90,7 @@ const SignIn = () => {
         id: "usr_001",
         name: "Lab Technician",
         email: email.trim().toLowerCase(),
-        role: "lab_technician",   // lab_technician | doctor | admin
+        role: userType === "hospital" ? "hospital_staff" : "solo_user",  // lab_technician | doctor | admin
         userType,                  // hospital | solo
         hospitalId: userType === "hospital" ? "hosp_001" : null,
       };
@@ -272,3 +272,5 @@ const SignIn = () => {
     </SafeAreaView>
   );
 };
+
+export default SignIn;

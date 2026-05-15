@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { buildReport, saveReport } from '../utils/ReportUtils';
 import { scanStyles as styles } from '../styles/ScanStyles';
 
@@ -79,7 +79,8 @@ const Scan = ({ navigation, route }) => {
 
   // ── Auth: get the logged-in technician's name from context
   // (replaces the hardcoded CURRENT_LAB_TECH = 'JOSHUA')
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
+  const isHospitalUser = user?.role === "hospital_staff";
   const labTechName = user?.name ?? 'Lab Technician';
 
   // ── Form state — each field is controlled (value + onChangeText)
