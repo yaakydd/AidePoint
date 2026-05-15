@@ -134,13 +134,13 @@ const Scan = ({ navigation, route }) => {
   }, [navigation]); // Only depends on navigation — not on route.params,
                     // which would cause needless re-subscriptions.
 
-  // ── Validation: all five conditions must be true to enable Start Analysis
-  const isFormValid =
-    patientName.trim()   !== '' &&
-    temperature.trim()   !== '' &&
-    bloodPressure.trim() !== '' &&
-    selectedDoctor       !== null &&
-    image                !== null;
+// ── Validation: all five conditions must be true to enable Start Analysis
+const isFormValid =
+  patientName.trim()   !== '' &&
+  temperature.trim()   !== '' &&
+  bloodPressure.trim() !== '' &&
+  (isHospitalUser ? selectedDoctor !== null : true) &&
+  image                !== null;
 
   // ── Navigation helpers
   function openCamera() {
@@ -194,8 +194,8 @@ const Scan = ({ navigation, route }) => {
         imageUri:      image,
         temperature:   temperature.trim(),
         bloodPressure: bloodPressure.trim(),
-        doctorId:      selectedDoctor.id,
-        doctorName:    selectedDoctor.name,
+doctorId:      isHospitalUser ? selectedDoctor?.id : null,
+doctorName:    isHospitalUser ? selectedDoctor?.name : 'Solo User',
       });
 
       // Step 3: Persist to device storage
@@ -357,11 +357,11 @@ const Scan = ({ navigation, route }) => {
             {!patientName.trim()   ? '● Enter the patient name'          :
              !temperature.trim()   ? '● Enter the temperature'           :
              !bloodPressure.trim() ? '● Enter the blood pressure'        :
-             !selectedDoctor       ? '● Select a doctor'                 :
+             (isHospitalUser && !selectedDoctor)
+                                     ? '● Select a doctor'              :
              !image                ? '● Capture a blood sample image'    : ''}
           </Text>
         )}
-
         <View style={{ height: 20 }} />
 
         {/* ── START ANALYSIS BUTTON */}
@@ -401,6 +401,7 @@ const Scan = ({ navigation, route }) => {
             animationType="slide" → slides up
             transparent={true}    → background stays visible (dimmed)
           The overlay TouchableOpacity behind the sheet closes it on tap. */}
+          {isHospitalUser && (
       <Modal
         visible={doctorModalVisible}
         transparent
@@ -474,7 +475,7 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
-
+          )}
       {/* ── AI ANALYSIS OVERLAY ───────────────────────────────────────────────
           Covers the entire screen while the AI is running so the user
           can't accidentally tap something mid-analysis.

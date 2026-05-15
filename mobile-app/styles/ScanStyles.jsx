@@ -1,334 +1,415 @@
 // styles/ScanStyles.js
-// Complete styles for Scan.js.
-// All styles that were missing and causing crashes have been added.
 
 import { StyleSheet, Platform } from 'react-native';
 
+import {
+  COLORS,
+  FONTS,
+  SPACING,
+  RADIUS,
+  SHADOWS,
+  layout,
+  scale,
+  vScale,
+  mScale,
+} from '../assets/theme';
+
+// ─── SCAN SCREEN STYLES ─────────────────────────────────────────────────────
+// Fully responsive using your global theme system.
+//
+// Why this fits all Android + iOS screens:
+//
+// 1. Uses scale(), vScale(), mScale()
+//    → automatically adapts spacing and sizing to screen size.
+//
+// 2. Uses layout helpers
+//    → respects notches, safe areas, tab bars, Dynamic Island.
+//
+// 3. Uses flexbox instead of fixed widths
+//    → adapts to small phones + large tablets.
+//
+// 4. Uses theme constants only
+//    → consistent UI across the entire app.
+//
+// 5. No hardcoded pixel-heavy layouts
+//    → prevents overflow on small Android devices.
+//
+
 export const scanStyles = StyleSheet.create({
 
-  // ── LAYOUT
+  // ─── ROOT ────────────────────────────────────────────────────────────────
+
   container: {
     flex: 1,
-    backgroundColor: '#F5F8F8',
-  },
-  scroll: {
-    padding: 20,
+    backgroundColor: COLORS.background,
   },
 
-  // ── HEADER
+  scroll: {
+    paddingHorizontal: SPACING.pagePad,
+    paddingTop: SPACING.lg,
+  },
+
+  // ─── HEADER ──────────────────────────────────────────────────────────────
+
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xl,
   },
+
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  // "Reset" link in the header — red to signal destructive action
-  resetText: {
-    fontSize: 14,
-    color: '#EF4444',
-    fontWeight: '600',
+    gap: SPACING.sm,
   },
 
-  // ── SCAN ID BOX
+  title: {
+    fontSize: FONTS['2xl'],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+  },
+
+  resetText: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    color: COLORS.danger,
+  },
+
+  // ─── SCAN ID ─────────────────────────────────────────────────────────────
+
   scanBox: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginBottom: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
+
   scanLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
   },
+
   scanId: {
-    fontSize: 14,
-    color: '#0bc9da',
-    fontWeight: '700',
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
+    color: COLORS.primaryDark,
     letterSpacing: 0.5,
   },
 
-  // ── FORM INPUTS
+  // ─── INPUTS ──────────────────────────────────────────────────────────────
+
   input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 11,
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: Platform.select({
+      ios: SPACING.lg,
+      android: SPACING.md,
+    }),
+    fontSize: FONTS.md,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.lg,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    marginBottom: 12,
-    fontSize: 15,
-    color: '#0F172A',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  half: {
-    flex: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
 
-  // ── DOCTOR SELECTOR
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+  },
+
+  half: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  // ─── DOCTOR SELECTOR ─────────────────────────────────────────────────────
+
   selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 14,
-    gap: 10,
+    borderColor: COLORS.border,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.sm,
   },
+
   selectorIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
+    width: scale(42),
+    height: scale(42),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceAlt,
     alignItems: 'center',
-    flexShrink: 0,
+    justifyContent: 'center',
+    marginRight: SPACING.md,
   },
-  selectorValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A2F6E',
-  },
-  selectorSub: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
+
   selectorPlaceholder: {
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: FONTS.md,
+    color: COLORS.textMuted,
+    fontWeight: FONTS.medium,
   },
 
-  // ── VALIDATION HINT
-  // Shown below the camera section when the form is incomplete.
-  // Uses a bullet to draw the eye to the missing field.
-  validationHint: {
-    fontSize: 13,
-    color: '#F59E0B',
-    marginTop: 10,
-    paddingHorizontal: 4,
-    fontWeight: '500',
+  selectorValue: {
+    fontSize: FONTS.md,
+    color: COLORS.textPrimary,
+    fontWeight: FONTS.bold,
   },
 
-  // ── CAMERA BUTTON
+  selectorSub: {
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+
+  // ─── CAMERA BUTTON ───────────────────────────────────────────────────────
+
   cameraButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: vScale(150),
+    borderRadius: RADIUS['2xl'],
     borderWidth: 2,
-    borderColor: '#0bc9da',
     borderStyle: 'dashed',
-    paddingVertical: 20,
-    borderRadius: 12,
-    gap: 10,
-    marginTop: 2,
-  },
-  cameraText: {
-    color: '#0bc9da',
-    fontWeight: '700',
-    fontSize: 15,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
   },
 
-  // ── IMAGE PREVIEW
-  previewBox: {
-    marginTop: 10,
+  cameraText: {
+    marginTop: SPACING.sm,
+    fontSize: FONTS.md,
+    color: COLORS.primaryDark,
+    fontWeight: FONTS.semibold,
+    textAlign: 'center',
   },
+
+  // ─── IMAGE PREVIEW ───────────────────────────────────────────────────────
+
+  previewBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS['2xl'],
+    overflow: 'hidden',
+    marginBottom: SPACING.lg,
+    ...SHADOWS.md,
+  },
+
   previewImage: {
     width: '100%',
-    height: 200,
-    borderRadius: 12,
+    height: vScale(layout.isSmallScreen ? 180 : 220),
   },
-  // Row below the image: "Image captured" + Retake button
+
   previewFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    gap: 6,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.surface,
   },
+
   previewText: {
-    fontSize: 13,
-    color: '#27AE60',
-    fontWeight: '500',
-    flex: 1,
+    marginLeft: SPACING.xs,
+    fontSize: FONTS.sm,
+    color: COLORS.success,
+    fontWeight: FONTS.semibold,
   },
+
   retakeBtn: {
+    marginLeft: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#F0FAFB',
-    borderWidth: 1,
-    borderColor: '#0bc9da',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryLight,
   },
+
   retakeText: {
-    fontSize: 12,
-    color: '#0bc9da',
-    fontWeight: '600',
+    fontSize: FONTS.sm,
+    color: COLORS.primaryDark,
+    fontWeight: FONTS.semibold,
   },
 
-  // ── START ANALYSIS BUTTON
+  // ─── VALIDATION ──────────────────────────────────────────────────────────
+
+  validationHint: {
+    fontSize: FONTS.sm,
+    color: COLORS.warning,
+    marginTop: scale(-4),
+    marginBottom: SPACING.md,
+    lineHeight: mScale(20),
+  },
+
+  // ─── BUTTON ──────────────────────────────────────────────────────────────
+
   button: {
+    height: vScale(56),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0bc9da',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  disabledButton: {
-    backgroundColor: '#9CA3AF',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    ...SHADOWS.md,
   },
 
-  // ── COMPLIANCE TEXT
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  buttonText: {
+    fontSize: FONTS.md,
+    fontWeight: FONTS.bold,
+    color: COLORS.white,
+  },
+
+  // ─── COMPLIANCE TEXT ─────────────────────────────────────────────────────
+
   hipaaText: {
     textAlign: 'center',
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 12,
-    lineHeight: 17,
-    paddingHorizontal: 8,
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    lineHeight: mScale(18),
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.md,
   },
 
-  // ── DOCTOR MODAL ─────────────────────────────────────────────────────────
-  // A "bottom sheet" — a panel that slides up from the bottom of the screen.
+  // ─── MODAL ───────────────────────────────────────────────────────────────
+
   modalOverlay: {
     flex: 1,
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-end',
-    // No background here — the TouchableOpacity overlay handles dimming
-  },
-  modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    maxHeight: '65%',    // sheet can use at most 65% of screen height
-    elevation: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-  // The small handle bar at the top of the bottom sheet
-  modalHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D5DB',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 16,
   },
 
-  // ── DOCTOR LIST ITEMS
+  modalSheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS['2xl'],
+    borderTopRightRadius: RADIUS['2xl'],
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
+    paddingBottom: layout.bottomInset + SPACING.xl,
+    maxHeight: '75%',
+  },
+
+  modalHandle: {
+    width: scale(50),
+    height: scale(5),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.border,
+    alignSelf: 'center',
+    marginBottom: SPACING.lg,
+  },
+
+  modalTitle: {
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+  },
+
+  modalSubtitle: {
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.lg,
+    lineHeight: mScale(20),
+  },
+
+  // ─── DOCTOR ROW ──────────────────────────────────────────────────────────
+
   doctorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  // Highlighted when this doctor is selected
-  doctorRowSelected: {
-    backgroundColor: '#EFF6FF',
-  },
-  doctorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E8EDF8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  doctorAvatarSelected: {
-    backgroundColor: '#1A2F6E',
-  },
-  doctorName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
-  doctorSpecialty: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.md,
   },
 
-  // ── ANALYSIS OVERLAY ─────────────────────────────────────────────────────
-  // Covers the ENTIRE screen (including header) while AI runs.
-  // Rendered outside the ScrollView so nothing is clickable underneath.
-  analysisOverlay: {
-    ...StyleSheet.absoluteFillObject,  // same as: { position:'absolute', top:0, left:0, right:0, bottom:0 }
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  doctorRowSelected: {
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+
+  doctorAvatar: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.infoBg,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 999,
+    marginRight: SPACING.md,
   },
+
+  doctorAvatarSelected: {
+    backgroundColor: COLORS.primaryDark,
+  },
+
+  doctorName: {
+    fontSize: FONTS.md,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textPrimary,
+  },
+
+  doctorSpecialty: {
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+
+  // ─── ANALYSIS OVERLAY ────────────────────────────────────────────────────
+
+  analysisOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+
   analysisCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 32,
+    width: '100%',
+    maxWidth: scale(340),
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS['2xl'],
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING['3xl'],
     alignItems: 'center',
-    width: '75%',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    ...SHADOWS.lg,
   },
+
   analysisTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
     textAlign: 'center',
   },
+
   analysisSub: {
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    lineHeight: mScale(22),
     textAlign: 'center',
-    lineHeight: 20,
   },
+
 });

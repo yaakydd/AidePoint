@@ -1,202 +1,314 @@
+// styles/HomeStyles.js
+
 import { StyleSheet } from "react-native";
 
-const cardShadow = {
-  shadowColor: "#000",
-  shadowOffset: {
-    width: 0,
-    height: 4,
-  },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 4,
-};
+import {
+  COLORS,
+  FONTS,
+  SPACING,
+  RADIUS,
+  SHADOWS,
+  layout,
+  SCREEN,
+} from "../assets/theme";
 
 export const homeStyles = StyleSheet.create({
 
+  // ─────────────────────────────────────────
+  // ROOT
+  // ─────────────────────────────────────────
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
 
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
 
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
+  scrollContent: {
+    paddingHorizontal: SPACING.pagePad,
+    paddingTop: SPACING.sm,
   },
 
+  // ─────────────────────────────────────────
+  // HEADER
+  // ─────────────────────────────────────────
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
 
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: SPACING.pagePad,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
   },
 
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
 
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: SPACING.md,
+  },
+
+  avatarCircle: {
+    backgroundColor: COLORS.primary,
+  },
+
+  avatarInitials: {
+    color: COLORS.white,
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
   },
 
   greeting: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1E293B",
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
   },
 
   subGreeting: {
     marginTop: 2,
-    fontSize: 13,
-    color: "#64748B",
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
   },
 
   notificationButton: {
-    padding: 6,
+    width: 46,
+    height: 46,
+    borderRadius: RADIUS.full,
+
+    backgroundColor: COLORS.surface,
+
+    justifyContent: "center",
+    alignItems: "center",
+
+    ...SHADOWS.sm,
   },
 
-  /**
-   * TITLES
-   */
+  notifDot: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+
+    width: 10,
+    height: 10,
+    borderRadius: RADIUS.full,
+
+    backgroundColor: COLORS.danger,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+
+  // ─────────────────────────────────────────
+  // TITLES
+  // ─────────────────────────────────────────
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginTop: 20,
-    marginBottom: 15,
+    fontSize: FONTS["2xl"],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.lg,
   },
 
-  /**
-   * STATS SECTION
-   */
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  // ─────────────────────────────────────────
+  // STATS CARDS
+  // ─────────────────────────────────────────
+statsRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  marginBottom: SPACING.xl,
+  gap: SPACING.md,
+},
+
+statCard: {
+  width: layout.isSmallScreen ? "48%" : "31%",
+
+  backgroundColor: COLORS.surface,
+
+  borderRadius: RADIUS.xl,
+
+  paddingVertical: SPACING.lg,
+  paddingHorizontal: SPACING.md,
+
+  ...SHADOWS.sm,
+},
+  statCardPrimary: {
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
   },
 
-  statCard: {
-    width: "48%",
-    backgroundColor: "#FFFFFF",
-
-    padding: 18,
-    borderRadius: 18,
-
-    ...cardShadow,
+  statCardWarning: {
+    borderWidth: 1,
+    borderColor: COLORS.warning,
   },
 
   statLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#94A3B8",
-    letterSpacing: 0.5,
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.bold,
+    color: COLORS.textMuted,
+    letterSpacing: 1,
+
+    marginBottom: SPACING.sm,
   },
 
   statValue: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginVertical: 6,
+    fontSize: FONTS["3xl"],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
   },
 
-  statTrend: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#10B981",
+  statSub: {
+    marginTop: 4,
+
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
   },
 
-  statCritical: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#EF4444",
-  },
-
-  /**
-   * CHART SECTION
-   */
+  // ─────────────────────────────────────────
+  // CHART
+  // ─────────────────────────────────────────
   chartCard: {
-    marginTop: 18,
+    backgroundColor: COLORS.surface,
 
-    backgroundColor: "#FFFFFF",
+    borderRadius: RADIUS["2xl"],
 
-    padding: 20,
-    borderRadius: 18,
+    padding: SPACING.lg,
 
-    ...cardShadow,
+    marginBottom: SPACING.xl,
+
+    ...SHADOWS.md,
   },
 
-  averageRow: {
+  chartHeaderRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
+
+    marginBottom: SPACING.sm,
   },
 
-  avgText: {
-    marginLeft: 5,
-    marginBottom: 5,
-
-    fontSize: 13,
-    color: "#64748B",
+  chartTitle: {
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
   },
 
-  placeholderChart: {
+  chartSub: {
+    marginTop: 4,
+
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+  },
+
+  chartLegend: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: RADIUS.full,
+
+    backgroundColor: COLORS.primary,
+
+    marginRight: 6,
+  },
+
+  legendText: {
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    fontWeight: FONTS.medium,
+  },
+
+  chartSkeleton: {
     height: 120,
-    marginTop: 25,
+    borderRadius: RADIUS.lg,
 
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    backgroundColor: COLORS.divider,
+
+    marginTop: SPACING.md,
   },
 
-  emptyChartLine: {
-    height: 2,
-    width: "100%",
+  // ─────────────────────────────────────────
+  // QUICK ACTION BUTTON
+  // ─────────────────────────────────────────
+  quickActionBtn: {
+    backgroundColor: COLORS.primary,
 
-    marginTop: 50,
+    borderRadius: RADIUS.xl,
 
-    backgroundColor: "#E2E8F0",
-    borderRadius: 1,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+
+    marginBottom: SPACING["2xl"],
+
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+
+    ...SHADOWS.lg,
   },
 
-  /**
-   * RECENT SCANS
-   */
+  quickActionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  quickActionText: {
+    color: COLORS.white,
+
+    fontSize: FONTS.md,
+    fontWeight: FONTS.bold,
+
+    marginLeft: SPACING.sm,
+  },
+
+  // ─────────────────────────────────────────
+  // LIST HEADER
+  // ─────────────────────────────────────────
   listHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
 
-    marginTop: 28,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
 
   viewAll: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#00CFE8",
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.bold,
+    color: COLORS.primary,
   },
 
+  // ─────────────────────────────────────────
+  // PATIENT CARD
+  // ─────────────────────────────────────────
   patientCard: {
+    backgroundColor: COLORS.surface,
+
+    borderRadius: RADIUS.xl,
+
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+
+    marginBottom: SPACING.md,
+
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
 
-    backgroundColor: "#FFFFFF",
-
-    padding: 15,
-    marginBottom: 14,
-
-    borderRadius: 18,
-
-    ...cardShadow,
+    ...SHADOWS.sm,
   },
 
   patientInfo: {
@@ -204,66 +316,91 @@ export const homeStyles = StyleSheet.create({
     alignItems: "center",
 
     flex: 1,
+    marginRight: SPACING.sm,
   },
 
   patientIcon: {
-    width: 52,
-    height: 52,
-
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: RADIUS.full,
 
     justifyContent: "center",
     alignItems: "center",
+
+    marginRight: SPACING.md,
   },
 
   patientTextContainer: {
-    marginLeft: 12,
-    flexShrink: 1,
+    flex: 1,
   },
 
   patientName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1E293B",
+    fontSize: FONTS.md,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+
+    marginBottom: 2,
   },
 
   patientTime: {
-    marginTop: 4,
-
-    fontSize: 12,
-    color: "#94A3B8",
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
   },
 
-  /**
-   * STATUS BADGE
-   */
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
 
-    borderRadius: 20,
+    borderRadius: RADIUS.full,
 
-    marginLeft: 10,
+    maxWidth: SCREEN.WIDTH * 0.34,
   },
 
   statusText: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.bold,
+    textTransform: "uppercase",
   },
 
-
+  // ─────────────────────────────────────────
+  // EMPTY STATE
+  // ─────────────────────────────────────────
   emptyContainer: {
+    backgroundColor: COLORS.surface,
+
+    borderRadius: RADIUS.xl,
+
+    paddingVertical: SPACING["4xl"],
+    paddingHorizontal: SPACING.xl,
+
     alignItems: "center",
     justifyContent: "center",
-
-    marginTop: 40,
-    paddingBottom: 40,
   },
 
   emptyText: {
-    marginTop: 12,
+    marginTop: SPACING.lg,
 
-    fontSize: 14,
-    color: "#64748B",
+    fontSize: FONTS.md,
+    fontWeight: FONTS.bold,
+
+    color: COLORS.textPrimary,
+  },
+
+  emptySubText: {
+    marginTop: SPACING.sm,
+
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
+  // ─────────────────────────────────────────
+  // SKELETON
+  // ─────────────────────────────────────────
+  skeletonCard: {
+    height: 88,
+    backgroundColor: COLORS.divider,
   },
 });

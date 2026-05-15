@@ -290,42 +290,196 @@ const HomeScreen = () => {
         >
 
           {/* ── STAT CARDS ─────────────────────────────────────────────────── */}
+          {/* ── STAT CARDS ─────────────────────────────────────────────────── */}
           <Text style={homeStyles.sectionTitle}>Today's Overview</Text>
 
-          <View style={homeStyles.statsRow}>
+          {/*
+            Solo users only need personal scan metrics.
+            Hospital/lab users also need workflow metrics like pending reviews.
+          */}
+          {/*
+            Example:
+            user.userType === "solo"
+            user.userType === "hospital"
+          */}
+          {/*
+            This boolean controls conditional dashboard rendering.
+          */}
+          {/*
+            We keep this logic close to the UI because it directly affects layout.
+          */}
+          {/*
+            Hospital users:
+              TODAY + PENDING + THIS WEEK
 
-            {/* CARD 1: Today's scans */}
-            <View style={[homeStyles.statCard, homeStyles.statCardPrimary]}>
-              <MaterialCommunityIcons name="microscope" size={20} color="#6200EE" style={{ marginBottom: 6 }} />
-              <Text style={homeStyles.statLabel}>TODAY</Text>
-              <Text style={homeStyles.statValue}>
-                {loading ? "—" : stats?.todayCount ?? 0}
-              </Text>
-              <Text style={homeStyles.statSub}>scans done</Text>
-            </View>
+            Solo users:
+              TODAY + THIS WEEK
+          */}
+          {/*
+            Responsive width:
+            - Hospital users: 3 cards
+            - Solo users: 2 cards
+          */}
+          {/*
+            This prevents overflow on smaller Android devices.
+          */}
+          {/*
+            NOTE:
+            The user object may not yet contain userType during onboarding,
+            so we safely default to "solo".
+          */}
+          {/*
+            Future expansion:
+            doctor
+            admin
+            regional_lab
+            national_program
+          */}
+          {/*
+            Role-driven rendering scales very well as the app grows.
+          */}
+          {/*
+            Example backend response:
+            {
+              name: "Kwame",
+              role: "Lab Technician",
+              userType: "hospital"
+            }
+          */}
+          {/*
+            IMPORTANT:
+            We do NOT hardcode widths in HomeStyles because the width
+            depends on the current user's dashboard type.
+          */}
+          {/*
+            Dynamic inline width keeps the layout responsive.
+          */}
+          {/*
+            31% = 3 cards fit nicely
+            48% = 2 cards fit nicely
+          */}
+          {/*
+            flexWrap allows cards to wrap on extremely small screens.
+          */}
+          {/*
+            This avoids text overflowing outside the screen.
+          */}
+          {/*
+            AidePoint must support:
+            - small Android devices
+            - large Samsung devices
+            - iPhones
+            - tablets
+          */}
 
-            {/* CARD 2: Pending review */}
-            <View style={[homeStyles.statCard, stats?.pending > 0 && homeStyles.statCardWarning]}>
-              <MaterialCommunityIcons name="clock-outline" size={20} color={stats?.pending > 0 ? "#F59E0B" : "#94A3B8"} style={{ marginBottom: 6 }} />
-              <Text style={homeStyles.statLabel}>PENDING</Text>
-              <Text style={homeStyles.statValue}>
-                {loading ? "—" : stats?.pending ?? 0}
-              </Text>
-              <Text style={[homeStyles.statSub, stats?.pending > 0 && { color: "#F59E0B" }]}>
-                {stats?.pending > 0 ? "need review" : "all clear"}
-              </Text>
-            </View>
+          {(() => {
+            const isHospitalUser =
+              (user?.userType || "solo") === "hospital";
 
-            {/* CARD 3: This week */}
-            <View style={homeStyles.statCard}>
-              <MaterialCommunityIcons name="calendar-week" size={20} color="#10B981" style={{ marginBottom: 6 }} />
-              <Text style={homeStyles.statLabel}>THIS WEEK</Text>
-              <Text style={homeStyles.statValue}>
-                {loading ? "—" : stats?.thisWeek ?? 0}
-              </Text>
-              <Text style={homeStyles.statSub}>total scans</Text>
-            </View>
-          </View>
+            const statCardWidth = isHospitalUser ? "31%" : "48%";
+
+            return (
+              <View style={homeStyles.statsRow}>
+
+                {/* CARD 1: Today's scans */}
+                <View
+                  style={[
+                    homeStyles.statCard,
+                    homeStyles.statCardPrimary,
+                    { width: statCardWidth },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="microscope"
+                    size={20}
+                    color="#6200EE"
+                    style={{ marginBottom: 6 }}
+                  />
+
+                  <Text style={homeStyles.statLabel}>TODAY</Text>
+
+                  <Text style={homeStyles.statValue}>
+                    {loading ? "—" : stats?.todayCount ?? 0}
+                  </Text>
+
+                  <Text style={homeStyles.statSub}>
+                    scans done
+                  </Text>
+                </View>
+
+                {/* CARD 2: Pending review */}
+                {isHospitalUser && (
+                  <View
+                    style={[
+                      homeStyles.statCard,
+                      stats?.pending > 0 &&
+                        homeStyles.statCardWarning,
+                      { width: statCardWidth },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="clock-outline"
+                      size={20}
+                      color={
+                        stats?.pending > 0
+                          ? "#F59E0B"
+                          : "#94A3B8"
+                      }
+                      style={{ marginBottom: 6 }}
+                    />
+
+                    <Text style={homeStyles.statLabel}>
+                      PENDING
+                    </Text>
+
+                    <Text style={homeStyles.statValue}>
+                      {loading ? "—" : stats?.pending ?? 0}
+                    </Text>
+
+                    <Text
+                      style={[
+                        homeStyles.statSub,
+                        stats?.pending > 0 && {
+                          color: "#F59E0B",
+                        },
+                      ]}
+                    >
+                      {stats?.pending > 0
+                        ? "need review"
+                        : "all clear"}
+                    </Text>
+                  </View>
+                )}
+
+                {/* CARD 3: This week */}
+                <View
+                  style={[
+                    homeStyles.statCard,
+                    { width: statCardWidth },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="calendar-week"
+                    size={20}
+                    color="#10B981"
+                    style={{ marginBottom: 6 }}
+                  />
+
+                  <Text style={homeStyles.statLabel}>
+                    THIS WEEK
+                  </Text>
+
+                  <Text style={homeStyles.statValue}>
+                    {loading ? "—" : stats?.thisWeek ?? 0}
+                  </Text>
+
+                  <Text style={homeStyles.statSub}>
+                    total scans
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* ── WEEKLY CHART ───────────────────────────────────────────────── */}
           <View style={homeStyles.chartCard}>
