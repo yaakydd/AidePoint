@@ -39,7 +39,7 @@ export const homeStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-
+    
     paddingHorizontal: SPACING.pagePad,
     paddingTop: SPACING.md,
     paddingBottom: SPACING.md,
