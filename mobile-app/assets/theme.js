@@ -1,34 +1,33 @@
 /**
- * src/theme/index.js
- * ─────────────────────────────────────────────────────────────
+
  * AidePoint Global Theme & Cross-Platform Styling Constants
  *
  * Import anywhere:
- *   import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout } from '../theme';
- * ─────────────────────────────────────────────────────────────
+ *   import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout } from '../assets/theme';
+
  */
 
 import { Dimensions, Platform, StatusBar } from 'react-native';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: Screen_Width, height: Screen_Height } = Dimensions.get('window');
 
-// ─── Responsive Scale Helpers ───────────────────────────────────────────────
+// Responsive Scale Helpers 
 // Base design width is 390px (iPhone 14). All sizes scale from this.
-const BASE_WIDTH = 390;
+const Base_Width = 390;
 
 /** Scale a size relative to screen width */
-export const scale = (size) => (SCREEN_WIDTH / BASE_WIDTH) * size;
+export const scale = (size) => (Screen_Width / Base_Width) * size;
 
-/** Vertical scale — use for heights and vertical spacing */
-export const vScale = (size) => (SCREEN_HEIGHT / 844) * size;
+/** Vertical scale - use for heights and vertical spacing */
+export const vScale = (size) => (Screen_Height / 844) * size;
 
 /** Moderate scale — use for font sizes (less aggressive than scale) */
 export const mScale = (size, factor = 0.5) =>
   size + (scale(size) - size) * factor;
 
-export const SCREEN = { WIDTH: SCREEN_WIDTH, HEIGHT: SCREEN_HEIGHT };
+export const SCREEN = { WIDTH: Screen_Width, HEIGHT: Screen_Height };
 
-// ─── Colours ────────────────────────────────────────────────────────────────
+//  Colours
 export const COLORS = {
   // Brand
   primary:        '#00BCD4',   // Cyan — your chart line / active tab
@@ -63,7 +62,7 @@ export const COLORS = {
   black:          '#000000',
 };
 
-// ─── Typography ──────────────────────────────────────────────────────────────
+//  Typography 
 // React Native uses sp units for fonts — mScale ensures readability
 // across small Android phones and large iPhones equally.
 export const FONTS = {
@@ -89,7 +88,7 @@ export const FONTS = {
   loose:  1.8,
 };
 
-// ─── Spacing ─────────────────────────────────────────────────────────────────
+// Spacing 
 export const SPACING = {
   xs:   scale(4),
   sm:   scale(8),
@@ -105,7 +104,7 @@ export const SPACING = {
   pagePad: scale(20),
 };
 
-// ─── Border Radius ───────────────────────────────────────────────────────────
+//  Border Radius 
 export const RADIUS = {
   xs:   4,
   sm:   8,
@@ -116,7 +115,7 @@ export const RADIUS = {
   full: 9999,
 };
 
-// ─── Shadows ─────────────────────────────────────────────────────────────────
+//  Shadows 
 // Android uses elevation; iOS uses shadow* props.
 // These objects spread directly onto a style.
 export const SHADOWS = {
@@ -153,7 +152,7 @@ export const SHADOWS = {
   }),
 };
 
-// ─── Layout Helpers ──────────────────────────────────────────────────────────
+// Layout Helpers 
 // Use these instead of hardcoded values for safe areas.
 export const layout = {
   // iOS has a notch/Dynamic Island + home indicator.
@@ -175,20 +174,20 @@ export const layout = {
     android: 60,
   }),
 
-  isSmallScreen: SCREEN_WIDTH < 375,   // iPhone SE, small Androids
-  isLargeScreen: SCREEN_WIDTH > 414,   // Plus/Max iPhones, large Androids
+  isSmallScreen: Screen_Width < 375,   // iPhone SE, small Androids
+  isLargeScreen: Screen_Width > 414,   // Plus/Max iPhones, large Androids
 };
 
-// ─── Condition Badge Config ────────────────────────────────────────────────
+// Condition Badge Config
 // Centralised — used in HomeScreen, ReportsScreen, ScanScreen
 export const CONDITION_STYLES = {
-  sickle_cell:    { label: 'SICKLE CELL DETECTED', color: COLORS.danger,   bg: COLORS.dangerBg  },
-  iron_deficiency:{ label: 'IRON DEFICIENCY',       color: COLORS.warning,  bg: COLORS.warningBg },
-  malaria:        { label: 'MALARIA DETECTED',       color: COLORS.warning,  bg: COLORS.warningBg },
-  thalassemia:    { label: 'THALASSEMIA',            color: COLORS.danger,   bg: COLORS.dangerBg  },
-  pernicious:     { label: 'PERNICIOUS ANAEMIA',     color: COLORS.info,     bg: COLORS.infoBg    },
-  megaloblastic:  { label: 'MEGALOBLASTIC',          color: COLORS.info,     bg: COLORS.infoBg    },
-  aplastic:       { label: '! APLASTIC — CRITICAL',  color: COLORS.danger,   bg: COLORS.dangerBg  },
-  hemolytic:      { label: 'HAEMOLYTIC',             color: COLORS.warning,  bg: COLORS.warningBg },
-  normal:         { label: 'NORMAL',                 color: COLORS.success,  bg: COLORS.successBg },
+  sickle_cell: { label: 'SICKLE CELL DETECTED', color: COLORS.danger, bg: COLORS.dangerBg  },
+  iron_deficiency:{ label: 'IRON DEFICIENCY', color: COLORS.warning, bg: COLORS.warningBg },
+  malaria: { label: 'MALARIA DETECTED', color: COLORS.warning, bg: COLORS.warningBg },
+  thalassemia: { label: 'THALASSEMIA', color: COLORS.danger, bg: COLORS.dangerBg },
+  pernicious: { label: 'PERNICIOUS ANAEMIA', color: COLORS.info, bg: COLORS.infoBg },
+  megaloblastic: { label: 'MEGALOBLASTIC', color: COLORS.info, bg: COLORS.infoBg },
+  aplastic: { label: '! APLASTIC — CRITICAL', color: COLORS.danger, bg: COLORS.dangerBg },
+  hemolytic: { label: 'HAEMOLYTIC', color: COLORS.warning, bg: COLORS.warningBg },
+  normal: { label: 'NORMAL', color: COLORS.success, bg: COLORS.successBg },
 };

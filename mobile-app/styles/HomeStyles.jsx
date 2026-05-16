@@ -14,17 +14,9 @@ import {
 
 export const homeStyles = StyleSheet.create({
 
-  // ─────────────────────────────────────────
-  // ROOT
-  // ─────────────────────────────────────────
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.primaryLight,
   },
 
   scrollContent: {
@@ -32,14 +24,14 @@ export const homeStyles = StyleSheet.create({
     paddingTop: SPACING.sm,
   },
 
-  // ─────────────────────────────────────────
+
   // HEADER
-  // ─────────────────────────────────────────
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    
+    backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.pagePad,
     paddingTop: SPACING.md,
     paddingBottom: SPACING.md,
@@ -109,9 +101,9 @@ export const homeStyles = StyleSheet.create({
     borderColor: COLORS.white,
   },
 
-  // ─────────────────────────────────────────
+
   // TITLES
-  // ─────────────────────────────────────────
+
   sectionTitle: {
     fontSize: FONTS["2xl"],
     fontWeight: FONTS.bold,
@@ -119,9 +111,9 @@ export const homeStyles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
 
-  // ─────────────────────────────────────────
+
   // STATS CARDS
-  // ─────────────────────────────────────────
+
 statsRow: {
   flexDirection: "row",
   flexWrap: "wrap",
@@ -174,9 +166,49 @@ statCard: {
     color: COLORS.textSecondary,
   },
 
-  // ─────────────────────────────────────────
+
   // CHART
-  // ─────────────────────────────────────────
+
+    barsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",     // bars grow upward from the same bottom line
+    paddingTop: 12,
+    paddingHorizontal: 4,
+  },
+  barColumn: {
+    alignItems: "center",
+    flex: 1,                    // each column takes equal width automatically
+    gap: 4,
+  },
+  barCount: {
+    fontSize: 10,
+    color: "#94A3B8",
+    fontWeight: "500",
+  },
+  barCountToday: {
+    color: "#6200EE",
+    fontWeight: "700",
+  },
+  barTrack: {
+    width: "60%",               // bar is 60% of the column width
+    justifyContent: "flex-end", // bar grows from the BOTTOM of the track
+    alignItems: "center",
+  },
+  barFill: {
+    width: "100%",
+  },
+  dayLabel: {
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "400",
+    marginTop: 2,
+  },
+  dayLabelToday: {
+    color: "#6200EE",
+    fontWeight: "700",
+  },
+
   chartCard: {
     backgroundColor: COLORS.surface,
 
@@ -240,9 +272,9 @@ statCard: {
     marginTop: SPACING.md,
   },
 
-  // ─────────────────────────────────────────
+
   // QUICK ACTION BUTTON
-  // ─────────────────────────────────────────
+
   quickActionBtn: {
     backgroundColor: COLORS.primary,
 
@@ -274,9 +306,9 @@ statCard: {
     marginLeft: SPACING.sm,
   },
 
-  // ─────────────────────────────────────────
+
   // LIST HEADER
-  // ─────────────────────────────────────────
+
   listHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -291,9 +323,9 @@ statCard: {
     color: COLORS.primary,
   },
 
-  // ─────────────────────────────────────────
+
   // PATIENT CARD
-  // ─────────────────────────────────────────
+
   patientCard: {
     backgroundColor: COLORS.surface,
 
@@ -362,9 +394,9 @@ statCard: {
     textTransform: "uppercase",
   },
 
-  // ─────────────────────────────────────────
+
   // EMPTY STATE
-  // ─────────────────────────────────────────
+
   emptyContainer: {
     backgroundColor: COLORS.surface,
 
@@ -396,9 +428,9 @@ statCard: {
     lineHeight: 20,
   },
 
-  // ─────────────────────────────────────────
+
   // SKELETON
-  // ─────────────────────────────────────────
+
   skeletonCard: {
     height: 88,
     backgroundColor: COLORS.divider,

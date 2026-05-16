@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../context/AuthContext";
-import { homeStyles } from "../styles/HomeStyles";
+import { homeStyles as styles } from "../styles/HomeStyles";
 
 //  TAB BAR HEIGHT CONSTANT 
 // Every screen that uses MainAppNavigator's absolute tab bar must add
@@ -59,7 +59,7 @@ const getGreeting = () => {
   return "Good evening";
 };
 
-// Converts a names into initials to be displayed in the avatar.
+// Converts names into initials to be displayed in the avatar.
 // The ?. and || guards handle null/undefined names safely.
 const getInitials = (name) => {
   if (!name?.trim()) return "?";
@@ -110,7 +110,7 @@ const WeeklyBarChart = ({ data }) => {
   return (
     // flexDirection: "row" lays the 7 bars side by side.
     // justifyContent: "space-between" spreads them evenly across the card width.
-    <View style={chartStyles.barsRow}>
+    <View style={styles.barsRow}>
       {data.map((item) => {
         const isToday = item.dayIndex === todayIndex;
         // Math.max(..., 3) ensures even a count of 0 shows a tiny visible nub.
@@ -118,20 +118,20 @@ const WeeklyBarChart = ({ data }) => {
 
         return (
           // Each column: count label on top, bar in middle, day label at bottom.
-          <View key={item.day} style={chartStyles.barColumn}>
+          <View key={item.day} style={styles.barColumn}>
 
             {/* Count number above the bar, only shown if > 0 */}
             {item.count > 0 && (
-              <Text style={[chartStyles.barCount, isToday && chartStyles.barCountToday]}>
+              <Text style={[styles.barCount, isToday && styles.barCountToday]}>
                 {item.count}
               </Text>
             )}
 
             {/* The bar track (grey background) + the coloured fill */}
-            <View style={[chartStyles.barTrack, { height: Bar_Max_Height}]}>
+            <View style={[styles.barTrack, { height: Bar_Max_Height}]}>
               <View
                 style={[
-                  chartStyles.barFill,
+                  styles.barFill,
                   {
                     height: barHeight,
                     // Today = solid purple. Other days = pale purple.
@@ -143,7 +143,7 @@ const WeeklyBarChart = ({ data }) => {
             </View>
 
             {/* Day label below the bar, bold + coloured for today */}
-            <Text style={[chartStyles.dayLabel, isToday && chartStyles.dayLabelToday]}>
+            <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
               {item.day}
             </Text>
           </View>
@@ -154,32 +154,32 @@ const WeeklyBarChart = ({ data }) => {
 };
 // SCAN CARD
 // A single row in the "Recent Scans" list.
-// Accepts a SINGLE scan object — not positional arguments.
+// Accepts a SINGLE scan object, not positional arguments.
 // This is much safer: { patientName, condition, severity, time, id }
 // instead of renderPatientItem(name, status, type, time, id).
 const ScanCard = ({ scan }) => {
   const { bg, color, icon } = getSeverityStyle(scan.severity);
 
   return (
-    <TouchableOpacity style={homeStyles.patientCard} activeOpacity={0.75}>
+    <TouchableOpacity style={styles.patientCard} activeOpacity={0.75}>
 
       {/* LEFT: icon + name + time */}
-      <View style={homeStyles.patientInfo}>
-        <View style={[homeStyles.patientIcon, { backgroundColor: bg }]}>
+      <View style={styles.patientInfo}>
+        <View style={[styles.patientIcon, { backgroundColor: bg }]}>
           <MaterialCommunityIcons name={icon} size={22} color={color} />
         </View>
 
-        <View style={homeStyles.patientTextContainer}>
-          <Text style={homeStyles.patientName}>{scan.patientName}</Text>
-          <Text style={homeStyles.patientTime}>
+        <View style={styles.patientTextContainer}>
+          <Text style={styles.patientName}>{scan.patientName}</Text>
+          <Text style={styles.patientTime}>
             {scan.time} · #{scan.id}
           </Text>
         </View>
       </View>
 
       {/* RIGHT: condition badge */}
-      <View style={[homeStyles.statusBadge, { backgroundColor: bg }]}>
-        <Text style={[homeStyles.statusText, { color }]} numberOfLines={1}>
+      <View style={[styles.statusBadge, { backgroundColor: bg }]}>
+        <Text style={[styles.statusText, { color }]} numberOfLines={1}>
           {scan.condition}
         </Text>
       </View>
@@ -187,18 +187,18 @@ const ScanCard = ({ scan }) => {
   );
 };
 
-// ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
+// MAIN SCREEN 
 const HomeScreen = () => {
   const { user } = useContext(AuthContext);
   const navigation = useNavigation();
 
-  const [loading, setLoading]     = useState(false);
-  const [stats, setStats]         = useState(null);       // null = not yet fetched
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);       // null = not yet fetched
   const [recentScans, setRecentScans] = useState([]);
 
-  // Fallbacks — the user object might not have every field populated yet
-  const displayName = user?.name || "there";
-  const userRole    = user?.role  || "Lab Technician";
+  // Fallbacks to the user object which might not have every field populated yet
+  const displayName = user?.name || "Lab Technician";
+  const userRole = user?.role  || "Lab Technician";
 
   //  FETCH DATA 
   useEffect(() => {
@@ -236,62 +236,54 @@ const HomeScreen = () => {
     : 0;
 
   return (
-    <SafeAreaView style={homeStyles.safeArea} edges={["top"]}>
-      {/*
-        edges={["top"]} tells SafeAreaView to ONLY apply padding at the top.
-        We handle the bottom ourselves via contentContainerStyle paddingBottom,
-        because the bottom safe area would conflict with our tab bar clearance.
-      */}
-
-      <View style={homeStyles.container}>
-
+    <SafeAreaView >
+      <View style={styles.container}>
         {/* HEADER  */}
-        <View style={homeStyles.header}>
+        <View style={styles.header}>
 
           {/* Avatar (initials-based) + greeting */}
-          <View style={homeStyles.profileRow}>
+          <View style={styles.profileRow}>
 
             {/*
               Instead of loading an image from an external URL (which can fail
               on hospital networks), we show a circle with the user's initials.
               backgroundColor uses the first letter to pick a colour deterministically.
             */}
-            <View style={[homeStyles.avatar, homeStyles.avatarCircle]}>
-              <Text style={homeStyles.avatarInitials}>
+            <View style={[styles.avatar, styles.avatarCircle]}>
+              <Text style={styles.avatarInitials}>
                 {getInitials(displayName)}
               </Text>
             </View>
 
             <View>
-              <Text style={homeStyles.greeting}>
+              <Text style={styles.greeting}>
                 {getGreeting()}, {displayName.split(" ")[0]}
               </Text>
-              <Text style={homeStyles.subGreeting}>{userRole}</Text>
+              <Text style={styles.subGreeting}>{userRole}</Text>
             </View>
           </View>
 
           {/* Notification button */}
-          <TouchableOpacity style={homeStyles.notificationButton}>
+          <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#1E293B" />
             {/* Red dot — shown when there are pending scans */}
-            {stats?.pending > 0 && <View style={homeStyles.notifDot} />}
+            {stats?.pending > 0 && <View style={styles.notifDot} />}
           </TouchableOpacity>
         </View>
 
-        {/* ── SCROLLABLE CONTENT ──────────────────────────────────────────── */}
+        {/* SCROLLABLE CONTENT */}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
-            homeStyles.scrollContent,
+            styles.scrollContent,
             { paddingBottom: TAB_BAR_CLEARANCE },
             // paddingBottom pushes the last element up above the tab bar.
             // Without this, the last card is unreachable on most devices.
           ]}
         >
 
-          {/* ── STAT CARDS ─────────────────────────────────────────────────── */}
-          {/* ── STAT CARDS ─────────────────────────────────────────────────── */}
-          <Text style={homeStyles.sectionTitle}>Today's Overview</Text>
+          {/* STAT CARDS*/}
+          <Text style={styles.sectionTitle}>Today's Overview</Text>
 
           {/*
             Solo users only need personal scan metrics.
@@ -348,7 +340,7 @@ const HomeScreen = () => {
           */}
           {/*
             IMPORTANT:
-            We do NOT hardcode widths in HomeStyles because the width
+            We do NOT hardcode widths in styles because the width
             depends on the current user's dashboard type.
           */}
           {/*
@@ -379,13 +371,13 @@ const HomeScreen = () => {
             const statCardWidth = isHospitalUser ? "31%" : "48%";
 
             return (
-              <View style={homeStyles.statsRow}>
+              <View style={styles.statsRow}>
 
                 {/* CARD 1: Today's scans */}
                 <View
                   style={[
-                    homeStyles.statCard,
-                    homeStyles.statCardPrimary,
+                    styles.statCard,
+                    styles.statCardPrimary,
                     { width: statCardWidth },
                   ]}
                 >
@@ -396,13 +388,13 @@ const HomeScreen = () => {
                     style={{ marginBottom: 6 }}
                   />
 
-                  <Text style={homeStyles.statLabel}>TODAY</Text>
+                  <Text style={styles.statLabel}>TODAY</Text>
 
-                  <Text style={homeStyles.statValue}>
+                  <Text style={styles.statValue}>
                     {loading ? "—" : stats?.todayCount ?? 0}
                   </Text>
 
-                  <Text style={homeStyles.statSub}>
+                  <Text style={styles.statSub}>
                     scans done
                   </Text>
                 </View>
@@ -411,9 +403,9 @@ const HomeScreen = () => {
                 {isHospitalUser && (
                   <View
                     style={[
-                      homeStyles.statCard,
+                      styles.statCard,
                       stats?.pending > 0 &&
-                        homeStyles.statCardWarning,
+                        styles.statCardWarning,
                       { width: statCardWidth },
                     ]}
                   >
@@ -428,17 +420,17 @@ const HomeScreen = () => {
                       style={{ marginBottom: 6 }}
                     />
 
-                    <Text style={homeStyles.statLabel}>
+                    <Text style={styles.statLabel}>
                       PENDING
                     </Text>
 
-                    <Text style={homeStyles.statValue}>
+                    <Text style={styles.statValue}>
                       {loading ? "—" : stats?.pending ?? 0}
                     </Text>
 
                     <Text
                       style={[
-                        homeStyles.statSub,
+                        styles.statSub,
                         stats?.pending > 0 && {
                           color: "#F59E0B",
                         },
@@ -454,7 +446,7 @@ const HomeScreen = () => {
                 {/* CARD 3: This week */}
                 <View
                   style={[
-                    homeStyles.statCard,
+                    styles.statCard,
                     { width: statCardWidth },
                   ]}
                 >
@@ -465,15 +457,15 @@ const HomeScreen = () => {
                     style={{ marginBottom: 6 }}
                   />
 
-                  <Text style={homeStyles.statLabel}>
+                  <Text style={styles.statLabel}>
                     THIS WEEK
                   </Text>
 
-                  <Text style={homeStyles.statValue}>
+                  <Text style={styles.statValue}>
                     {loading ? "—" : stats?.thisWeek ?? 0}
                   </Text>
 
-                  <Text style={homeStyles.statSub}>
+                  <Text style={styles.statSub}>
                     total scans
                   </Text>
                 </View>
@@ -481,33 +473,33 @@ const HomeScreen = () => {
             );
           })()}
 
-          {/* ── WEEKLY CHART ───────────────────────────────────────────────── */}
-          <View style={homeStyles.chartCard}>
+          {/* WEEKLY CHART */}
+          <View style={styles.chartCard}>
 
             {/* Chart header row */}
-            <View style={homeStyles.chartHeaderRow}>
+            <View style={styles.chartHeaderRow}>
               <View>
-                <Text style={homeStyles.chartTitle}>Scans This Week</Text>
-                <Text style={homeStyles.chartSub}>
+                <Text style={styles.chartTitle}>Scans This Week</Text>
+                <Text style={styles.chartSub}>
                   avg. {loading ? "—" : avgPerDay} scans / day
                 </Text>
               </View>
-              <View style={homeStyles.chartLegend}>
-                <View style={homeStyles.legendDot} />
-                <Text style={homeStyles.legendText}>Today</Text>
+              <View style={styles.chartLegend}>
+                <View style={styles.legendDot} />
+                <Text style={styles.legendText}>Today</Text>
               </View>
             </View>
 
             {/* The actual chart — hidden while loading */}
             {loading ? (
               // While data is loading, show a skeleton placeholder row
-              <View style={homeStyles.chartSkeleton} />
+              <View style={styles.chartSkeleton} />
             ) : stats ? (
               <WeeklyBarChart data={stats.weeklyData} />
             ) : null}
           </View>
 
-          {/* ── QUICK ACTION ────────────────────────────────────────────────── */}
+          {/* QUICK ACTION  */}
           {/*
             A shortcut button directly on the dashboard.
             Lab techs run many scans per shift — saving them one tap matters.
@@ -515,23 +507,23 @@ const HomeScreen = () => {
             in MainAppNavigator.
           */}
           <TouchableOpacity
-            style={homeStyles.quickActionBtn}
+            style={styles.quickActionBtn}
             onPress={() => navigation.navigate("Scan")}
             activeOpacity={0.85}
           >
-            <View style={homeStyles.quickActionLeft}>
+            <View style={styles.quickActionLeft}>
               <MaterialCommunityIcons name="plus-circle-outline" size={22} color="#FFFFFF" />
-              <Text style={homeStyles.quickActionText}>Start a New Scan</Text>
+              <Text style={styles.quickActionText}>Start a New Scan</Text>
             </View>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {/* ── RECENT SCANS LIST ───────────────────────────────────────────── */}
-          <View style={homeStyles.listHeader}>
-            <Text style={homeStyles.sectionTitle}>Recent Scans</Text>
+          {/* RECENT SCANS LIST  */}
+          <View style={styles.listHeader}>
+            <Text style={styles.sectionTitle}>Recent Scans</Text>
             {recentScans.length > 0 && (
               <TouchableOpacity onPress={() => navigation.navigate("Report")}>
-                <Text style={homeStyles.viewAll}>View All</Text>
+                <Text style={styles.viewAll}>View All</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -540,7 +532,7 @@ const HomeScreen = () => {
             // Skeleton cards while loading — better UX than a spinner
             // because the user can see the layout before data arrives
             [1, 2, 3].map((i) => (
-              <View key={i} style={[homeStyles.patientCard, homeStyles.skeletonCard]} />
+              <View key={i} style={[styles.patientCard, styles.skeletonCard]} />
             ))
 
           ) : recentScans.length > 0 ? (
@@ -552,14 +544,14 @@ const HomeScreen = () => {
 
           ) : (
             // Empty state — shown when no scans have been done yet
-            <View style={homeStyles.emptyContainer}>
+            <View style={styles.emptyContainer}>
               <MaterialCommunityIcons
                 name="clipboard-text-outline"
                 size={48}
                 color="#CBD5E1"
               />
-              <Text style={homeStyles.emptyText}>No scans recorded yet.</Text>
-              <Text style={homeStyles.emptySubText}>
+              <Text style={styles.emptyText}>No scans recorded yet.</Text>
+              <Text style={styles.emptySubText}>
                 Tap "Start a New Scan" above to begin.
               </Text>
             </View>
@@ -572,48 +564,3 @@ const HomeScreen = () => {
 };
 
 export default HomeScreen;
-
-// ─── CHART STYLES ─────────────────────────────────────────────────────────────
-// Defined here (not in HomeStyles.js) because WeeklyBarChart only
-// exists in this file. Co-locating the styles makes it self-contained.
-const chartStyles = StyleSheet.create({
-  barsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",     // bars grow upward from the same bottom line
-    paddingTop: 12,
-    paddingHorizontal: 4,
-  },
-  barColumn: {
-    alignItems: "center",
-    flex: 1,                    // each column takes equal width automatically
-    gap: 4,
-  },
-  barCount: {
-    fontSize: 10,
-    color: "#94A3B8",
-    fontWeight: "500",
-  },
-  barCountToday: {
-    color: "#6200EE",
-    fontWeight: "700",
-  },
-  barTrack: {
-    width: "60%",               // bar is 60% of the column width
-    justifyContent: "flex-end", // bar grows from the BOTTOM of the track
-    alignItems: "center",
-  },
-  barFill: {
-    width: "100%",
-  },
-  dayLabel: {
-    fontSize: 11,
-    color: "#94A3B8",
-    fontWeight: "400",
-    marginTop: 2,
-  },
-  dayLabelToday: {
-    color: "#6200EE",
-    fontWeight: "700",
-  },
-});
