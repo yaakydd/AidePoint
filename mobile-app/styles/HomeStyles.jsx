@@ -16,7 +16,7 @@ export const homeStyles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: COLORS.background,
   },
 
   scrollContent: {

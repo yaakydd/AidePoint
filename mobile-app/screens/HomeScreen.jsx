@@ -236,8 +236,7 @@ const HomeScreen = () => {
     : 0;
 
   return (
-    <SafeAreaView >
-      <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
         {/* HEADER  */}
         <View style={styles.header}>
 
@@ -257,7 +256,7 @@ const HomeScreen = () => {
 
             <View>
               <Text style={styles.greeting}>
-                {getGreeting()}, {displayName.split(" ")[0]}
+                {getGreeting()}, {displayName.split(" ")[0] || "User"}
               </Text>
               <Text style={styles.subGreeting}>{userRole}</Text>
             </View>
@@ -558,7 +557,6 @@ const HomeScreen = () => {
           )}
 
         </ScrollView>
-      </View>
     </SafeAreaView>
   );
 };

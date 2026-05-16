@@ -30,12 +30,12 @@ export const SCREEN = { WIDTH: Screen_Width, HEIGHT: Screen_Height };
 //  Colours
 export const COLORS = {
   // Brand
-  primary:        '#00BCD4',   // Cyan — your chart line / active tab
-  primaryLight:   '#E0F7FA',   // Soft cyan background
+  primary:        '#0BC9DA',   
+  primaryLight:   '#E0F7FA',   
   primaryDark:    '#0097A7',
 
   // Backgrounds
-  background:     '#F0F4F8',   // Page background (light blue-grey)
+  background:     '#F1F5F9',   // Page background (light blue-grey)
   surface:        '#FFFFFF',   // Cards
   surfaceAlt:     '#F7FAFB',   // Alternate surface
 

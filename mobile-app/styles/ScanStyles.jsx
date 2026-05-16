@@ -1,6 +1,11 @@
 // styles/ScanStyles.js
+//
+// AidePoint Scan Screen Styling
+//
+// Matches the modern cyan healthcare UI
+// shown in the design reference.
 
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import {
   COLORS,
@@ -8,36 +13,11 @@ import {
   SPACING,
   RADIUS,
   SHADOWS,
-  layout,
-  scale,
-  vScale,
-  mScale,
 } from '../assets/theme';
-
-// ─── SCAN SCREEN STYLES ─────────────────────────────────────────────────────
-// Fully responsive using your global theme system.
-//
-// Why this fits all Android + iOS screens:
-//
-// 1. Uses scale(), vScale(), mScale()
-//    → automatically adapts spacing and sizing to screen size.
-//
-// 2. Uses layout helpers
-//    → respects notches, safe areas, tab bars, Dynamic Island.
-//
-// 3. Uses flexbox instead of fixed widths
-//    → adapts to small phones + large tablets.
-//
-// 4. Uses theme constants only
-//    → consistent UI across the entire app.
-//
-// 5. No hardcoded pixel-heavy layouts
-//    → prevents overflow on small Android devices.
-//
 
 export const scanStyles = StyleSheet.create({
 
-  // ─── ROOT ────────────────────────────────────────────────────────────────
+  // ROOT
 
   container: {
     flex: 1,
@@ -49,7 +29,7 @@ export const scanStyles = StyleSheet.create({
     paddingTop: SPACING.lg,
   },
 
-  // ─── HEADER ──────────────────────────────────────────────────────────────
+  // HEADER
 
   header: {
     flexDirection: 'row',
@@ -58,211 +38,233 @@ export const scanStyles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
 
-  headerLeft: {
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  headerTitle: {
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+  },
+
+  // SCAN ID
+
+  scanIdCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    justifyContent: 'space-between',
+    marginBottom: 28,
   },
 
-  title: {
-    fontSize: FONTS['2xl'],
-    fontWeight: FONTS.bold,
+  scanIdLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  scanIdLabel: {
+    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    letterSpacing: 1,
+  },
+
+  scanIdValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+
+  // SECTIONS
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    marginLeft: 8,
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.textPrimary,
   },
 
-  resetText: {
-    fontSize: FONTS.sm,
-    fontWeight: FONTS.semibold,
-    color: COLORS.danger,
-  },
+  // INPUTS
 
-  // ─── SCAN ID ─────────────────────────────────────────────────────────────
-
-  scanBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-
-  scanLabel: {
-    fontSize: FONTS.sm,
+  inputLabel: {
+    fontSize: 14,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
+    marginBottom: 8,
+    fontWeight: '500',
   },
-
-  scanId: {
-    fontSize: FONTS.lg,
-    fontWeight: FONTS.bold,
-    color: COLORS.primaryDark,
-    letterSpacing: 0.5,
-  },
-
-  // ─── INPUTS ──────────────────────────────────────────────────────────────
 
   input: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: Platform.select({
-      ios: SPACING.lg,
-      android: SPACING.md,
-    }),
+    height: 54,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BDECF2',
+    paddingHorizontal: 16,
+    marginBottom: 18,
     fontSize: FONTS.md,
     color: COLORS.textPrimary,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
   },
 
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: SPACING.md,
+    gap: 12,
   },
 
   half: {
     flex: 1,
-    minWidth: 0,
   },
 
-  // ─── DOCTOR SELECTOR ─────────────────────────────────────────────────────
+  // DOCTOR SELECTOR
 
   selectorButton: {
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BDECF2',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.sm,
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
 
-  selectorIcon: {
-    width: scale(42),
-    height: scale(42),
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceAlt,
+  selectorText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+
+  // CAMERA BUTTON
+
+  takePictureBtn: {
+    height: 58,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.md,
+    backgroundColor: COLORS.white,
+    marginBottom: 18,
   },
 
-  selectorPlaceholder: {
-    fontSize: FONTS.md,
-    color: COLORS.textMuted,
-    fontWeight: FONTS.medium,
+  takePictureText: {
+    marginLeft: 10,
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 
-  selectorValue: {
-    fontSize: FONTS.md,
-    color: COLORS.textPrimary,
-    fontWeight: FONTS.bold,
-  },
+  // UPLOAD CARD
 
-  selectorSub: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-
-  // ─── CAMERA BUTTON ───────────────────────────────────────────────────────
-
-  cameraButton: {
-    height: vScale(150),
-    borderRadius: RADIUS['2xl'],
+  uploadCard: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    borderColor: '#A5F3FC',
+    backgroundColor: '#ECFEFF',
+    borderRadius: 24,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+
+  uploadIconCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 999,
+    backgroundColor: '#CFFAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.lg,
-    paddingHorizontal: SPACING.lg,
+    marginBottom: 18,
   },
 
-  cameraText: {
-    marginTop: SPACING.sm,
-    fontSize: FONTS.md,
-    color: COLORS.primaryDark,
-    fontWeight: FONTS.semibold,
+  uploadTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+  },
+
+  uploadSub: {
     textAlign: 'center',
+    color: COLORS.textSecondary,
+    lineHeight: 22,
+    marginBottom: 20,
   },
 
-  // ─── IMAGE PREVIEW ───────────────────────────────────────────────────────
+  browseBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+
+  browseBtnText: {
+    color: COLORS.white,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  // IMAGE PREVIEW
 
   previewBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS['2xl'],
-    overflow: 'hidden',
-    marginBottom: SPACING.lg,
-    ...SHADOWS.md,
+    marginBottom: 20,
   },
 
   previewImage: {
     width: '100%',
-    height: vScale(layout.isSmallScreen ? 180 : 220),
-  },
-
-  previewFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.surface,
-  },
-
-  previewText: {
-    marginLeft: SPACING.xs,
-    fontSize: FONTS.sm,
-    color: COLORS.success,
-    fontWeight: FONTS.semibold,
+    height: 220,
+    borderRadius: 18,
   },
 
   retakeBtn: {
-    marginLeft: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primaryLight,
+    marginTop: 12,
+    alignSelf: 'flex-end',
   },
 
   retakeText: {
-    fontSize: FONTS.sm,
-    color: COLORS.primaryDark,
-    fontWeight: FONTS.semibold,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 
-  // ─── VALIDATION ──────────────────────────────────────────────────────────
+  // VALIDATION
 
   validationHint: {
-    fontSize: FONTS.sm,
     color: COLORS.warning,
-    marginTop: scale(-4),
-    marginBottom: SPACING.md,
-    lineHeight: mScale(20),
+    marginBottom: 16,
+    lineHeight: 22,
   },
 
-  // ─── BUTTON ──────────────────────────────────────────────────────────────
+  // BUTTON
 
   button: {
-    height: vScale(56),
-    borderRadius: RADIUS.full,
+    height: 58,
+    borderRadius: 16,
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
+    gap: 10,
     ...SHADOWS.md,
   },
 
@@ -271,145 +273,18 @@ export const scanStyles = StyleSheet.create({
   },
 
   buttonText: {
-    fontSize: FONTS.md,
-    fontWeight: FONTS.bold,
     color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
 
-  // ─── COMPLIANCE TEXT ─────────────────────────────────────────────────────
+  // FOOTER TEXT
 
   hipaaText: {
     textAlign: 'center',
-    fontSize: FONTS.xs,
+    marginTop: 18,
     color: COLORS.textSecondary,
-    lineHeight: mScale(18),
-    marginTop: SPACING.lg,
-    paddingHorizontal: SPACING.md,
+    lineHeight: 22,
+    marginBottom: 40,
   },
-
-  // ─── MODAL ───────────────────────────────────────────────────────────────
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: COLORS.overlay,
-    justifyContent: 'flex-end',
-  },
-
-  modalSheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS['2xl'],
-    borderTopRightRadius: RADIUS['2xl'],
-    paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.md,
-    paddingBottom: layout.bottomInset + SPACING.xl,
-    maxHeight: '75%',
-  },
-
-  modalHandle: {
-    width: scale(50),
-    height: scale(5),
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.border,
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
-
-  modalTitle: {
-    fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
-  },
-
-  modalSubtitle: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.lg,
-    lineHeight: mScale(20),
-  },
-
-  // ─── DOCTOR ROW ──────────────────────────────────────────────────────────
-
-  doctorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.xl,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-
-  doctorRowSelected: {
-    backgroundColor: COLORS.primaryLight,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-
-  doctorAvatar: {
-    width: scale(48),
-    height: scale(48),
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.infoBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.md,
-  },
-
-  doctorAvatarSelected: {
-    backgroundColor: COLORS.primaryDark,
-  },
-
-  doctorName: {
-    fontSize: FONTS.md,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-
-  doctorSpecialty: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-
-  // ─── ANALYSIS OVERLAY ────────────────────────────────────────────────────
-
-  analysisOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-
-  analysisCard: {
-    width: '100%',
-    maxWidth: scale(340),
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS['2xl'],
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING['3xl'],
-    alignItems: 'center',
-    ...SHADOWS.lg,
-  },
-
-  analysisTitle: {
-    fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-
-  analysisSub: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-    lineHeight: mScale(22),
-    textAlign: 'center',
-  },
-
 });
