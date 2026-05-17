@@ -42,7 +42,9 @@ export const COLORS = {
   // Text
   textPrimary:    '#1A2332',   // Dark navy — headings
   textSecondary:  '#6B7C93',   // Subtext / labels
-  textMuted:      '#9FABB8',   // Placeholder / disabled
+  textMuted:      '#9CA3AF', 
+  
+  // Placeholder / disabled
 
   // Status / Conditions
   danger:         '#E53E3E',   // Sickle cell / critical
