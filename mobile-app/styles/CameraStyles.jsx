@@ -1,11 +1,32 @@
-import { StyleSheet, Dimensions } from "react-native";
+// styles/CameraStyles.js
 
-const { width } = Dimensions.get("window");
+import {
+  StyleSheet,
+  Platform,
+} from 'react-native';
+
+import {
+  COLORS,
+  FONTS,
+  SPACING,
+  RADIUS,
+  SHADOWS,
+  layout,
+  SCREEN,
+} from '../assets/theme';
+
+export const FRAME_SIZE = SCREEN.WIDTH * 0.78;
 
 export const CameraStyles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: COLORS.black,
+  },
+
+  blank: {
+    flex: 1,
+    backgroundColor: COLORS.black,
   },
 
   camera: {
@@ -14,115 +35,300 @@ export const CameraStyles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: "space-between",
-    alignItems: "center",
   },
 
-  // Circular Alignment Guide
-  viewfinder: {
-    position: "absolute",
-    top: "30%",
-    left: "50%",
-    transform: [{ translateX: -width / 4 }],
-    width: width / 2,
-    height: width / 2,
-    justifyContent: "center",
-    alignItems: "center",
+  topBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 58 : 18,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+
+    paddingHorizontal: SPACING.lg,
   },
 
-  outerCircle: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#0bc9da50",
-    justifyContent: "center",
-    alignItems: "center",
+  topBarTitle: {
+    color: COLORS.white,
+    fontSize: FONTS.md,
+    fontWeight: FONTS.semibold,
   },
 
-  innerCircle: {
-    width: "80%",
-    height: "80%",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#0bc9da30",
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: RADIUS.full,
+
+    backgroundColor: 'rgba(0,0,0,0.45)',
+
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  // AI Feedback badges
-  feedbackContainer: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    flexDirection: "row",
-    gap: 10,
+  instructionBanner: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 120 : 85,
+    alignSelf: 'center',
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: RADIUS.full,
+    gap: SPACING.sm,
   },
 
-  feedbackBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#00000080",
-    padding: 6,
-    borderRadius: 12,
-    gap: 4,
+  instructionText: {
+    color: COLORS.white,
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.medium,
   },
 
-  feedbackText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
+  viewfinderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  // Bottom Controls
-  bottomControls: {
-    position: "absolute",
-    bottom: 40,
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  frame: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
 
-  // Capture Button
-  captureButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 999,
     borderWidth: 2,
-    borderColor: "#0bc9da",
-    justifyContent: "center",
-    alignItems: "center",
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.xl,
+
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  innerCaptureButton: {
-    width: 60,
-    height: 60,
+  centerDot: {
+    width: 8,
+    height: 8,
     borderRadius: 999,
-    backgroundColor: "#0bc9da",
+    backgroundColor: COLORS.primary,
   },
 
-  // Confirm buttons after capture
-  confirmControls: {
-    flexDirection: "row",
-    gap: 20,
+  zoomBadge: {
+    position: 'absolute',
+    bottom: -50,
+
+    backgroundColor: 'rgba(0,0,0,0.5)',
+
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+
+    borderRadius: RADIUS.full,
   },
 
-  retryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    backgroundColor: "#f87171",
-    borderRadius: 8,
+  zoomText: {
+    color: COLORS.white,
+    fontWeight: FONTS.bold,
   },
 
-  okButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    backgroundColor: "#22c55e",
-    borderRadius: 8,
+  statusRow: {
+    position: 'absolute',
+    bottom: 145,
+
+    width: '100%',
+
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: SPACING.md,
   },
 
-  confirmText: {
-    color: "#fff",
-    fontWeight: "700",
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: RADIUS.full,
+  },
+
+  greenDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+
+    marginRight: SPACING.sm,
+
+    backgroundColor: COLORS.success,
+  },
+
+  statusText: {
+    color: COLORS.white,
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.medium,
+  },
+
+  shutterBar: {
+    position: 'absolute',
+
+    bottom: layout.tabBarHeight + 40,
+
+    width: '100%',
+    alignItems: 'center',
+  },
+
+  shutterRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 999,
+
+    borderWidth: 4,
+    borderColor: COLORS.white,
+
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  shutterDisc: {
+    width: 64,
+    height: 64,
+    borderRadius: 999,
+    backgroundColor: COLORS.white,
+  },
+
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.white,
+  },
+
+  previewImage: {
+    flex: 1,
+  },
+
+  previewOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+
+  previewHeader: {
+    paddingTop: 70,
+    paddingHorizontal: SPACING.xl,
+  },
+
+  previewTitle: {
+    color: COLORS.white,
+    fontSize: FONTS['2xl'],
+    fontWeight: FONTS.bold,
+    marginBottom: SPACING.sm,
+  },
+
+  previewSubtitle: {
+    color: COLORS.white,
+    fontSize: FONTS.sm,
+    lineHeight: 22,
+  },
+
+  previewBottom: {
+    flexDirection: 'row',
+
+    paddingHorizontal: SPACING.xl,
+
+    paddingBottom: layout.tabBarHeight + 30,
+
+    gap: SPACING.md,
+  },
+
+  retakeButton: {
+    flex: 1,
+
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    paddingVertical: SPACING.lg,
+
+    backgroundColor: 'rgba(255,255,255,0.2)',
+
+    borderRadius: RADIUS.lg,
+  },
+
+  confirmButton: {
+    flex: 1,
+
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    paddingVertical: SPACING.lg,
+
+    backgroundColor: COLORS.primaryDark,
+
+    borderRadius: RADIUS.lg,
+  },
+
+  actionText: {
+    color: COLORS.white,
+    fontWeight: FONTS.semibold,
+    marginLeft: SPACING.sm,
+  },
+
+  permissionScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    backgroundColor: COLORS.background,
+
+    paddingHorizontal: SPACING['2xl'],
+  },
+
+  permissionIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 999,
+
+    backgroundColor: COLORS.surface,
+
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    marginBottom: SPACING.xl,
+
+    ...SHADOWS.sm,
+  },
+
+  permissionTitle: {
+    color: COLORS.textPrimary,
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+
+    marginBottom: SPACING.sm,
+  },
+
+  permissionSub: {
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+
+    marginBottom: SPACING.xl,
+  },
+
+  permissionBtn: {
+    backgroundColor: COLORS.primaryDark,
+
+    paddingHorizontal: SPACING['2xl'],
+    paddingVertical: SPACING.lg,
+
+    borderRadius: RADIUS.lg,
+  },
+
+  permissionBtnText: {
+    color: COLORS.white,
+    fontWeight: FONTS.semibold,
   },
 
 });

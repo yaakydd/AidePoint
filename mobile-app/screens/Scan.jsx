@@ -27,6 +27,8 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import * as DocumentPicker from 'expo-document-picker';
+
 import {
   MaterialIcons,
   MaterialCommunityIcons,
@@ -162,6 +164,14 @@ const Scan = ({ navigation, route }) => {
   const [image, setImage] =
     useState(null);
 
+    const [imageViewerVisible, setImageViewerVisible] =
+    useState(false);
+
+  // Determines whether image came from:
+  // camera OR upload
+  const [imageSourceType, setImageSourceType] =
+    useState(null);
+
   const [scanId, setScanId] =
     useState('');
 
@@ -199,7 +209,6 @@ const Scan = ({ navigation, route }) => {
   //
   // this listener restores the image safely.
   //
-
   useEffect(() => {
 
     const unsubscribe =
@@ -208,9 +217,14 @@ const Scan = ({ navigation, route }) => {
         const photo =
           route.params?.capturedPhoto;
 
+        // IMPORTANT:
+        // Only update image.
+        // Never reset other form fields.
         if (photo) {
 
           setImage(photo);
+
+          setImageSourceType('camera');
 
           navigation.setParams({
             capturedPhoto: undefined,
@@ -220,7 +234,7 @@ const Scan = ({ navigation, route }) => {
 
     return unsubscribe;
 
-  }, [navigation]);
+  }, [navigation, route.params]);
 
   // ───────────────────────────────────────────────────────────
   // VALIDATION
@@ -244,14 +258,87 @@ const Scan = ({ navigation, route }) => {
   // ───────────────────────────────────────────────────────────
 
   function openCamera() {
-    navigation.navigate('CameraView');
+
+    navigation.navigate('CameraView', {
+
+      existingData: {
+        patientName,
+        temperature,
+        bloodPressure,
+        selectedDoctor,
+      },
+
+    });
   }
 
   function retakePhoto() {
-    setImage(null);
+
     navigation.navigate('CameraView');
   }
 
+    // ───────────────────────────────────────────────────────────
+  // PICK PNG FILE
+  // ───────────────────────────────────────────────────────────
+  //
+  // Opens phone file explorer and only allows PNG images.
+  //
+
+  async function handlePickFile() {
+
+    try {
+
+      const result =
+        await DocumentPicker.getDocumentAsync({
+
+          type: 'image/png',
+
+          copyToCacheDirectory: true,
+
+          multiple: false,
+        });
+
+      // User cancelled picker
+      if (result.canceled) {
+        return;
+      }
+
+      const file =
+        result.assets?.[0];
+
+      // Safety check
+      if (!file) {
+        return;
+      }
+
+      // Ensure PNG only
+      if (
+        !file.name?.toLowerCase().endsWith('.png')
+      ) {
+
+        Alert.alert(
+          'Invalid File',
+          'Only PNG files are supported.'
+        );
+
+        return;
+      }
+
+      // Store image URI
+      setImage(file.uri);
+
+      // Mark source as upload
+      setImageSourceType('upload');
+
+    } catch (error) {
+
+      console.log(error);
+
+      Alert.alert(
+        'Upload Failed',
+        'Unable to open file picker.'
+      );
+    }
+  }
   // ───────────────────────────────────────────────────────────
   // RESET FORM
   // ───────────────────────────────────────────────────────────
@@ -285,6 +372,9 @@ const Scan = ({ navigation, route }) => {
         },
       ]
     );
+                setImageSourceType(null);
+
+            setImageViewerVisible(false);
   }
 
   // ───────────────────────────────────────────────────────────
@@ -377,7 +467,6 @@ const Scan = ({ navigation, route }) => {
 
     <SafeAreaView
       style={styles.container}
-      edges={['top']}
     >
 
       <ScrollView
@@ -398,25 +487,44 @@ const Scan = ({ navigation, route }) => {
 
         <View style={styles.header}>
 
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialIcons
-              name="arrow-back-ios-new"
-              size={20}
-              color={COLORS.textPrimary}
-            />
-          </TouchableOpacity>
+  <View style={styles.headerLeft}>
 
-          <Text style={styles.headerTitle}>
-            Scan
-          </Text>
+    <TouchableOpacity
+      style={styles.backButton}
+      onPress={() => navigation.goBack()}
+    >
+      <MaterialIcons
+        name="arrow-back-ios-new"
+        size={20}
+        color={COLORS.textPrimary}
+      />
+    </TouchableOpacity>
 
-          <View style={{ width: 30 }} />
+    <Text style={styles.headerTitle}>
+      Scan
+    </Text>
 
-        </View>
+  </View>
 
+  <TouchableOpacity
+    style={styles.resetButton}
+    activeOpacity={0.8}
+    onPress={handleReset}
+  >
+
+    <MaterialIcons
+      name="restart-alt"
+      size={18}
+      color={COLORS.danger}
+    />
+
+    <Text style={styles.resetText}>
+      Reset
+    </Text>
+
+  </TouchableOpacity>
+
+</View>
         {/* ───────────────────────────────────────────── */}
         {/* SCAN ID */}
         {/* ───────────────────────────────────────────── */}
@@ -573,45 +681,61 @@ const Scan = ({ navigation, route }) => {
 
         {/* TAKE PICTURE BUTTON */}
 
-        {!image ? (
-          <TouchableOpacity
-            style={styles.takePictureBtn}
-            onPress={openCamera}
-          >
+        {/* TAKE PICTURE BUTTON */}
 
-            <MaterialIcons
-              name="photo-camera"
-              size={22}
-              color={COLORS.primary}
-            />
+{!image && !imageSourceType && (
 
-            <Text style={styles.takePictureText}>
-              Take Picture
-            </Text>
+  <TouchableOpacity
+    style={styles.takePictureBtn}
+    onPress={openCamera}
+  >
 
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.previewBox}>
+    <MaterialIcons
+      name="photo-camera"
+      size={22}
+      color={COLORS.primary}
+    />
 
-            <Image
-              source={{ uri: image }}
-              style={styles.previewImage}
-            />
+    <Text style={styles.takePictureText}>
+      Take Picture
+    </Text>
 
-            <TouchableOpacity
-              style={styles.retakeBtn}
-              onPress={retakePhoto}
-            >
-              <Text style={styles.retakeText}>
-                Retake Photo
-              </Text>
-            </TouchableOpacity>
+  </TouchableOpacity>
+)}
 
-          </View>
-        )}
+{/* IMAGE PREVIEW */}
 
+{image && (
+
+  <View style={styles.previewWrapper}>
+
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={styles.previewBox}
+      onPress={() =>
+        setImageViewerVisible(true)
+      }
+    >
+
+      <Image
+        source={{ uri: image }}
+        style={styles.previewImage}
+      />
+
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={retakePhoto}
+    >
+      <Text style={styles.retakeText}>
+        Retake Photo
+      </Text>
+    </TouchableOpacity>
+
+  </View>
+)}
         {/* UPLOAD CARD */}
-
+      {!imageSourceType && (
         <View style={styles.uploadCard}>
 
           <View style={styles.uploadIconCircle}>
@@ -632,35 +756,46 @@ const Scan = ({ navigation, route }) => {
             Tap to browse or drag and drop your image here
           </Text>
 
-          <TouchableOpacity style={styles.browseBtn}>
+          <TouchableOpacity 
+          style={styles.browseBtn} onPress={handlePickFile}>
             <Text style={styles.browseBtnText}>
               Browse Files
             </Text>
           </TouchableOpacity>
 
         </View>
-
+)}
         {/* ───────────────────────────────────────────── */}
         {/* VALIDATION HINT */}
         {/* ───────────────────────────────────────────── */}
 
         {!isFormValid && (
 
-          <Text style={styles.validationHint}>
+<View style={styles.validationContainer}>
 
-            {!patientName.trim()
-              ? '● Enter patient name'
-              : !temperature.trim()
-              ? '● Enter temperature'
-              : !bloodPressure.trim()
-              ? '● Enter blood pressure'
-              : isHospitalUser && !selectedDoctor
-              ? '● Select a doctor'
-              : !image
-              ? '● Capture blood smear image'
-              : ''}
+  <MaterialIcons
+    name="info-outline"
+    size={18}
+    color={COLORS.warning}
+  />
 
-          </Text>
+  <Text style={styles.validationHint}>
+
+    {!patientName.trim()
+      ? 'Enter patient name'
+      : !temperature.trim()
+      ? 'Enter temperature'
+      : !bloodPressure.trim()
+      ? 'Enter blood pressure'
+      : isHospitalUser && !selectedDoctor
+      ? 'Select a doctor'
+      : !image
+      ? 'Capture blood smear image'
+      : ''}
+
+  </Text>
+
+</View>
         )}
 
         {/* START ANALYSIS BUTTON */}
@@ -712,6 +847,43 @@ const Scan = ({ navigation, route }) => {
         </Text>
 
       </ScrollView>
+
+            {/* ───────────────────────────────────────────── */}
+      {/* IMAGE VIEWER */}
+      {/* ───────────────────────────────────────────── */}
+
+      <Modal
+        visible={imageViewerVisible}
+        transparent
+        animationType="fade"
+      >
+
+        <View style={styles.imageModalOverlay}>
+
+          <TouchableOpacity
+            style={styles.closeViewer}
+            onPress={() =>
+              setImageViewerVisible(false)
+            }
+          >
+
+            <MaterialIcons
+              name="close"
+              size={28}
+              color="#fff"
+            />
+
+          </TouchableOpacity>
+
+          <Image
+            source={{ uri: image }}
+            style={styles.fullImage}
+            resizeMode="contain"
+          />
+
+        </View>
+
+      </Modal>
 
     </SafeAreaView>
   );
