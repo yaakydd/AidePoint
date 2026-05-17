@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
+import { CONDITION_CONFIG } from '../utils/ReportUtils';
 
 // ─── CONDITION ICONS (UNCHANGED) ───────────────────────────────
 // (Keeping your SVG icons exactly as-is for brevity in this fix)
@@ -9,7 +10,6 @@ import Svg, { Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 // ─── SVG CONDITION ICONS ────────────────────────────────────────────────────── // Each icon is a simple SVG illustration of the cell morphology for that // condition. react-native-svg renders these natively on both Android and iOS. 
 // // Sickle Cell — crescent-shaped erythrocytes 
 
-const Condition = () => {
 
 function SickleCellIcon({ size = 56 }) { 
   return ( 
@@ -166,16 +166,16 @@ function ConditionIcon({ condition, size = 56 }) {
 }
 
 function ConditionBadge({ condition }) {
-  const cfg = CONDITION_CONFIG[condition] ?? CONDITION_CONFIG.normal;
+  const cfg = CONDITION_CONFIG?.[condition] ?? CONDITION_CONFIG?.normal ?? {};
 
   return (
-    <View style={[styles.badge, { backgroundColor: cfg.badgeBg }]}>
-      <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot }]} />
-      <Text style={[styles.badgeLabel, { color: cfg.badgeText }]}>
+    <View style={[styles.badge, { backgroundColor: cfg.badgeBg ?? '#000' }]}>
+      <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot  }]} />
+      <Text style={[styles.badgeLabel, { color: cfg.badgeText ?? 'Unknown' }]}>
         {cfg.label}
       </Text>
     </View>
   );
 }
-}
-export default Condition;
+
+export { ConditionIcon, ConditionBadge };

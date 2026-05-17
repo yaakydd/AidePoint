@@ -104,17 +104,25 @@ function IronDeficiencyIcon({ size = 56 }) {
 } 
 
 // Malaria — parasitized cell with ring-form trophozoite 
-function MalariaIcon({ size = 56 }) { 
-  return ( 
-  <Svg width={size} height={size} viewBox="0 0 56 56"> 
-  <Rect width="56" height="56" rx="14" fill="#FEF9C3" /> 
-  {/* Host erythrocyte */} 
-  <Circle cx="28" cy="30" r="16" fill="#FEF3C7" stroke="#CA8A04" strokeWidth="2" /> 
-  {/* Ring-form parasite: open circle (ring stage of Plasmodium) */}
-  <Circle cx="28" cy="30" r="7.5" fill="none" stroke="#92400E" strokeWidth="2.5" /> 
-  {/* Nucleus dot — the violet granule seen in stained smears */} 
-  <Circle cx="33" cy="24" r="3.5" fill="#92400E" /> </Svg> 
-  ); 
+function MalariaIcon({ size = 56 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 56 56">
+      <Rect width={56} height={56} rx={14} fill="#FEF9C3" />
+
+      <Circle cx={28} cy={30} r={16} fill="#FEF3C7" stroke="#CA8A04" strokeWidth={2} />
+
+      <Circle
+        cx={28}
+        cy={30}
+        r={7.5}
+        fill="none"
+        stroke="#92400E"
+        strokeWidth={2.5}
+      />
+
+      <Circle cx={33} cy={24} r={3.5} fill="#92400E" />
+    </Svg>
+  );
 } 
 
 // Thalassemia — target cells (codocytes) with bull's-eye pattern 
@@ -230,13 +238,14 @@ function ConditionIcon({ condition, size = 56 }) {
 }
 
 function ConditionBadge({ condition }) {
-  const cfg = CONDITION_CONFIG[condition] ?? CONDITION_CONFIG.normal;
+  const cfg = CONDITION_CONFIG?.[condition] ?? CONDITION_CONFIG?.normal ?? {};
 
   return (
-    <View style={[styles.badge, { backgroundColor: cfg.badgeBg }]}>
-      <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot }]} />
-      <Text style={[styles.badgeLabel, { color: cfg.badgeText }]}>
-        {cfg.label}
+    <View style={[styles.badge, { backgroundColor: cfg.badgeBg || '#eee' }]}>
+      <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot || '#999' }]} />
+
+      <Text style={[styles.badgeLabel, { color: cfg.badgeText || '#000' }]}>
+        {String(cfg.label ?? 'Unknown')}
       </Text>
     </View>
   );
@@ -395,7 +404,7 @@ const ReportScreen = ({ navigation, route }) => {
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Medical Reports</Text>
               <Text style={styles.headerCount}>
-                {reports.length} total
+                {String(reports?.length ?? 0)} total
               </Text>
             </View>
 
@@ -406,7 +415,7 @@ const ReportScreen = ({ navigation, route }) => {
                 style={styles.searchInput}
                 placeholder="Search patient name or ID…"
                 placeholderTextColor={COLORS.textMuted}
-                value={query}
+                value={String(query)}
                 onChangeText={setQuery}
               />
             </View>
