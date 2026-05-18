@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from '@react-navigation/native';
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
+import { COLORS } from "../assets/theme"; // Import your theme colors here
 
 const Chatbot = () => {
     const navigation = useNavigation();
@@ -34,7 +35,6 @@ const Chatbot = () => {
     const [messages, setMessages] = useState([welcomeMessage]);
 
     // Action Handlers
-
     const handleSend = (textToSend = inputText) => {
         const messageText = typeof textToSend === 'string' ? textToSend : inputText;
         
@@ -53,7 +53,6 @@ const Chatbot = () => {
             const botResponse = {
                 id: (Date.now() + 1).toString(),
                 type: 'bot',
-                // Will write code so that it animates as a code from left to right
                 text: "...",
             };
             setMessages((prev) => [...prev, botResponse]);
@@ -80,7 +79,7 @@ const Chatbot = () => {
             <View style={styles.leftHeader}>
                 <View style={styles.leftContent}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <MaterialIcons name="arrow-back" size={28} color="#00BCD4" />
+                        <MaterialIcons name="arrow-back" size={28} color={COLORS.primary} />
                     </TouchableOpacity>
                     <View style={styles.titleLayout}>
                         <Text style={styles.title}>AideBot AI</Text>
@@ -89,10 +88,14 @@ const Chatbot = () => {
                 </View>
                 <View style={styles.headerIconsRight}>
                     <TouchableOpacity onPress={() => setIsInfoVisible(true)}>
-                        <MaterialIcons name="info-outline" size={24} color="#4A5568" />
+                        <MaterialIcons name="info-outline" size={24} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowMenu(!showMenu)}>
-                        <MaterialIcons name={showMenu ? "close" : "more-vert"} size={24} color={showMenu ? "#00BCD4" : "#4A5568"} />
+                        <MaterialIcons 
+                            name={showMenu ? "close" : "more-vert"} 
+                            size={24} 
+                            color={showMenu ? COLORS.primary : COLORS.textSecondary} 
+                        />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -101,11 +104,11 @@ const Chatbot = () => {
             {showMenu && (
                 <View style={styles.dropdownMenu}>
                     <TouchableOpacity style={styles.menuItem} onPress={handleClearChat}>
-                        <MaterialIcons name="delete-outline" size={20} color="#E53E3E" />
-                        <Text style={[styles.menuText, { color: '#E53E3E' }]}>Clear Chat</Text>
+                        <MaterialIcons name="delete-outline" size={20} color={COLORS.danger} />
+                        <Text style={[styles.menuText, { color: COLORS.danger }]}>Clear Chat</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.menuItem} onPress={() => { setIsBugModalVisible(true); setShowMenu(false); }}>
-                        <MaterialIcons name="bug-report" size={20} color="#4A5568" />
+                        <MaterialIcons name="bug-report" size={20} color={COLORS.textSecondary} />
                         <Text style={styles.menuText}>Report Bug</Text>
                     </TouchableOpacity>
                 </View>
@@ -125,7 +128,7 @@ const Chatbot = () => {
                             <View style={isBot ? styles.botWrapper : styles.userWrapper}>
                                 {isBot && (
                                     <View style={styles.avatarCircleBot}>
-                                        <MaterialIcons name="person-outline" size={20} color="#FFF" /> 
+                                        <MaterialIcons name="person-outline" size={20} color={COLORS.white} /> 
                                     </View>
                                 )}
                                 <View style={styles.messageGroup}>
@@ -136,7 +139,7 @@ const Chatbot = () => {
                                 </View>
                                 {!isBot && (
                                     <View style={styles.avatarCircleUser}>
-                                        <MaterialIcons name="person" size={20} color="#FFF" />
+                                        <MaterialIcons name="person" size={20} color={COLORS.white} />
                                     </View>
                                 )}
                             </View>
@@ -146,7 +149,7 @@ const Chatbot = () => {
                 />
             </View>
 
-            {/* Suggestions: Only show if there's only 1 message (the welcome message) */}
+            {/* Suggestions */}
             {messages.length === 1 && (
                 <View style={styles.suggestionContainer}>
                     <TouchableOpacity 
@@ -167,11 +170,11 @@ const Chatbot = () => {
             {/* Input Bar */}
             <View style={styles.inputLayout}>
                 <TouchableOpacity>
-                    <MaterialIcons name="attach-file" size={22} color="#94A3B8" />
+                    <MaterialIcons name="attach-file" size={22} color={COLORS.textMuted} />
                 </TouchableOpacity>
                 <TextInput
                     placeholder="Ask AideBot anything..."
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={COLORS.textMuted}
                     style={styles.input}
                     value={inputText}
                     onChangeText={setInputText}
@@ -182,7 +185,7 @@ const Chatbot = () => {
                     onPress={() => handleSend()}
                     disabled={inputText.trim().length === 0}
                 >
-                    <MaterialIcons name="send" size={20} color="#FFF" />
+                    <MaterialIcons name="send" size={20} color={COLORS.white} />
                 </TouchableOpacity>
             </View>
 
@@ -213,7 +216,7 @@ const Chatbot = () => {
                             onChangeText={setBugReport}
                         />
                         <View style={styles.bugButtonContainer}>
-                            <TouchableOpacity style={[styles.bugButton, { backgroundColor: '#94A3B8' }]} onPress={() => setIsBugModalVisible(false)}>
+                            <TouchableOpacity style={[styles.bugButton, { backgroundColor: COLORS.textMuted }]} onPress={() => setIsBugModalVisible(false)}>
                                 <Text style={styles.closeButtonText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.bugButton} onPress={sendEmail}>

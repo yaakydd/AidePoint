@@ -1,19 +1,20 @@
 import { StyleSheet } from "react-native";
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, vScale, scale } from "../assets/theme"; // Adjust path if necessary
 
 export const ChatStyles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: COLORS.background,
     },
     // Header
     leftHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 15,
-        height: 70,
-        backgroundColor: 'white',
-        elevation: 4, 
+        paddingHorizontal: SPACING.lg,
+        height: vScale(70),
+        backgroundColor: COLORS.surface,
+        ...SHADOWS.md,
         zIndex: 10,
     },
     leftContent: { 
@@ -21,53 +22,50 @@ export const ChatStyles = StyleSheet.create({
         alignItems: 'center' 
     },
     titleLayout: { 
-        marginLeft: 15 
+        marginLeft: SPACING.md 
     },
     title: { 
-        fontSize: 18, 
-        fontWeight: 'bold', 
-        color: '#1E293B' 
+        fontSize: FONTS.lg, 
+        fontWeight: FONTS.bold, 
+        color: COLORS.textPrimary 
     },
     subTitle: { 
-        color: '#00BCD4', 
-        fontSize: 13, 
-        fontWeight: '400' 
+        color: COLORS.primary, 
+        fontSize: FONTS.sm, 
+        fontWeight: FONTS.regular 
     },
     backButton: { 
-        padding: 5 
+        padding: SPACING.xs 
     },
     headerIconsRight: { 
         flexDirection: 'row', 
-        gap: 15, 
+        gap: SPACING.lg, 
         alignItems: 'center' 
     },
 
     // Menu
     dropdownMenu: {
         position: 'absolute',
-        top: 75,
-        right: 15,
-        backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 10,
-        width: 180,
-        elevation: 15, 
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
+        top: vScale(75),
+        right: SPACING.lg,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.md,
+        padding: SPACING.sm,
+        width: scale(180),
+        ...SHADOWS.lg,
         zIndex: 100,
     },
     menuItem: { 
         flexDirection: 'row', 
         alignItems: 'center', 
-        paddingVertical: 12, 
-        paddingHorizontal: 15, 
-        gap: 12 },
+        paddingVertical: SPACING.md, 
+        paddingHorizontal: SPACING.lg, 
+        gap: SPACING.md 
+    },
     menuText: { 
-        fontSize: 14, 
-        color: '#334155', 
-        fontWeight: '600' 
+        fontSize: FONTS.sm, 
+        color: COLORS.textPrimary, 
+        fontWeight: FONTS.semibold 
     },
 
     // Chat Body
@@ -77,29 +75,29 @@ export const ChatStyles = StyleSheet.create({
     },
     todayText: { 
         textAlign: 'center', 
-        color: '#94A3B8', 
-        fontSize: 12, 
-        fontWeight: '700', 
-        marginVertical: 20, 
+        color: COLORS.textMuted, 
+        fontSize: FONTS.xs, 
+        fontWeight: FONTS.bold, 
+        marginVertical: SPACING.xl, 
         letterSpacing: 1 
     },
     flatListContent: { 
-        paddingHorizontal: 15, 
-        paddingBottom: 20 
+        paddingHorizontal: SPACING.lg, 
+        paddingBottom: SPACING.xl 
     },
     
     // Messages
     botWrapper: { 
         flexDirection: 'row', 
         alignItems: 'flex-start', 
-        marginBottom: 20, 
+        marginBottom: SPACING.xl, 
         maxWidth: '85%' 
     },
     userWrapper: { 
         flexDirection: 'row', 
         alignItems: 'flex-start', 
         justifyContent: 'flex-end', 
-        marginBottom: 20, 
+        marginBottom: SPACING.xl, 
         alignSelf: 'flex-end', 
         maxWidth: '85%' 
     },
@@ -108,66 +106,179 @@ export const ChatStyles = StyleSheet.create({
         flex: 1 
     },
     botName: { 
-        color: '#00BCD4', 
-        fontWeight: 'bold', 
-        fontSize: 14, 
-        marginBottom: 5 
+        color: COLORS.primaryDark, 
+        fontWeight: FONTS.bold, 
+        fontSize: FONTS.sm, 
+        marginBottom: SPACING.xs 
     },
     userName: { 
-        color: '#94A3B8', 
-        fontWeight: 'bold', 
-        fontSize: 14, 
-        marginBottom: 5, 
+        color: COLORS.textSecondary, 
+        fontWeight: FONTS.bold, 
+        fontSize: FONTS.sm, 
+        marginBottom: SPACING.xs, 
         textAlign: 'right' 
     },
     botBubble: { 
-        backgroundColor: '#FFFFFF', 
-        padding: 15, 
-        borderRadius: 20, 
-        borderTopLeftRadius: 2, 
-        elevation: 1 
+        backgroundColor: COLORS.surface, 
+        padding: SPACING.lg, 
+        borderRadius: RADIUS.xl, 
+        borderTopLeftRadius: RADIUS.xs, 
+        ...SHADOWS.sm 
     },
     userBubble: { 
-        backgroundColor: '#00BCD4', 
-        padding: 15, 
-        borderRadius: 20, 
-        borderTopRightRadius: 2 
+        backgroundColor: COLORS.primary, 
+        padding: SPACING.lg, 
+        borderRadius: RADIUS.xl, 
+        borderTopRightRadius: RADIUS.xs 
     },
     botText: { 
-        fontSize: 15, 
-        lineHeight: 22, 
-        color: '#334155' 
+        fontSize: FONTS.md, 
+        lineHeight: FONTS.md * FONTS.normal, 
+        color: COLORS.textPrimary 
     },
-    userText: { fontSize: 15, lineHeight: 22, color: '#FFFFFF' },
+    userText: { 
+        fontSize: FONTS.md, 
+        lineHeight: FONTS.md * FONTS.normal, 
+        color: COLORS.white 
+    },
 
     // Avatars
-    avatarCircleBot: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#98C1BD', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-    avatarCircleUser: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#00BCD4', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+    avatarCircleBot: { 
+        width: scale(40), 
+        height: scale(40), 
+        borderRadius: RADIUS.full, 
+        backgroundColor: COLORS.primaryDark, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        marginRight: SPACING.sm 
+    },
+    avatarCircleUser: { 
+        width: scale(40), 
+        height: scale(40), 
+        borderRadius: RADIUS.full, 
+        backgroundColor: COLORS.primary, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        marginLeft: SPACING.sm 
+    },
 
     // Input & Chips
-    suggestionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingBottom: 20 },
-    suggestionChip: { backgroundColor: '#E0F7FA', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: '#B2EBF2' },
-    suggestionText: { color: '#00BCD4', fontSize: 13, fontWeight: '600' },
-    inputLayout: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 30, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 15, paddingVertical: 5, marginHorizontal: 15, marginBottom: 10 },
-    input: { flex: 1, height: 45, fontSize: 16, color: '#334155', marginHorizontal: 10 },
-    sendButton: { backgroundColor: '#00BCD4', width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    suggestionContainer: { 
+        flexDirection: 'row', 
+        justifyContent: 'center', 
+        gap: SPACING.sm, 
+        paddingBottom: SPACING.md 
+    },
+    suggestionChip: { 
+        backgroundColor: COLORS.primaryLight, 
+        paddingHorizontal: SPACING.lg, 
+        paddingVertical: SPACING.sm, 
+        borderRadius: RADIUS.full, 
+        borderWidth: 1, 
+        borderColor: COLORS.primary 
+    },
+    suggestionText: { 
+        color: COLORS.primaryDark, 
+        fontSize: FONTS.sm, 
+        fontWeight: FONTS.semibold 
+    },
+    inputLayout: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        backgroundColor: COLORS.surface, 
+        borderRadius: RADIUS.full, 
+        borderWidth: 1, 
+        borderColor: COLORS.border, 
+        paddingHorizontal: SPACING.lg, 
+        paddingVertical: SPACING.xs, 
+        marginHorizontal: SPACING.lg, 
+        marginBottom: layout.bottomInset > 0 ? layout.bottomInset : SPACING.md 
+    },
+    input: { 
+        flex: 1, 
+        height: vScale(45), 
+        fontSize: FONTS.md, 
+        color: COLORS.textPrimary, 
+        marginHorizontal: SPACING.sm 
+    },
+    sendButton: { 
+        backgroundColor: COLORS.primary, 
+        width: scale(40), 
+        height: scale(40), 
+        borderRadius: RADIUS.md, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    },
 
     // Modals
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { width: '85%', backgroundColor: 'white', borderRadius: 20, padding: 25, alignItems: 'center', elevation: 5 },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B', marginBottom: 15 },
-    modalDescription: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-    closeButton: { backgroundColor: '#00BCD4', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 10 },
-    closeButtonText: { color: 'white', fontWeight: 'bold' },
+    modalOverlay: { 
+        flex: 1, 
+        backgroundColor: COLORS.overlay, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+    },
+    modalContent: { 
+        width: '85%', 
+        backgroundColor: COLORS.surface, 
+        borderRadius: RADIUS.xl, 
+        padding: SPACING['2xl'], 
+        alignItems: 'center', 
+        ...SHADOWS.lg 
+    },
+    modalTitle: { 
+        fontSize: FONTS.lg, 
+        fontWeight: FONTS.bold, 
+        color: COLORS.textPrimary, 
+        marginBottom: SPACING.lg 
+    },
+    modalDescription: { 
+        fontSize: FONTS.sm, 
+        color: COLORS.textSecondary, 
+        textAlign: 'center', 
+        lineHeight: FONTS.sm * FONTS.normal, 
+        marginBottom: SPACING.xl 
+    },
+    closeButton: { 
+        backgroundColor: COLORS.primary, 
+        paddingHorizontal: SPACING['3xl'], 
+        paddingVertical: SPACING.md, 
+        borderRadius: RADIUS.md 
+    },
+    closeButtonText: { 
+        color: COLORS.white, 
+        fontWeight: FONTS.bold 
+    },
 
     // Bug Form Specifics
-    bugModalContent: { width: '90%', backgroundColor: 'white', borderRadius: 20, padding: 20, elevation: 10 },
-    bugInput: { backgroundColor: '#F1F5F9', borderRadius: 10, padding: 15, height: 150, textAlignVertical: 'top', fontSize: 15, color: '#1E293B', marginBottom: 20 },
-    bugButtonContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-    bugButton: { flex: 1, backgroundColor: '#00BCD4', paddingVertical: 12, borderRadius: 10, alignItems: 'center' }
+    bugModalContent: { 
+        width: '90%', 
+        backgroundColor: COLORS.surface, 
+        borderRadius: RADIUS.xl, 
+        padding: SPACING.xl, 
+        ...SHADOWS.lg 
+    },
+    bugInput: { 
+        backgroundColor: COLORS.surfaceAlt, 
+        borderRadius: RADIUS.md, 
+        padding: SPACING.lg, 
+        height: vScale(150), 
+        textAlignVertical: 'top', 
+        fontSize: FONTS.md, 
+        color: COLORS.textPrimary, 
+        marginBottom: SPACING.xl,
+        borderWidth: 1,
+        borderColor: COLORS.border
+    },
+    bugButtonContainer: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        gap: SPACING.md 
+    },
+    bugButton: { 
+        flex: 1, 
+        backgroundColor: COLORS.primary, 
+        paddingVertical: SPACING.md, 
+        borderRadius: RADIUS.md, 
+        alignItems: 'center' 
+    }
 });
-
-
-
-
-
