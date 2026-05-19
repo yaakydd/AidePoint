@@ -101,6 +101,7 @@ function MainAppNavigator() {
           headerShown: false,       // We use our own headers inside each screen
           tabBarShowLabel: false,   // No text labels — icons only
           tabBarStyle: styles.tabBar,
+          tabBarHideOnKeyboard: true,
 
           // tabBarIcon is called whenever this tab renders.
           // `focused` = true if this is the currently active tab.
