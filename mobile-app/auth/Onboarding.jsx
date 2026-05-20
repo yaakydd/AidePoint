@@ -1,12 +1,3 @@
-// screens/auth/OnboardingScreen.js
-//
-// 5 slides that teach the user how AidePoint works:
-//   1. Welcome — what the app is
-//   2. Patient details — how to fill the form before a scan
-//   3. Capture — how to take the microscope photo
-//   4. Reports — what happens after analysis
-//   5. AidePoint AI — the chatbot for help and guidance
-
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -17,21 +8,28 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
-  Platform,
 } from "react-native";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-const { width, height } = Dimensions.get("window");
+import {
+  COLORS,
+  FONTS,
+  SPACING,
+  RADIUS,
+  SHADOWS,
+  layout,
+  scale,
+  mScale,
+} from "../../assets/theme";
 
-// ─── SLIDE CONTENT ─────────────────────────────────────────────────────────
-// Each object defines one slide. We keep content in data (not JSX)
-// so adding a 6th slide is just adding one object here — no layout changes.
+const { width } = Dimensions.get("window");
+
 const SLIDES = [
   {
     id: "1",
     icon: "microscope",
-    color: "#0EA5E9",       // sky blue
+    color: "#0EA5E9",
     bg: "#E0F2FE",
     step: "01",
     title: "Welcome to AidePoint",
@@ -42,7 +40,7 @@ const SLIDES = [
   {
     id: "2",
     icon: "clipboard-text-outline",
-    color: "#6366F1",       // indigo
+    color: "#6366F1",
     bg: "#EEF2FF",
     step: "02",
     title: "Enter patient details first",
@@ -53,7 +51,7 @@ const SLIDES = [
   {
     id: "3",
     icon: "camera-outline",
-    color: "#F59E0B",       // amber
+    color: "#F59E0B",
     bg: "#FFFBEB",
     step: "03",
     title: "Capture the smear image",
@@ -64,7 +62,7 @@ const SLIDES = [
   {
     id: "4",
     icon: "file-chart-outline",
-    color: "#10B981",       // emerald
+    color: "#10B981",
     bg: "#ECFDF5",
     step: "04",
     title: "Read and share the report",
@@ -75,7 +73,7 @@ const SLIDES = [
   {
     id: "5",
     icon: "robot-outline",
-    color: "#EC4899",       // pink
+    color: "#EC4899",
     bg: "#FDF2F8",
     step: "05",
     title: "Ask AidePoint AI anything",
@@ -86,81 +84,62 @@ const SLIDES = [
 ];
 
 const OnboardingScreen = () => {
-  // currentIndex tracks which slide the user is on (0 to 4).
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // flatListRef lets us call scrollToIndex() programmatically
-  // when the user taps "Next" instead of swiping.
   const flatListRef = useRef(null);
 
   const navigation = useNavigation();
 
-  // ─── SCROLL HANDLER ──────────────────────────────────────────────────────
-  // FlatList calls this on every scroll event.
-  // contentOffset.x = how many pixels we've scrolled from the left.
-  // Dividing by screen width tells us which slide we're on.
-  // Math.round() handles partial scrolls gracefully.
   const handleScroll = (event) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
   };
 
-  // ─── NEXT BUTTON ─────────────────────────────────────────────────────────
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
-      // Scroll the FlatList to the next slide programmatically.
-      // animated: true = smooth sliding motion.
       flatListRef.current?.scrollToIndex({
         index: currentIndex + 1,
         animated: true,
       });
     } else {
-      // We're on the last slide. Take the user to pick their account type.
       navigation.navigate("UserType");
     }
   };
 
-  // ─── SKIP BUTTON ─────────────────────────────────────────────────────────
   const handleSkip = () => {
-    // Jump straight to UserType without finishing onboarding.
-    // The 'isFirstLaunch' flag will be written to AsyncStorage
-    // in AuthContext.login() after they complete signup/login,
-    // so onboarding won't show again next time.
     navigation.navigate("UserType");
   };
 
-  // ─── SLIDE RENDERER ──────────────────────────────────────────────────────
-  // FlatList calls this function once per item in SLIDES[].
-  // 'item' is one slide object. { width } makes each slide
-  // exactly as wide as the screen so pagingEnabled works correctly.
-  const renderSlide = ({ item, index }) => (
+  const renderSlide = ({ item }) => (
     <View style={[styles.slide, { width }]}>
-
-      {/* Step counter: "01 / 05" */}
       <Text style={[styles.stepCounter, { color: item.color }]}>
         {item.step} / 0{SLIDES.length}
       </Text>
 
-      {/* Large icon in a tinted circle */}
       <View style={[styles.iconCircle, { backgroundColor: item.bg }]}>
-        <MaterialCommunityIcons name={item.icon} size={80} color={item.color} />
+        <MaterialCommunityIcons
+          name={item.icon}
+          size={scale(80)}
+          color={item.color}
+        />
       </View>
 
       <Text style={styles.slideTitle}>{item.title}</Text>
-      <Text style={styles.slideDescription}>{item.description}</Text>
 
-      {/* Optional tip — only shown if the slide has one */}
+      <Text style={styles.slideDescription}>
+        {item.description}
+      </Text>
+
       {item.tip ? (
         <View style={[styles.tipBox, { borderLeftColor: item.color }]}>
-          <Text style={[styles.tipText, { color: item.color }]}>{item.tip}</Text>
+          <Text style={[styles.tipText, { color: item.color }]}>
+            {item.tip}
+          </Text>
         </View>
       ) : null}
     </View>
   );
 
-  // ─── DOT INDICATORS ──────────────────────────────────────────────────────
-  // Shows 5 dots at the bottom. The active dot is wider and coloured.
-  // This gives the user a sense of progress through the slides.
   const renderDots = () => (
     <View style={styles.dotsRow}>
       {SLIDES.map((slide, index) => (
@@ -169,10 +148,11 @@ const OnboardingScreen = () => {
           style={[
             styles.dot,
             {
-              // Active dot = slide's accent colour, wider pill shape
-              // Inactive dot = grey, small square
-              backgroundColor: index === currentIndex ? SLIDES[currentIndex].color : "#CBD5E1",
-              width: index === currentIndex ? 28 : 8,
+              backgroundColor:
+                index === currentIndex
+                  ? SLIDES[currentIndex].color
+                  : COLORS.border,
+              width: index === currentIndex ? scale(28) : scale(8),
             },
           ]}
         />
@@ -180,41 +160,42 @@ const OnboardingScreen = () => {
     </View>
   );
 
-  // Current slide data — used to colour the Next button dynamically
   const current = SLIDES[currentIndex];
   const isLastSlide = currentIndex === SLIDES.length - 1;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={COLORS.white}
+      />
 
-      {/* TOP ROW: logo + skip button */}
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
-          <MaterialCommunityIcons name="dna" size={22} color="#0EA5E9" />
+          <MaterialCommunityIcons
+            name="dna"
+            size={scale(22)}
+            color={COLORS.primary}
+          />
+
           <Text style={styles.logoText}>AidePoint</Text>
         </View>
 
-        {/* Hide Skip on the last slide — "Get Started" replaces it */}
         {!isLastSlide && (
-          <TouchableOpacity onPress={handleSkip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            onPress={handleSkip}
+            hitSlop={{
+              top: 10,
+              bottom: 10,
+              left: 10,
+              right: 10,
+            }}
+          >
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/*
-        THE SLIDESHOW
-        horizontal       = scrolls left/right
-        pagingEnabled    = snaps to complete slides, never halfway
-        showsHorizontalScrollIndicator={false} = no scrollbar
-        scrollEventThrottle={16} = fires onScroll ~60 times/sec
-                                   keeping the dot indicator smooth
-        getItemLayout    = a performance hint that tells FlatList
-                           "all items are exactly 'width' pixels wide,
-                           starting at offset width*index".
-                           Without it, FlatList has to measure each item first.
-      */}
       <FlatList
         ref={flatListRef}
         data={SLIDES}
@@ -233,41 +214,40 @@ const OnboardingScreen = () => {
         style={styles.flatList}
       />
 
-      {/* BOTTOM: dots + button */}
       <View style={styles.bottomSection}>
         {renderDots()}
 
         <TouchableOpacity
-          style={[styles.nextBtn, { backgroundColor: current.color }]}
+          style={[
+            styles.nextBtn,
+            { backgroundColor: current.color },
+          ]}
           onPress={handleNext}
           activeOpacity={0.85}
         >
-          {isLastSlide ? (
-            // Last slide: "Get Started" — implies moving forward to sign up
-            <>
-              <Text style={styles.nextBtnText}>Get Started</Text>
-              <Feather name="arrow-right" size={20} color="#FFFFFF" />
-            </>
-          ) : (
-            // Middle slides: "Next"
-            <>
-              <Text style={styles.nextBtnText}>Next</Text>
-              <Feather name="arrow-right" size={20} color="#FFFFFF" />
-            </>
-          )}
+          <Text style={styles.nextBtnText}>
+            {isLastSlide ? "Get Started" : "Next"}
+          </Text>
+
+          <Feather
+            name="arrow-right"
+            size={scale(20)}
+            color={COLORS.white}
+          />
         </TouchableOpacity>
 
-        {/* 
-          Sign in link at the very bottom — for existing users who already
-          completed onboarding before and are now logging into a new device.
-        */}
         <TouchableOpacity
           onPress={() => navigation.navigate("SignIn")}
           style={styles.signInLink}
         >
           <Text style={styles.signInText}>
             Already have an account?{" "}
-            <Text style={[styles.signInHighlight, { color: current.color }]}>
+            <Text
+              style={[
+                styles.signInHighlight,
+                { color: current.color },
+              ]}
+            >
               Sign In
             </Text>
           </Text>
@@ -280,126 +260,144 @@ const OnboardingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
   },
+
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === "android" ? 12 : 4,
-    paddingBottom: 8,
+    paddingHorizontal: SPACING["2xl"],
+    paddingTop: layout.statusBarHeight + SPACING.sm,
+    paddingBottom: SPACING.sm,
   },
+
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: SPACING.xs,
   },
+
   logoText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
   },
+
   skipText: {
-    fontSize: 15,
-    color: "#64748B",
-    fontWeight: "500",
+    fontSize: FONTS.md,
+    color: COLORS.textSecondary,
+    fontWeight: FONTS.medium,
   },
+
   flatList: {
     flex: 1,
   },
+
   slide: {
-    // Each slide is exactly one screen wide.
-    // This is required for pagingEnabled to snap correctly.
-    paddingHorizontal: 28,
-    paddingTop: 20,
+    paddingHorizontal: scale(28),
+    paddingTop: SPACING.xl,
     justifyContent: "center",
     alignItems: "center",
   },
+
   stepCounter: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.bold,
     letterSpacing: 1.5,
-    marginBottom: 28,
+    marginBottom: scale(28),
     alignSelf: "flex-start",
   },
+
   iconCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: scale(160),
+    height: scale(160),
+    borderRadius: RADIUS.full,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 36,
+    marginBottom: scale(36),
   },
+
   slideTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontSize: FONTS["2xl"],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: 14,
-    lineHeight: 32,
+    marginBottom: SPACING.md,
+    lineHeight: mScale(32),
   },
+
   slideDescription: {
-    fontSize: 15,
-    color: "#475569",
+    fontSize: FONTS.md,
+    color: COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 20,
+    lineHeight: mScale(24),
+    marginBottom: SPACING.xl,
   },
+
   tipBox: {
-    // Left-border accent — coloured border on the left, light background
-    borderLeftWidth: 3,
-    borderRadius: 0,          // no rounded corners on single-sided border
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderLeftWidth: scale(3),
+    backgroundColor: COLORS.surfaceAlt,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
     alignSelf: "stretch",
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
+
   tipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    lineHeight: mScale(18),
   },
+
   bottomSection: {
-    paddingHorizontal: 24,
-    paddingBottom: Platform.OS === "ios" ? 40 : 28,
-    paddingTop: 16,
+    paddingHorizontal: SPACING["2xl"],
+    paddingBottom:
+      layout.bottomInset + SPACING.lg,
+    paddingTop: SPACING.lg,
     alignItems: "center",
-    gap: 16,
+    gap: SPACING.lg,
   },
+
   dotsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: SPACING.xs,
   },
+
   dot: {
-    height: 8,
-    borderRadius: 4,           // pill shape at any width
+    height: scale(8),
+    borderRadius: RADIUS.full,
   },
+
   nextBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    paddingVertical: 16,
-    borderRadius: 14,
-    gap: 8,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    gap: SPACING.sm,
+    ...SHADOWS.sm,
   },
+
   nextBtnText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
+    color: COLORS.white,
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.semibold,
   },
+
   signInLink: {
-    paddingVertical: 4,
+    paddingVertical: SPACING.xs,
   },
+
   signInText: {
-    fontSize: 14,
-    color: "#64748B",
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
   },
+
   signInHighlight: {
-    fontWeight: "600",
+    fontWeight: FONTS.semibold,
   },
 });
 

@@ -246,7 +246,7 @@ export default function CameraView({ navigation }) {
         ref={cameraRef}
         style={s.camera}
         facing="back"
-        enableTorch={torchOn}
+        torch={torchOn ? 'on' : 'off'}
       />
 
       {/* OVERLAYS */}

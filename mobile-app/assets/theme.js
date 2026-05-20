@@ -30,9 +30,9 @@ export const SCREEN = { WIDTH: Screen_Width, HEIGHT: Screen_Height };
 //  Colours
 export const COLORS = {
   // Brand
-  primary:        '#0BC9DA',   
-  primaryLight:   '#E0F7FA',   
-  primaryDark:    '#0097A7',
+  primary:        '#00CFE8',   // AidePoint signature cyan #0BC9DA
+  primaryLight:   '#E0F7FA',   // Light cyan
+  primaryDark:    '#0097A7',   // Dark cyan
 
   // Backgrounds
   background:     '#F1F5F9',   // Page background (light blue-grey)

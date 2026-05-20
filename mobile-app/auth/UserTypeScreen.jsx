@@ -1,6 +1,4 @@
-// This screen lets the user identify themselves before they sign up or in.
-// Hospital users authenticate via hospital email (domain-matched by backend).
-// General users go through email + OTP verification.
+// screens/auth/UserTypeScreen.js
 
 import React from "react";
 import {
@@ -14,6 +12,17 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+
+import {
+  COLORS,
+  FONTS,
+  SPACING,
+  RADIUS,
+  SHADOWS,
+  layout,
+  scale,
+  mScale,
+} from "../../assets/theme";
 
 // Each card is a plain object which is easier to add more user types later
 const User_Types = [
@@ -54,7 +63,11 @@ const UserTypeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={COLORS.background}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -62,12 +75,22 @@ const UserTypeScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
-            <MaterialCommunityIcons name="microscope" size={28} color="#0EA5E9" />
+            <MaterialCommunityIcons
+              name="microscope"
+              size={scale(28)}
+              color={COLORS.primary}
+            />
+
             <Text style={styles.logoText}>AidePoint</Text>
           </View>
-          <Text style={styles.title}>How will you use AidePoint?</Text>
+
+          <Text style={styles.title}>
+            How will you use AidePoint?
+          </Text>
+
           <Text style={styles.subtitle}>
-            Choose the option that matches your situation. This sets up your account correctly.
+            Choose the option that matches your situation.
+            This sets up your account correctly.
           </Text>
         </View>
 
@@ -80,27 +103,52 @@ const UserTypeScreen = () => {
             activeOpacity={0.75}
           >
             {/* Icon area */}
-            <View style={[styles.cardIconBg, { backgroundColor: type.iconBg }]}>
+            <View
+              style={[
+                styles.cardIconBg,
+                { backgroundColor: type.iconBg },
+              ]}
+            >
               <MaterialCommunityIcons
                 name={type.icon}
-                size={38}
+                size={scale(38)}
                 color={type.iconColor}
               />
             </View>
 
             {/* Text content */}
             <View style={styles.cardBody}>
-              <Text style={styles.cardTitle}>{type.title}</Text>
-              <Text style={styles.cardDescription}>{type.description}</Text>
-              <View style={[styles.badge, { backgroundColor: type.badgeColor }]}>
-                <Text style={[styles.badgeText, { color: type.badgeTextColor }]}>
+              <Text style={styles.cardTitle}>
+                {type.title}
+              </Text>
+
+              <Text style={styles.cardDescription}>
+                {type.description}
+              </Text>
+
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: type.badgeColor },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: type.badgeTextColor },
+                  ]}
+                >
                   {type.badgeText}
                 </Text>
               </View>
             </View>
 
             {/* Arrow hint */}
-            <Feather name="chevron-right" size={20} color="#CBD5E1" />
+            <Feather
+              name="chevron-right"
+              size={scale(20)}
+              color={COLORS.border}
+            />
           </TouchableOpacity>
         ))}
 
@@ -111,7 +159,9 @@ const UserTypeScreen = () => {
         >
           <Text style={styles.signInText}>
             Already have an account?{" "}
-            <Text style={styles.signInHighlight}>Sign In</Text>
+            <Text style={styles.signInHighlight}>
+              Sign In
+            </Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -122,93 +172,111 @@ const UserTypeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
+
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingHorizontal: SPACING.pagePad,
+    paddingBottom: layout.bottomInset + SPACING["3xl"],
   },
+
   header: {
-    paddingTop: 36,
-    paddingBottom: 28,
+    paddingTop: scale(36),
+    paddingBottom: SPACING["2xl"],
   },
+
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 24,
+    gap: SPACING.sm,
+    marginBottom: SPACING["2xl"],
   },
+
   logoText: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontSize: FONTS["2xl"],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
   },
+
   title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 10,
+    fontSize: FONTS["2xl"],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+    lineHeight: mScale(32),
   },
+
   subtitle: {
-    fontSize: 15,
-    color: "#64748B",
-    lineHeight: 22,
+    fontSize: FONTS.md,
+    color: COLORS.textSecondary,
+    lineHeight: mScale(22),
   },
+
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    gap: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    borderWidth: scale(1.5),
+    borderColor: COLORS.border,
+    gap: SPACING.lg,
+    ...SHADOWS.sm,
   },
+
   cardIconBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
+    width: scale(64),
+    height: scale(64),
+    borderRadius: RADIUS.lg,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
+
   cardBody: {
     flex: 1,
   },
+
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 6,
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
   },
+
   cardDescription: {
-    fontSize: 13,
-    color: "#64748B",
-    lineHeight: 19,
-    marginBottom: 10,
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    lineHeight: mScale(19),
+    marginBottom: SPACING.sm,
   },
+
   badge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 20,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: scale(3),
+    borderRadius: RADIUS.full,
   },
+
   badgeText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.semibold,
   },
+
   signInLink: {
-    marginTop: 28,
+    marginTop: SPACING["2xl"],
     alignItems: "center",
   },
+
   signInText: {
-    fontSize: 15,
-    color: "#64748B",
+    fontSize: FONTS.md,
+    color: COLORS.textSecondary,
   },
+
   signInHighlight: {
-    color: "#0EA5E9",
-    fontWeight: "600",
+    color: COLORS.primary,
+    fontWeight: FONTS.semibold,
   },
 });
 

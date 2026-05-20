@@ -1,4 +1,6 @@
-import React, { useContext, useState } from "react";
+// screens/auth/SignUp.js
+
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,134 +10,200 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
-  KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { AuthContext } from "../context/AuthContext";
 
-const SignIn = () => {
-  // Controlled input state, every character the user types in the input textboxes is
-  // tracked here so we can read it, validate it and send it.
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+// ── FIX: import useAuth hook ──────────────────────────────────────────────
+// register is a NEW function added to AuthContext for Supabase signup.
+// login is still here too in case we need it after registration.
+import { useAuth } from "../../context/AuthContext";
 
-  // isSubmitting prevents double-taps and shows a spinner on the button
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const SignUp = () => {
+  const [fullName, setFullName]               = useState("");
+  const [professionalId, setProfessionalId]   = useState("");
+  const [institution, setInstitution]         = useState("");
+  const [email, setEmail]                     = useState("");
+  const [password, setPassword]               = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword]       = useState(false);
+  const [showConfirm, setShowConfirm]         = useState(false);
+  const [isSubmitting, setIsSubmitting]       = useState(false);
+  const [errors, setErrors]                   = useState({});
 
-  // errors is an object where each key matches a field name.
-  // Example: { email: "Please enter a valid email" }
-  const [errors, setErrors] = useState({});
-
-  const { login } = useContext(AuthContext);
+  // ── FIX: use the register function from AuthContext ───────────────────
+  // register({ email, password, fullName, userType }) calls
+  // supabase.auth.signUp() and returns { success, requiresConfirmation?, error? }
+  const { register } = useAuth();
   const navigation = useNavigation();
 
-  // useRoute enables us to read params passed from other screens.
-  // UserTypeScreen passes { userType: 'hospital' | 'personal' }
-  // so we can customise the placeholder text accordingly.
   const route = useRoute();
   const userType = route.params?.userType ?? "hospital";
+  const isHospital = userType === "hospital";
 
-  // VALIDATION 
-  // Returns true if all fields pass, false if anything fails.
-  // Also the 'errors' state is populated so the UI can show messages.
+  // ─── VALIDATION ──────────────────────────────────────────────────────────
   const validate = () => {
-    const newErrors = {};
+    const e = {};
+
+    if (!fullName.trim()) {
+      e.fullName = "Full name is required";
+    } else if (fullName.trim().length < 2) {
+      e.fullName = "Name must be at least 2 characters";
+    }
+
+    if (isHospital) {
+      if (!professionalId.trim()) e.professionalId = "Professional ID is required";
+      if (!institution.trim())    e.institution    = "Institution name is required";
+    }
 
     if (!email.trim()) {
-      newErrors.email = "Email is required";
+      e.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      // Basic email regex: something@something.something
-      newErrors.email = "Enter a valid email address";
+      e.email = "Enter a valid email address";
     }
 
     if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      e.password = "Password is required";
+    } else if (password.length < 8) {
+      e.password = "Must be at least 8 characters";
     }
 
-    setErrors(newErrors);
-    // No keys = no errors = valid
-    return Object.keys(newErrors).length === 0;
+    if (!confirmPassword) {
+      e.confirmPassword = "Please confirm your password";
+    } else if (password !== confirmPassword) {
+      e.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  // SIGN IN HANDLER 
-  const handleSignIn = async () => {
-    if (!validate()) return; // stops here if any field fails
+  const clearError = (field) => {
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
+  };
+
+  // ─── REGISTER HANDLER ────────────────────────────────────────────────────
+  const handleRegister = async () => {
+    if (!validate()) return;
 
     setIsSubmitting(true);
     try {
-      //  TODO: Replace block below with real API call 
-      // Example with your future backend:
+      // ── REAL SUPABASE CALL ──────────────────────────────────────────────
+      // register() inside AuthContext calls supabase.auth.signUp().
+      // It passes fullName and userType as user_metadata so the
+      // on_auth_user_created trigger can write them to the profiles table.
       //
-      //   const response = await fetch('https://your-api.com/auth/login', {
-      //     method: 'POST',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({ email, password, userType }),
-      //   });
-      //   const data = await response.json();
-      //   if (!response.ok) throw new Error(data.message);
-      //   await login(data.user);
-      //
-      //  Mock: simulates a 1-second network delay 
-      await new Promise((res) => setTimeout(res, 1000));
+      // For hospital users: professionalId and institution are stored for
+      // reference but Supabase auth itself just uses email + password.
+      // Hospital-specific validation (domain check) comes later via hospital-sso.
+      const result = await register({
+        email,
+        password,
+        fullName,
+        userType,
+      });
 
-      // This is what your backend will eventually return in data.user
-      const mockUser = {
-        id: "usr_001",
-        name: "Lab Technician",
-        email: email.trim().toLowerCase(),
-        role: userType === "hospital" ? "hospital_staff" : "solo_user",  // lab_technician | doctor | admin
-        userType,                  // hospital | solo
-        hospitalId: userType === "hospital" ? "hosp_001" : null,
-      };
+      if (!result.success) {
+        // Show the Supabase error message (e.g. "User already registered")
+        setErrors({ email: result.error });
+        return;
+      }
 
-      await login(mockUser);
-      // AppNavigator detects that 'user' is now non-null
-      // and automatically switches to MainAppNavigator.
-      // No manual navigation.navigate() needed here.
+      if (result.requiresConfirmation) {
+        // Email confirmation is turned ON in Supabase settings.
+        // User needs to check their inbox before they can log in.
+        Alert.alert(
+          "Check your email",
+          `We've sent a confirmation link to ${email.trim().toLowerCase()}. Click it to activate your account, then sign in.`,
+          [{ text: "Go to Sign In", onPress: () => navigation.navigate("SignIn") }]
+        );
+      }
+      // If requiresConfirmation = false:
+      // onAuthStateChange fires SIGNED_IN, setUser runs in AuthContext,
+      // AppNavigator detects user != null and renders MainAppNavigator.
+      // No navigation.navigate() needed here.
 
     } catch (error) {
-      Alert.alert(
-        "Sign In Failed",
-        error.message ?? "Something went wrong. Please try again."
-      );
+      Alert.alert("Registration Failed", error.message ?? "Please try again.");
     } finally {
-      // Always re-enable the button, success or failure
       setIsSubmitting(false);
     }
   };
 
-  // RENDER 
+  // ─── FIELD RENDERER HELPER ───────────────────────────────────────────────
+  // A plain function (not a component) that returns one field's JSX.
+  // The 'visible' prop lets hospital-only fields show/hide cleanly.
+  const renderField = ({
+    label,
+    iconName,
+    value,
+    onChangeText,
+    errorKey,
+    placeholder,
+    secureTextEntry = false,
+    showToggle = false,
+    showState,
+    toggleFn,
+    keyboardType = "default",
+    autoCapitalize = "words",
+    visible = true,
+  }) => {
+    if (!visible) return null;
+
+    const hasError = !!errors[errorKey];
+
+    return (
+      <View style={styles.fieldGroup} key={label}>
+        <Text style={styles.label}>{label}</Text>
+        <View style={[styles.inputBox, hasError && styles.inputBoxError]}>
+          <MaterialIcons
+            name={iconName}
+            size={20}
+            color={hasError ? "#EF4444" : "#94A3B8"}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={placeholder}
+            placeholderTextColor="#94A3B8"
+            value={value}
+            onChangeText={(text) => {
+              onChangeText(text);
+              clearError(errorKey);
+            }}
+            secureTextEntry={showToggle ? !showState : secureTextEntry}
+            keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            autoCorrect={false}
+          />
+          {showToggle && (
+            <TouchableOpacity
+              onPress={toggleFn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Feather
+                name={showState ? "eye-off" : "eye"}
+                size={20}
+                color="#94A3B8"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+        {hasError && <Text style={styles.errorText}>{errors[errorKey]}</Text>}
+      </View>
+    );
+  };
+
+  // ─── RENDER ──────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/*
-        KeyboardAvoidingView pushes the form UP when the keyboard opens,
-        so the active TextInput is never hidden behind it.
-
-        iOS uses "padding" so it adds padding to the bottom.
-        Android uses "height" so it shrinks the view height.
-        These behave differently per OS, which is why we check Platform.OS.
-      */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.flex}
-      >
-        {/*
-          keyboardShouldPersistTaps="handled" means tapping the Sign In button
-          while the keyboard is open won't dismiss the keyboard first so it will
-          immediately fire the button's onPress. Without this, users have to
-          tap twice: once to dismiss keyboard, once to submit.
-        */}
+      <View style={styles.flex}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -143,134 +211,155 @@ const SignIn = () => {
           <View style={styles.header}>
             <View style={styles.logoRow}>
               <MaterialCommunityIcons name="microscope" size={28} color="#0EA5E9" />
-              <Text style={styles.brandTitle}>AidePoint</Text>
+              <Text style={styles.logoText}>AidePoint</Text>
             </View>
-            <Text style={styles.mainTitle}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue your work</Text>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>
+              {isHospital
+                ? "Enter your professional details to register."
+                : "Create your individual AidePoint account."}
+            </Text>
           </View>
 
-          {/* Form  */}
-          <View style={styles.form}>
+          {renderField({
+            label: "Full Name",
+            iconName: "person",
+            value: fullName,
+            onChangeText: setFullName,
+            errorKey: "fullName",
+            placeholder: "e.g. Kwame Mensah",
+          })}
 
-            {/* Email */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.inputLabel}>
-                {userType === "hospital" ? "Hospital Email" : "Email Address"}
-              </Text>
-              <View style={[styles.inputBox, errors.email && styles.inputBoxError]}>
-                <Feather
-                  name="mail"
-                  size={20}
-                  color={errors.email ? "#EF4444" : "#94A3B8"}
-                />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder={
-                    userType === "hospital" ? "name@hospital.org" : "your@email.com"
-                  }
-                  placeholderTextColor="#94A3B8"
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    // Clear the error the moment the user starts correcting it
-                    if (errors.email) setErrors((p) => ({ ...p, email: null }));
-                  }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  returnKeyType="next"   // Shows "Next" on Android keyboard
-                />
-              </View>
-              {/* Inline error message under the field */}
-              {errors.email ? (
-                <Text style={styles.errorText}>{errors.email}</Text>
-              ) : null}
-            </View>
+          {renderField({
+            label: "Professional ID",
+            iconName: "badge",
+            value: professionalId,
+            onChangeText: setProfessionalId,
+            errorKey: "professionalId",
+            placeholder: "e.g. GHS-2024-001",
+            autoCapitalize: "characters",
+            visible: isHospital,
+          })}
 
-            {/* Password */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <View style={[styles.inputBox, errors.password && styles.inputBoxError]}>
-                <Feather
-                  name="lock"
-                  size={20}
-                  color={errors.password ? "#EF4444" : "#94A3B8"}
-                />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="••••••••"
-                  placeholderTextColor="#94A3B8"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    if (errors.password) setErrors((p) => ({ ...p, password: null }));
-                  }}
-                  returnKeyType="done"
-                  onSubmitEditing={handleSignIn} // pressing "Done" on keyboard submits
-                />
-                {/* Eye toggle: hitSlop makes the tap area larger than the icon itself */}
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Feather
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#94A3B8"
-                  />
-                </TouchableOpacity>
-              </View>
-              {errors.password ? (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              ) : null}
-            </View>
+          {renderField({
+            label: "Institution / Hospital",
+            iconName: "business",
+            value: institution,
+            onChangeText: setInstitution,
+            errorKey: "institution",
+            placeholder: "e.g. Korle Bu Teaching Hospital",
+            visible: isHospital,
+          })}
 
-            {/* Forgot Password */}
-            <TouchableOpacity
-              style={styles.forgotBtn}
-              onPress={() =>
-                Alert.alert(
-                  "Reset Password",
-                  "Password reset will be available once the backend is connected."
-                )
-              }
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
+          {renderField({
+            label: isHospital ? "Hospital Email" : "Email Address",
+            iconName: "email",
+            value: email,
+            onChangeText: setEmail,
+            errorKey: "email",
+            placeholder: isHospital ? "name@hospital.org" : "your@email.com",
+            keyboardType: "email-address",
+            autoCapitalize: "none",
+          })}
 
-            {/* SIGN IN BUTTON */}
-            <TouchableOpacity
-              style={[styles.signInBtn, isSubmitting && styles.btnDisabled]}
-              onPress={handleSignIn}
-              disabled={isSubmitting}   // prevents double-tap
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Text style={styles.signInBtnText}>Sign In</Text>
-                  <Feather name="arrow-right" size={20} color="#FFF" />
-                </>
-              )}
-            </TouchableOpacity>
+          {renderField({
+            label: "Password",
+            iconName: "lock",
+            value: password,
+            onChangeText: setPassword,
+            errorKey: "password",
+            placeholder: "Minimum 8 characters",
+            showToggle: true,
+            showState: showPassword,
+            toggleFn: () => setShowPassword(!showPassword),
+            autoCapitalize: "none",
+          })}
 
-            {/* SIGN UP LINK */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate("SignUp")}
-              style={styles.signUpLink}
-            >
-              <Text style={styles.baseText}>
-                Don't have an account?{" "}
-                <Text style={styles.signUpLinkText}>Sign Up</Text>
-              </Text>
-            </TouchableOpacity>
+          {renderField({
+            label: "Confirm Password",
+            iconName: "lock",
+            value: confirmPassword,
+            onChangeText: setConfirmPassword,
+            errorKey: "confirmPassword",
+            placeholder: "Re-enter your password",
+            showToggle: true,
+            showState: showConfirm,
+            toggleFn: () => setShowConfirm(!showConfirm),
+            autoCapitalize: "none",
+          })}
 
-          </View>
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.primaryButton, isSubmitting && styles.btnDisabled]}
+            onPress={handleRegister}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Register Account</Text>
+                <Feather name="arrow-right" size={20} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate("SignIn")}
+            style={styles.signInLink}
+          >
+            <Text style={styles.footerText}>
+              Already have an account?{" "}
+              <Text style={styles.linkText}>Sign In</Text>
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };
 
-export default SignIn;
+const styles = StyleSheet.create({
+  safeArea:      { flex: 1, backgroundColor: "#FFFFFF" },
+  flex:          { flex: 1 },
+  container:     { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+  header:        { paddingTop: 36, paddingBottom: 24 },
+  logoRow:       { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 24 },
+  logoText:      { fontSize: 22, fontWeight: "700", color: "#0F172A" },
+  title:         { fontSize: 26, fontWeight: "700", color: "#0F172A", marginBottom: 8 },
+  subtitle:      { fontSize: 14, color: "#64748B", lineHeight: 21 },
+  fieldGroup:    { marginBottom: 16 },
+  label:         { fontSize: 14, fontWeight: "600", color: "#374151", marginBottom: 8 },
+  inputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 14 : 10,
+    backgroundColor: "#F8FAFC",
+    gap: 10,
+  },
+  inputBoxError: { borderColor: "#EF4444", backgroundColor: "#FEF2F2" },
+  input:         { flex: 1, fontSize: 15, color: "#0F172A" },
+  errorText:     { fontSize: 12, color: "#EF4444", marginTop: 4, marginLeft: 2 },
+  primaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0EA5E9",
+    paddingVertical: 16,
+    borderRadius: 14,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  btnDisabled:   { opacity: 0.65 },
+  buttonText:    { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+  signInLink:    { alignItems: "center" },
+  footerText:    { fontSize: 14, color: "#64748B" },
+  linkText:      { color: "#0EA5E9", fontWeight: "600" },
+});
+
+export default SignUp;
