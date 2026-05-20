@@ -33,15 +33,13 @@ export const ChatStyles = StyleSheet.create({
     },
     flatListContent: {
         paddingHorizontal: SPACING.lg,
-        paddingBottom: SPACING.md,
+        paddingBottom: layout.tabBarHeight + SPACING.md,
     },
 
     // ── Interaction Deck (Floats neatly above TabBar) ───────────────────────
     bottomControlsDeck: {
         width: '100%',
         backgroundColor: 'transparent',
-        // Adds native tab bar padding when resting, clears it cleanly when keyboard lifts
-        marginBottom: layout.tabBarHeight, 
     },
 
     // ── Suggestion Chips Layout ──────────────────────────────────────────────
