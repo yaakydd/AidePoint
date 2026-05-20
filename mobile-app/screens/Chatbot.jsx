@@ -130,11 +130,11 @@ const Chatbot = () => {
             )}
 
             {/* ── Outer Layout System ──────────────────────────────────────── */}
-            <KeyboardAvoidingView
-                style={styles.mainLayoutBody}
-                behavior={Platform.OS === 'ios' ? 'padding' : null}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-            >
+<KeyboardAvoidingView
+    style={styles.mainLayoutBody}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}  // 'height' on Android, not null
+    keyboardVerticalOffset={0}   // Header is outside KAV so no offset needed
+>
                 {/* Chat Messages */}
                 <FlatList
                     ref={flatListRef}
