@@ -20,7 +20,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 // ── FIX: import useAuth hook ──────────────────────────────────────────────
 // register is a NEW function added to AuthContext for Supabase signup.
 // login is still here too in case we need it after registration.
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const SignUp = () => {
   const [fullName, setFullName]               = useState("");

@@ -21,7 +21,7 @@ const STORAGE_KEYS = {
 };
 
 // ─── CONTEXT ──────────────────────────────────────────────────────
-const AuthContext = createContext({});
+export const AuthContext = createContext({});
 
 // ─── PROVIDER ─────────────────────────────────────────────────────
 export function AuthProvider({ children }) {

@@ -12,15 +12,14 @@ import React, { useContext } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthContext } from "../context/AuthContext";
 
-// ── FIX for Bug 1 ──────────────────────────────────────────────────────────
 // The original code had:
 //   import Onboarding from "../auth/Onboarding";          ← wrong folder + wrong filename
 // Correct paths (adjust these if your folder structure differs):
-import OnboardingScreen from "../auth/OnboardingScreen";
-import UserTypeScreen   from "../auth/UserTypeScreen";
-import SignIn           from "../auth/SignIn";
-import SignUp           from "../auth/SignUp";
-// ───────────────────────────────────────────────────────────────────────────
+import OnboardingScreen from "../auth/Onboarding";
+import UserTypeScreen from "../auth/UserTypeScreen";
+import SignIn from "../auth/SignIn";
+import SignUp from "../auth/SignUp";
+
 
 const Stack = createNativeStackNavigator();
 

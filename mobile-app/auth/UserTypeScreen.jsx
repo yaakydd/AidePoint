@@ -22,7 +22,7 @@ import {
   layout,
   scale,
   mScale,
-} from "../../assets/theme";
+} from "../assets/theme";
 
 // Each card is a plain object which is easier to add more user types later
 const User_Types = [

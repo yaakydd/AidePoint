@@ -21,7 +21,7 @@ import {
   layout,
   scale,
   mScale,
-} from "../../assets/theme";
+} from "../assets/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -83,7 +83,7 @@ const SLIDES = [
   },
 ];
 
-const OnboardingScreen = () => {
+const Onboarding = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const flatListRef = useRef(null);
@@ -399,6 +399,6 @@ const styles = StyleSheet.create({
   signInHighlight: {
     fontWeight: FONTS.semibold,
   },
-}); d
+}); 
 
-export default OnboardingScreen;
+export default Onboarding;
