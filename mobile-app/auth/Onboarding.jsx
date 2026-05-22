@@ -399,6 +399,6 @@ const styles = StyleSheet.create({
   signInHighlight: {
     fontWeight: FONTS.semibold,
   },
-});
+}); d
 
 export default OnboardingScreen;
