@@ -1,372 +1,289 @@
 // screens/auth/SignUp.js
+//
+// Collects name, email, and password.
+// Does NOT call register() — that happens in UserTypeScreen
+// after the user picks hospital vs solo.
+//
+// On submit: validate → navigate('UserType', { pendingUser: { name, email, password } })
 
-import React, { useContext, useState } from "react";
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  StatusBar,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { AuthContext } from "../context/AuthContext";
+  View, Text, TextInput, TouchableOpacity,
+  ScrollView, ActivityIndicator, StyleSheet,
+  StatusBar, Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+
+import { useAuth } from '../context/AuthContext';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../assets/theme';
+import { Button } from '../components/Button';
 
 const SignUp = () => {
-  // ─── THE FIX FOR BUG #1 ──────────────────────────────────────────────────
-  // Every field needs its own useState variable.
-  // This makes the TextInput a "controlled component" — React owns the value.
-  // Without this, TextInputs are "uncontrolled" — React Native owns the value
-  // internally and you have NO way to read it in your JavaScript.
-  const [fullName, setFullName]             = useState("");
-  const [professionalId, setProfessionalId] = useState("");
-  const [institution, setInstitution]       = useState("");
-  const [email, setEmail]                   = useState("");
-  const [password, setPassword]             = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword]     = useState(false);
-  const [showConfirm, setShowConfirm]       = useState(false);
-  const [isSubmitting, setIsSubmitting]     = useState(false);
-  const [errors, setErrors]                 = useState({});
+  const [name,            setName]            = useState('');
+  const [email,           setEmail]           = useState('');
+  const [password,        setPassword]        = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPass,        setShowPass]        = useState(false);
+  const [showConfirm,     setShowConfirm]     = useState(false);
+  const [fieldErrors,     setFieldErrors]     = useState({});
 
-  const { login } = useContext(AuthContext);
+  // authError is set by AuthContext if register() fails (shown after UserType).
+  // clearError resets it when the user starts editing.
+  const { authError, clearError } = useAuth();
   const navigation = useNavigation();
 
-  // Read the userType param passed from UserTypeScreen or UserType card
-  const route = useRoute();
-  const userType = route.params?.userType ?? "hospital";
-  const isHospital = userType === "hospital";
-
-  // ─── VALIDATION ────────────────────────────────────────────────────────────
-  const validate = () => {
+  // ── Validation ────────────────────────────────────────────────────────────
+  function validate() {
     const e = {};
+    if (!name.trim())
+      e.name = 'Full name is required';
+    else if (name.trim().length < 2)
+      e.name = 'Name must be at least 2 characters';
 
-    if (!fullName.trim()) e.fullName = "Full name is required";
-    else if (fullName.trim().length < 2) e.fullName = "Name must be at least 2 characters";
+    if (!email.trim())
+      e.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      e.email = 'Enter a valid email address';
 
-    // These fields are only required for hospital users
-    if (isHospital) {
-      if (!professionalId.trim()) e.professionalId = "Professional ID is required";
-      if (!institution.trim())    e.institution    = "Institution name is required";
-    }
+    if (!password)
+      e.password = 'Password is required';
+    else if (password.length < 8)
+      e.password = 'Must be at least 8 characters';
 
-    if (!email.trim()) {
-      e.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      e.email = "Enter a valid email address";
-    }
+    if (!confirmPassword)
+      e.confirmPassword = 'Please confirm your password';
+    else if (password !== confirmPassword)
+      e.confirmPassword = 'Passwords do not match';
 
-    if (!password) {
-      e.password = "Password is required";
-    } else if (password.length < 8) {
-      e.password = "Must be at least 8 characters";
-    }
-
-    if (!confirmPassword) {
-      e.confirmPassword = "Please confirm your password";
-    } else if (password !== confirmPassword) {
-      e.confirmPassword = "Passwords do not match";
-    }
-
-    setErrors(e);
+    setFieldErrors(e);
     return Object.keys(e).length === 0;
-  };
+  }
 
-  // Clears the error for one field when the user starts correcting it
-  const clearError = (field) => {
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
-  };
+  function clearField(key) {
+    if (fieldErrors[key]) setFieldErrors(p => ({ ...p, [key]: null }));
+    clearError();
+  }
 
-  // ─── REGISTER HANDLER ──────────────────────────────────────────────────────
-  const handleRegister = async () => {
+  // ── Submit handler ────────────────────────────────────────────────────────
+  // We do NOT register here. We pass the collected data to UserTypeScreen
+  // as a route param. UserTypeScreen calls register() after the user picks
+  // hospital vs solo. This way the userType is included in the Supabase
+  // sign-up call and the trigger can set up the profile correctly.
+  function handleContinue() {
     if (!validate()) return;
+    navigation.navigate('UserType', {
+      pendingUser: {
+        name:     name.trim(),
+        email:    email.trim().toLowerCase(),
+        password,
+      },
+    });
+  }
 
-    setIsSubmitting(true);
-    try {
-      // ─── TODO: Replace with real API call ─────────────────────────────────
-      // For hospital users:
-      //   POST /auth/hospital/register
-      //   Body: { fullName, professionalId, institution, email, password }
-      //   Backend checks email domain against hospital's registered domain.
-      //
-      // For solo users:
-      //   POST /auth/solo/register
-      //   Body: { fullName, email, password }
-      //   Backend sends an OTP email; you'd then navigate to OTP verification.
-      //
-      // ─── Mock: 1.2 second delay ───────────────────────────────────────────
-      await new Promise((res) => setTimeout(res, 1200));
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      const newUser = {
-        id: `usr_${Date.now()}`,
-        name: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        password: password.trim(),
-        role: isHospital ? "hospital_staff" : "solo_user",
-        userType,
-        professionalId: isHospital ? professionalId.trim() : null,
-        institution:    isHospital ? institution.trim()    : null,
-      };
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoRow}>
+            <MaterialCommunityIcons name="microscope" size={28} color={COLORS.primary} />
+            <Text style={styles.logoText}>AidePoint</Text>
+          </View>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>
+            Set up your AidePoint account in two quick steps.
+          </Text>
+        </View>
 
-      await login(newUser);
-      // AppNavigator will pick up the new 'user' state and
-      // automatically render MainAppNavigator. No navigation.navigate needed.
+        {/* Auth error from a previous register() attempt */}
+        {authError ? (
+          <View style={styles.errorBanner}>
+            <Feather name="alert-circle" size={16} color="#DC2626" />
+            <Text style={styles.errorBannerText}>{authError}</Text>
+          </View>
+        ) : null}
 
-    } catch (error) {
-      Alert.alert("Registration Failed", error.message ?? "Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        {/* Full name */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Full Name</Text>
+          <View style={[styles.inputBox, fieldErrors.name && styles.inputBoxError]}>
+            <MaterialIcons name="person" size={20} color={fieldErrors.name ? '#EF4444' : '#94A3B8'} />
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Kwame Mensah"
+              placeholderTextColor="#94A3B8"
+              value={name}
+              onChangeText={t => { setName(t); clearField('name'); }}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+          </View>
+          {fieldErrors.name ? <Text style={styles.fieldError}>{fieldErrors.name}</Text> : null}
+        </View>
 
-  // ─── FIELD RENDERER HELPER ─────────────────────────────────────────────────
-  // Instead of the broken .map() approach, we use a helper function
-  // that renders one field at a time with full state control.
-  //
-  // This is NOT a component (no capital F). It's just a function
-  // that returns JSX. We call it inline: {renderField({ ... })}.
-  // The benefit: each field can have its own value/onChangeText/error
-  // while sharing the same layout code.
-  const renderField = ({
-    label,
-    iconName,
-    value,
-    onChangeText,
-    errorKey,
-    placeholder,
-    secureTextEntry = false,
-    showToggle = false,
-    showState,
-    toggleFn,
-    keyboardType = "default",
-    autoCapitalize = "words",
-    visible = true,
-  }) => {
-    // Conditionally show/hide hospital-only fields
-    if (!visible) return null;
+        {/* Email */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Email Address</Text>
+          <View style={[styles.inputBox, fieldErrors.email && styles.inputBoxError]}>
+            <MaterialIcons name="email" size={20} color={fieldErrors.email ? '#EF4444' : '#94A3B8'} />
+            <TextInput
+              style={styles.input}
+              placeholder="your@email.com"
+              placeholderTextColor="#94A3B8"
+              value={email}
+              onChangeText={t => { setEmail(t); clearField('email'); }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+            />
+          </View>
+          {fieldErrors.email ? <Text style={styles.fieldError}>{fieldErrors.email}</Text> : null}
+        </View>
 
-    const hasError = !!errors[errorKey];
-
-    return (
-      <View style={styles.fieldGroup} key={label}>
-        <Text style={styles.label}>{label}</Text>
-        <View style={[styles.inputBox, hasError && styles.inputBoxError]}>
-          <MaterialIcons
-            name={iconName}
-            size={20}
-            color={hasError ? "#EF4444" : "#94A3B8"}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={placeholder}
-            placeholderTextColor="#94A3B8"
-            // value connects this input to React state.
-            // Without this, the input is uncontrolled.
-            value={value}
-            // onChangeText fires every time the user types a character.
-            // We update state AND clear the field's error simultaneously.
-            onChangeText={(text) => {
-              onChangeText(text);
-              clearError(errorKey);
-            }}
-            // If showToggle is true, secureTextEntry is driven by showState.
-            // Otherwise it uses the secureTextEntry prop directly.
-            secureTextEntry={showToggle ? !showState : secureTextEntry}
-            keyboardType={keyboardType}
-            autoCapitalize={autoCapitalize}
-            autoCorrect={false}
-          />
-          {showToggle && (
+        {/* Password */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Password</Text>
+          <View style={[styles.inputBox, fieldErrors.password && styles.inputBoxError]}>
+            <MaterialIcons name="lock" size={20} color={fieldErrors.password ? '#EF4444' : '#94A3B8'} />
+            <TextInput
+              style={styles.input}
+              placeholder="Minimum 8 characters"
+              placeholderTextColor="#94A3B8"
+              value={password}
+              onChangeText={t => { setPassword(t); clearField('password'); }}
+              secureTextEntry={!showPass}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+            />
             <TouchableOpacity
-              onPress={toggleFn}
+              onPress={() => setShowPass(p => !p)}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Feather
-                name={showState ? "eye-off" : "eye"}
-                size={20}
-                color="#94A3B8"
-              />
+              <Feather name={showPass ? 'eye-off' : 'eye'} size={20} color="#94A3B8" />
             </TouchableOpacity>
-          )}
-        </View>
-        {hasError && <Text style={styles.errorText}>{errors[errorKey]}</Text>}
-      </View>
-    );
-  };
-
-  // ─── RENDER ────────────────────────────────────────────────────────────────
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-<View style={styles.flex}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoRow}>
-              <MaterialCommunityIcons name="microscope" size={28} color="#0EA5E9" />
-              <Text style={styles.logoText}>AidePoint</Text>
-            </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
-              {isHospital
-                ? "Enter your professional details to register."
-                : "Create your individual AidePoint account."}
-            </Text>
           </View>
+          {fieldErrors.password ? <Text style={styles.fieldError}>{fieldErrors.password}</Text> : null}
+        </View>
 
-          {/* Form Fields — each one is a controlled input */}
-          {renderField({
-            label: "Full Name",
-            iconName: "person",
-            value: fullName,
-            onChangeText: setFullName,
-            errorKey: "fullName",
-            placeholder: "e.g. Dr. Kwame Mensah",
-          })}
+        {/* Confirm password */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Confirm Password</Text>
+          <View style={[styles.inputBox, fieldErrors.confirmPassword && styles.inputBoxError]}>
+            <MaterialIcons name="lock" size={20} color={fieldErrors.confirmPassword ? '#EF4444' : '#94A3B8'} />
+            <TextInput
+              style={styles.input}
+              placeholder="Re-enter your password"
+              placeholderTextColor="#94A3B8"
+              value={confirmPassword}
+              onChangeText={t => { setConfirmPassword(t); clearField('confirmPassword'); }}
+              secureTextEntry={!showConfirm}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirm(p => !p)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Feather name={showConfirm ? 'eye-off' : 'eye'} size={20} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+          {fieldErrors.confirmPassword
+            ? <Text style={styles.fieldError}>{fieldErrors.confirmPassword}</Text>
+            : null}
+        </View>
 
-          {/* Only shown for hospital users */}
-          {renderField({
-            label: "Professional ID",
-            iconName: "badge",
-            value: professionalId,
-            onChangeText: setProfessionalId,
-            errorKey: "professionalId",
-            placeholder: "e.g. GHS-2024-001",
-            autoCapitalize: "characters",
-            visible: isHospital,
-          })}
+        {/* Continue button — goes to UserType, does NOT register yet */}
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.btnText}>Continue</Text>
+          <Feather name="arrow-right" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
 
-          {renderField({
-            label: "Institution / Hospital",
-            iconName: "business",
-            value: institution,
-            onChangeText: setInstitution,
-            errorKey: "institution",
-            placeholder: "e.g. Korle Bu Teaching Hospital",
-            visible: isHospital,
-          })}
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
 
-          {renderField({
-            label: isHospital ? "Hospital Email" : "Email Address",
-            iconName: "email",
-            value: email,
-            onChangeText: setEmail,
-            errorKey: "email",
-            placeholder: isHospital ? "name@hospital.org" : "your@email.com",
-            keyboardType: "email-address",
-            autoCapitalize: "none",
-          })}
+        {/* Google sign-in */}
+        <GoogleSignInButton label="Sign up with Google" />
 
-          {renderField({
-            label: "Password",
-            iconName: "lock",
-            value: password,
-            onChangeText: setPassword,
-            errorKey: "password",
-            placeholder: "Minimum 8 characters",
-            showToggle: true,
-            showState: showPassword,
-            toggleFn: () => setShowPassword(!showPassword),
-            autoCapitalize: "none",
-          })}
-
-          {/* Confirm password — new field not in original code */}
-          {renderField({
-            label: "Confirm Password",
-            iconName: "lock",
-            value: confirmPassword,
-            onChangeText: setConfirmPassword,
-            errorKey: "confirmPassword",
-            placeholder: "Re-enter your password",
-            showToggle: true,
-            showState: showConfirm,
-            toggleFn: () => setShowConfirm(!showConfirm),
-            autoCapitalize: "none",
-          })}
-
-          {/* Submit */}
-          <TouchableOpacity
-            style={[styles.primaryButton, isSubmitting && styles.btnDisabled]}
-            onPress={handleRegister}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.buttonText}>Register Account</Text>
-                <Feather name="arrow-right" size={20} color="#FFFFFF" />
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate("SignIn")}
-            style={styles.signInLink}
-          >
-            <Text style={styles.footerText}>
-              Already have an account?{" "}
-              <Text style={styles.linkText}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+        {/* Sign in link */}
+        <TouchableOpacity
+          style={styles.signInLink}
+          onPress={() => navigation.navigate('SignIn')}
+        >
+          <Text style={styles.footerText}>
+            Already have an account?{' '}
+            <Text style={styles.linkText}>Sign In</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
-  flex: { flex: 1 },
-  container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
-  header: { paddingTop: 36, paddingBottom: 24 },
-  logoRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 24 },
-  logoText: { fontSize: 22, fontWeight: "700", color: "#0F172A" },
-  title: { fontSize: 26, fontWeight: "700", color: "#0F172A", marginBottom: 8 },
-  subtitle: { fontSize: 14, color: "#64748B", lineHeight: 21 },
-  fieldGroup: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: "600", color: "#374151", marginBottom: 8 },
+  safe:        { flex: 1, backgroundColor: '#FFFFFF' },
+  container:   { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+  header:      { paddingTop: 48, paddingBottom: 28 },
+  logoRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 },
+  logoText:    { fontSize: 22, fontWeight: '700', color: '#0F172A' },
+  title:       { fontSize: 26, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+  subtitle:    { fontSize: 14, color: '#64748B', lineHeight: 21 },
+
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5',
+    borderRadius: 10, padding: 12, marginBottom: 16,
+  },
+  errorBannerText: { fontSize: 13, color: '#DC2626', flex: 1 },
+
+  fieldGroup:    { marginBottom: 16 },
+  label:         { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
   inputBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: Platform.OS === "ios" ? 14 : 10,
-    backgroundColor: "#F8FAFC",
-    gap: 10,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    backgroundColor: '#F8FAFC', gap: 10,
   },
-  inputBoxError: { borderColor: "#EF4444", backgroundColor: "#FEF2F2" },
-  input: { flex: 1, fontSize: 15, color: "#0F172A" },
-  errorText: { fontSize: 12, color: "#EF4444", marginTop: 4, marginLeft: 2 },
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0EA5E9",
-    paddingVertical: 16,
-    borderRadius: 14,
-    gap: 8,
-    marginTop: 8,
-    marginBottom: 20,
+  inputBoxError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+  input:         { flex: 1, fontSize: 15, color: '#0F172A' },
+  fieldError:    { fontSize: 12, color: '#EF4444', marginTop: 4, marginLeft: 2 },
+
+  btn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.primary, paddingVertical: 16,
+    borderRadius: 14, gap: 8, marginBottom: 20, marginTop: 4,
   },
-  btnDisabled: { opacity: 0.65 },
-  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
-  signInLink: { alignItems: "center" },
-  footerText: { fontSize: 14, color: "#64748B" },
-  linkText: { color: "#0EA5E9", fontWeight: "600" },
+  btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+
+  dividerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { fontSize: 13, color: '#94A3B8' },
+
+  signInLink: { alignItems: 'center', marginTop: 20 },
+  footerText: { fontSize: 14, color: '#64748B' },
+  linkText:   { color: COLORS.primary, fontWeight: '600' },
 });
 
 export default SignUp;

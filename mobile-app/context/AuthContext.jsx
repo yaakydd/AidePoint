@@ -1,139 +1,157 @@
 // context/AuthContext.js
 //
-// The central authentication state for the entire app.
-// Wrap your app in <AuthProvider> and use useAuth() anywhere
-// to access the user and auth functions.
+// Central auth state. Every screen reads user data and calls auth functions
+// from here. Wrap your app root in <AuthProvider>.
+//
+// AUTH FLOW (new user):
+//   SignUp → UserType → register() → [needsOnboarding=true] →
+//   OnboardingScreen → completeOnboardingSlides() → [needsConsent=true] →
+//   ConsentScreen → completeOnboarding() → MainApp
+//
+// AUTH FLOW (returning user):
+//   SignIn → login() → MainApp
+//
+// AUTH FLOW (Google – new user):
+//   loginWithGoogle() → fetchAndSetUser detects null user_type →
+//   [needsUserType=true] → UserTypeScreen → setUserType() → [needsOnboarding=true] →
+//   ... same as above
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-} from 'react';
-
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase }  from '../utils/supabase';
+import { supabase } from '../utils/supabase';
 
-// ─── ASYNC STORAGE KEYS ───────────────────────────────────────────
-// We keep these as constants so there are no typos across the app.
-const STORAGE_KEYS = {
-  HAS_LAUNCHED: 'aidepoint_has_launched', // true after first ever launch
+// ── AsyncStorage keys ────────────────────────────────────────────────────────
+// Per-user keys prevent one user's state from leaking to another on the same device.
+// The base key is static (for first-launch which is device-level).
+const KEYS = {
+  HAS_LAUNCHED:     'aidepoint_has_launched',
+  // Dynamic — always call as KEYS.needsOnboarding(userId) etc.
+  needsOnboarding:  (uid) => `aidepoint_needs_onboarding_${uid}`,
+  needsConsent:     (uid) => `aidepoint_needs_consent_${uid}`,
 };
 
-// ─── CONTEXT ──────────────────────────────────────────────────────
 export const AuthContext = createContext({});
 
-// ─── PROVIDER ─────────────────────────────────────────────────────
 export function AuthProvider({ children }) {
 
-  // ── State ────────────────────────────────────────────────────────
+  // ── State ────────────────────────────────────────────────────────────────
   const [user,          setUser]          = useState(null);
-  const [isLoading,     setIsLoading]     = useState(true);  // true while checking session
-  const [isFirstLaunch, setIsFirstLaunch] = useState(false); // true only on very first open
+  const [isLoading,     setIsLoading]     = useState(true);
+  const [isFirstLaunch, setIsFirstLaunch] = useState(false);
   const [authError,     setAuthError]     = useState(null);
 
+  // Post-signup flow gates. AppNavigator checks these in order:
+  //   needsUserType  → show UserTypeScreen (Google new users only)
+  //   needsOnboarding→ show OnboardingScreen (5 slides)
+  //   needsConsent   → show ConsentScreen (image storage preference)
+  const [needsUserType,   setNeedsUserType]   = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [needsConsent,    setNeedsConsent]    = useState(false);
 
-  // ── On mount: check session + first launch ───────────────────────
+
+  // ── Startup ──────────────────────────────────────────────────────────────
   useEffect(() => {
-
-    // 1. Check if this is the very first time the app has ever opened.
-    //    We store a flag in AsyncStorage after the first launch.
     checkFirstLaunch();
 
-    // 2. Check if there is already a saved session on this device.
-    //    @supabase/supabase-js automatically reads from AsyncStorage.
-    //    If there is a session, log the user in immediately without
-    //    asking them to enter their email/password again.
+    // Check for a persisted session (from a previous login).
+    // Supabase reads it from AsyncStorage automatically.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // Session exists — fetch the full profile and set the user.
         fetchAndSetUser(session);
       } else {
-        // No session — user will see the sign-in screen.
         setIsLoading(false);
       }
     });
 
-    // 3. Subscribe to auth state changes.
-    //    This fires whenever:
-    //      - A user logs in
-    //      - A user logs out
-    //      - The JWT token refreshes (every hour, automatic)
-    //    This is the single source of truth for auth state.
+    // Single source of truth for auth state.
+    // Fires on: login, logout, token refresh (every hour).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session) {
           await fetchAndSetUser(session);
         } else {
-          // Logged out — clear the user from state.
           setUser(null);
+          setNeedsUserType(false);
+          setNeedsOnboarding(false);
+          setNeedsConsent(false);
           setIsLoading(false);
         }
       }
     );
 
-    // Clean up the subscription when the component unmounts.
     return () => subscription.unsubscribe();
-
   }, []);
 
 
-  // ── Helpers ──────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
-  // Check and set whether this is the first time the app has opened.
   async function checkFirstLaunch() {
     try {
-      const hasLaunched = await AsyncStorage.getItem(STORAGE_KEYS.HAS_LAUNCHED);
-      if (!hasLaunched) {
-        // First ever launch — show onboarding.
+      const seen = await AsyncStorage.getItem(KEYS.HAS_LAUNCHED);
+      if (!seen) {
         setIsFirstLaunch(true);
-        // Mark that the app has been launched (so onboarding won't show again).
-        await AsyncStorage.setItem(STORAGE_KEYS.HAS_LAUNCHED, 'true');
+        await AsyncStorage.setItem(KEYS.HAS_LAUNCHED, 'true');
       }
     } catch (e) {
-      // If AsyncStorage fails, default to not showing onboarding.
       console.warn('AuthContext: checkFirstLaunch error', e);
     }
   }
 
-  // After getting a session, fetch the user's profile row from the
-  // profiles table and build the user object the app uses everywhere.
+  // Build the user object and restore any persisted flow-gate flags.
+  // Called every time a session is detected (startup or login).
   async function fetchAndSetUser(session) {
     try {
+      const uid = session.user.id;
+
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('id', uid)
         .single();
 
       if (error || !profile) {
-        // Profile not found — this can happen in a rare race condition
-        // right after signup (trigger hasn't fired yet). Fall back to
-        // auth metadata which was set during signUp.
+        // Race condition: trigger hasn't created the profile row yet.
+        // Fall back to auth metadata (set during signUp or Google auth).
         const meta = session.user.user_metadata ?? {};
         setUser({
-          id:          session.user.id,
-          name:        meta.name        ?? 'Unknown',
+          id:          uid,
+          name:        meta.name        ?? meta.full_name ?? 'Unknown',
           email:       session.user.email,
           role:        meta.role        ?? 'lab_technician',
-          userType:    meta.user_type   ?? 'solo',
+          userType:    meta.user_type   ?? null,
           hospitalId:  meta.hospital_id ?? null,
           storeImages: false,
           token:       session.access_token,
         });
+        // If we fell back and there's no user_type, treat as new Google user.
+        if (!meta.user_type) setNeedsUserType(true);
       } else {
-        // Profile found — use it as the source of truth.
         setUser({
-          id:          session.user.id,
+          id:          uid,
           name:        profile.name,
           email:       session.user.email,
-          role:        profile.role,
-          userType:    profile.user_type,
+          role:        profile.role       ?? 'lab_technician',
+          userType:    profile.user_type  ?? null,
           hospitalId:  profile.hospital_id ?? null,
           storeImages: profile.store_images ?? false,
           token:       session.access_token,
         });
+
+        // New Google user: user_type hasn't been set yet.
+        if (!profile.user_type) {
+          setNeedsUserType(true);
+        }
       }
+
+      // Restore persisted flow-gate flags from AsyncStorage.
+      // This survives app kills mid-onboarding flow.
+      const [ob, co] = await Promise.all([
+        AsyncStorage.getItem(KEYS.needsOnboarding(uid)),
+        AsyncStorage.getItem(KEYS.needsConsent(uid)),
+      ]);
+      if (ob === 'true') setNeedsOnboarding(true);
+      if (co === 'true') setNeedsConsent(true);
+
     } catch (e) {
       console.error('AuthContext: fetchAndSetUser error', e);
     } finally {
@@ -142,89 +160,161 @@ export function AuthProvider({ children }) {
   }
 
 
-  // ── Auth Functions ────────────────────────────────────────────────
+  // ── Auth Functions ────────────────────────────────────────────────────────
 
-  // LOGIN — email + password (solo users and hospital users until SSO is built)
-  //
-  // Returns: { success: true } or { success: false, error: 'message' }
-  //
-  // After a successful login, onAuthStateChange fires automatically
-  // and sets the user — you do NOT need to call setUser here.
+  // LOGIN (email + password)
+  // Called from SignInScreen.
+  // Returns { success: true } or { success: false, error: 'message' }
   async function login(email, password) {
     setAuthError(null);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
       if (error) throw error;
-
       return { success: true };
-
-    } catch (error) {
-      const message = error.message ?? 'Login failed. Please try again.';
-      setAuthError(message);
-      return { success: false, error: message };
+    } catch (e) {
+      const msg = e.message ?? 'Login failed. Please try again.';
+      setAuthError(msg);
+      return { success: false, error: msg };
     }
   }
 
 
-  // REGISTER — create a new solo lab technician account
+  // REGISTER (email + password)
+  // Called from UserTypeScreen AFTER the user fills in the form in SignUp
+  // and picks their user type. UserType passes { name, email, password, userType }.
   //
-  // What happens behind the scenes:
-  //   1. Supabase Auth creates a new user in auth.users
-  //   2. The trigger (on_auth_user_created) fires and creates a
-  //      row in the profiles table automatically
-  //   3. onAuthStateChange fires and sets the user
+  // What happens:
+  //   1. Supabase Auth creates the user in auth.users
+  //   2. The on_auth_user_created trigger creates the profiles row using the metadata
+  //   3. onAuthStateChange fires → fetchAndSetUser → user is set
+  //   4. We persist flow-gate flags in AsyncStorage so they survive app kills
   //
-  // Returns: { success: true } or { success: false, error: 'message' }
-  async function register(name, email, password) {
+  // Returns { success: true } or { success: false, error: 'message' }
+  async function register({ name, email, password, userType = 'solo' }) {
     setAuthError(null);
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
         password,
         options: {
-          // This data is passed to the trigger so it can create
-          // the profile row with the right values.
+          // This metadata is used by the on_auth_user_created trigger
+          // to populate the profiles table row automatically.
           data: {
-            name,
+            name:      name.trim(),
             role:      'lab_technician',
-            user_type: 'solo',
-            // hospital_id is null for solo users — not included here
+            user_type: userType,
           },
         },
       });
 
       if (error) throw error;
 
-      return { success: true };
+      // Email confirmation is OFF in dev, so data.session exists immediately.
+      // If you turn it ON, data.session will be null and the user needs
+      // to verify their email before onAuthStateChange fires.
+      const requiresConfirmation = !data.session;
 
-    } catch (error) {
-      const message = error.message ?? 'Registration failed. Please try again.';
-      setAuthError(message);
-      return { success: false, error: message };
+      if (!requiresConfirmation && data.user) {
+        const uid = data.user.id;
+        // Persist flow-gate flags. These are read back in fetchAndSetUser
+        // if the app is killed and relaunched mid-flow.
+        await AsyncStorage.setItem(KEYS.needsOnboarding(uid), 'true');
+        await AsyncStorage.setItem(KEYS.needsConsent(uid),    'true');
+        setNeedsOnboarding(true);
+        setNeedsConsent(true);
+      }
+
+      return { success: true, requiresConfirmation };
+
+    } catch (e) {
+      const msg = e.message ?? 'Registration failed. Please try again.';
+      setAuthError(msg);
+      return { success: false, error: msg };
     }
   }
 
 
-  // LOGOUT — clears session from device and state
-  async function logout() {
+  // LOGIN WITH GOOGLE
+  // Called with the id_token received from expo-auth-session / Google OAuth.
+  // Supabase exchanges it for a session internally.
+  //
+  // New Google users will have a null user_type in their profile.
+  // fetchAndSetUser detects this and sets needsUserType=true,
+  // which routes them through UserTypeScreen → Onboarding → Consent.
+  //
+  // Returning Google users skip all of that (flags already cleared).
+  async function loginWithGoogle(idToken) {
     setAuthError(null);
-    await supabase.auth.signOut();
-    // onAuthStateChange fires after this and sets user to null automatically.
+    try {
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token:    idToken,
+      });
+      if (error) throw error;
+      // onAuthStateChange fires → fetchAndSetUser handles the rest.
+      return { success: true };
+    } catch (e) {
+      const msg = e.message ?? 'Google sign-in failed. Please try again.';
+      setAuthError(msg);
+      return { success: false, error: msg };
+    }
   }
 
 
-  // COMPLETE ONBOARDING
-  //
-  // Called at the end of the onboarding flow.
-  // Saves the user's image storage preference (store_images) to their
-  // profile in the database. This is the preference the app uses from
-  // now on whenever a scan is submitted.
-  //
-  // storeImages: boolean — did the user agree to store images?
+  // SET USER TYPE (for Google new users — called from UserTypeScreen)
+  // Updates the profiles row, clears needsUserType,
+  // and sets the onboarding flags.
+  async function setUserType(userType) {
+    try {
+      if (!user) return { success: false };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ user_type: userType })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      await AsyncStorage.setItem(KEYS.needsOnboarding(user.id), 'true');
+      await AsyncStorage.setItem(KEYS.needsConsent(user.id),    'true');
+
+      setUser(prev => ({ ...prev, userType }));
+      setNeedsUserType(false);
+      setNeedsOnboarding(true);
+      setNeedsConsent(true);
+
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+
+  // COMPLETE ONBOARDING SLIDES (called from OnboardingScreen "Get Started")
+  // Clears the onboarding flag and advances to the ConsentScreen.
+  async function completeOnboardingSlides() {
+    try {
+      if (user) {
+        await AsyncStorage.removeItem(KEYS.needsOnboarding(user.id));
+      }
+      setNeedsOnboarding(false);
+      // needsConsent is still true → AppNavigator shows ConsentScreen next.
+    } catch (e) {
+      console.warn('AuthContext: completeOnboardingSlides error', e);
+      setNeedsOnboarding(false); // Always advance the user
+    }
+  }
+
+
+  // COMPLETE ONBOARDING / CONSENT (called from ConsentScreen)
+  // Saves the image storage preference to the profile,
+  // then clears needsConsent so AppNavigator shows the main app.
   async function completeOnboarding(storeImages) {
     try {
-      if (!user) return;
+      if (!user) return { success: false };
 
       const { error } = await supabase
         .from('profiles')
@@ -232,28 +322,26 @@ export function AuthProvider({ children }) {
         .eq('id', user.id);
 
       if (error) {
-        console.warn('AuthContext: completeOnboarding error', error);
-        return { success: false };
+        // DB failure is non-fatal. The default (false) is the safe fallback.
+        console.warn('AuthContext: completeOnboarding DB error', error);
       }
 
-      // Update local user state so the app reflects the new preference immediately.
+      await AsyncStorage.removeItem(KEYS.needsConsent(user.id));
+
       setUser(prev => ({ ...prev, storeImages }));
+      setNeedsConsent(false);
 
       return { success: true };
-
     } catch (e) {
       console.error('AuthContext: completeOnboarding error', e);
+      setNeedsConsent(false); // Always let the user through
       return { success: false };
     }
   }
 
 
-  // UPDATE STORE IMAGES PREFERENCE
-  //
-  // Called from ProfileScreen when the user toggles the
-  // image storage preference after onboarding.
-  //
-  // storeImages: boolean
+  // UPDATE STORE IMAGES (called from ProfileScreen)
+  // Lets the user change their image storage preference after onboarding.
   async function updateStoreImages(storeImages) {
     try {
       if (!user) return { success: false };
@@ -265,50 +353,58 @@ export function AuthProvider({ children }) {
 
       if (error) throw error;
 
-      // Update local state immediately so the UI reflects it right away.
       setUser(prev => ({ ...prev, storeImages }));
-
       return { success: true };
-
     } catch (e) {
-      const message = e.message ?? 'Could not update preference.';
-      console.error('AuthContext: updateStoreImages error', e);
-      return { success: false, error: message };
+      return { success: false, error: e.message ?? 'Could not update preference.' };
     }
   }
 
 
-  // CLEAR ERROR
-  // Call this whenever you want to dismiss an error message in the UI.
+  // LOGOUT
+  async function logout() {
+    setAuthError(null);
+    setNeedsUserType(false);
+    setNeedsOnboarding(false);
+    setNeedsConsent(false);
+    await supabase.auth.signOut();
+    // onAuthStateChange fires → user set to null → AppNavigator shows AuthNavigator.
+  }
+
+
+  // CLEAR ERROR (call when user starts editing after seeing an error)
   function clearError() {
     setAuthError(null);
   }
 
 
-  // ── Context Value ────────────────────────────────────────────────
   return (
     <AuthContext.Provider value={{
       // State
-      user,           // null when logged out, user object when logged in
-      isLoading,      // true while checking session on startup
-      isFirstLaunch,  // true only on the very first app open ever
-      authError,      // string error message, or null
+      user,
+      isLoading,
+      isFirstLaunch,
+      authError,
+      needsUserType,
+      needsOnboarding,
+      needsConsent,
 
-      // Auth actions
+      // Auth
       login,
       register,
+      loginWithGoogle,
       logout,
       clearError,
 
-      // Onboarding + preferences
-      completeOnboarding,   // called once at end of onboarding
-      updateStoreImages,    // called from ProfileScreen
+      // Post-signup flow
+      setUserType,
+      completeOnboardingSlides,
+      completeOnboarding,
+      updateStoreImages,
     }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ─── HOOK ─────────────────────────────────────────────────────────
-// Use this in any screen: const { user, login, logout } = useAuth();
 export const useAuth = () => useContext(AuthContext);

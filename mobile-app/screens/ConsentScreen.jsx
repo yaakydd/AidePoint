@@ -19,8 +19,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 
-import { useAuth } from '../../context/AuthContext';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale, mScale } from '../../assets/theme';
+import { useAuth } from '../context/AuthContext';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale, mScale } from '../assets/theme';
 
 // What each choice means — shown as info cards on the screen
 const INFO_ITEMS = [

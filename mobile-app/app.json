@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "AideProject",
-    "slug": "AideProject",
+    "name": "AidePoint",
+    "slug": "AidePoint",
+    "scheme": "myapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,10 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
-      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.aidepoint.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,7 +35,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1300091e-e1a7-4407-87eb-a92b161e97be"
+      }
+    }
   }
 }

@@ -10,6 +10,7 @@ import {
   StatusBar,
 } from "react-native";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { useAuth } from '../context/AuthContext';
 import { useNavigation } from "@react-navigation/native";
 
 import {
@@ -89,26 +90,30 @@ const Onboarding = () => {
   const flatListRef = useRef(null);
 
   const navigation = useNavigation();
+  const { completeOnboardingSlides } = useAuth();
 
   const handleScroll = (event) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
   };
 
-  const handleNext = () => {
-    if (currentIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToIndex({
-        index: currentIndex + 1,
-        animated: true,
-      });
-    } else {
-      navigation.navigate("UserType");
-    }
-  };
+const handleNext = () => {
+  if (currentIndex < SLIDES.length - 1) {
+    flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+  } else {
+    // User has seen all 5 slides. Mark onboarding as done.
+    // AuthContext clears needsOnboarding → AppNavigator shows ConsentScreen.
+    completeOnboardingSlides();
+  }
+};
 
-  const handleSkip = () => {
-    navigation.navigate("UserType");
-  };
+// Remove the "Sign In" link entirely — user is already logged in here:
+// DELETE the entire <TouchableOpacity onPress={() => navigation.navigate('SignIn')}> block
+// and the handleSkip still navigates to the first slide — update it too:
+const handleSkip = () => {
+  // Skip all slides and go straight to consent.
+  completeOnboardingSlides();
+};
 
   const renderSlide = ({ item }) => (
     <View style={[styles.slide, { width }]}>

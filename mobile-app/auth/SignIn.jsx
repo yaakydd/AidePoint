@@ -1,365 +1,262 @@
-// screens/auth/SignUp.js
+// screens/auth/SignIn.js
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  StatusBar,
-  Platform,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+  View, Text, TextInput, TouchableOpacity,
+  ScrollView, ActivityIndicator, StyleSheet,
+  StatusBar, Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
-// ── FIX: import useAuth hook ──────────────────────────────────────────────
-// register is a NEW function added to AuthContext for Supabase signup.
-// login is still here too in case we need it after registration.
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/Button';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../assets/theme';
 
-const SignUp = () => {
-  const [fullName, setFullName]               = useState("");
-  const [professionalId, setProfessionalId]   = useState("");
-  const [institution, setInstitution]         = useState("");
-  const [email, setEmail]                     = useState("");
-  const [password, setPassword]               = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword]       = useState(false);
-  const [showConfirm, setShowConfirm]         = useState(false);
-  const [isSubmitting, setIsSubmitting]       = useState(false);
-  const [errors, setErrors]                   = useState({});
+const SignIn = () => {
+  const [email,       setEmail]       = useState('');
+  const [password,    setPassword]    = useState('');
+  const [showPass,    setShowPass]    = useState(false);
+  const [isLoading,   setIsLoading]   = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  // ── FIX: use the register function from AuthContext ───────────────────
-  // register({ email, password, fullName, userType }) calls
-  // supabase.auth.signUp() and returns { success, requiresConfirmation?, error? }
-  const { register } = useAuth();
+  // login()     → calls supabase.auth.signInWithPassword()
+  // authError   → set by AuthContext if Supabase returns an error
+  // clearError  → call when user starts editing after an error
+  const { login, authError, clearError } = useAuth();
   const navigation = useNavigation();
 
-  const route = useRoute();
-  const userType = route.params?.userType ?? "hospital";
-  const isHospital = userType === "hospital";
-
-  // ─── VALIDATION ──────────────────────────────────────────────────────────
-  const validate = () => {
+  // ── Validation ─────────────────────────────────────────────────────────────
+  function validate() {
     const e = {};
-
-    if (!fullName.trim()) {
-      e.fullName = "Full name is required";
-    } else if (fullName.trim().length < 2) {
-      e.fullName = "Name must be at least 2 characters";
-    }
-
-    if (isHospital) {
-      if (!professionalId.trim()) e.professionalId = "Professional ID is required";
-      if (!institution.trim())    e.institution    = "Institution name is required";
-    }
-
-    if (!email.trim()) {
-      e.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      e.email = "Enter a valid email address";
-    }
-
-    if (!password) {
-      e.password = "Password is required";
-    } else if (password.length < 8) {
-      e.password = "Must be at least 8 characters";
-    }
-
-    if (!confirmPassword) {
-      e.confirmPassword = "Please confirm your password";
-    } else if (password !== confirmPassword) {
-      e.confirmPassword = "Passwords do not match";
-    }
-
-    setErrors(e);
+    if (!email.trim())
+      e.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      e.email = 'Enter a valid email address';
+    if (!password)
+      e.password = 'Password is required';
+    setFieldErrors(e);
     return Object.keys(e).length === 0;
-  };
+  }
 
-  const clearError = (field) => {
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
-  };
+  function clearField(key) {
+    if (fieldErrors[key]) setFieldErrors(p => ({ ...p, [key]: null }));
+    clearError(); // also clears the Supabase-level error from context
+  }
 
-  // ─── REGISTER HANDLER ────────────────────────────────────────────────────
-  const handleRegister = async () => {
+  // ── Login handler ──────────────────────────────────────────────────────────
+  async function handleLogin() {
     if (!validate()) return;
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     try {
-      // ── REAL SUPABASE CALL ──────────────────────────────────────────────
-      // register() inside AuthContext calls supabase.auth.signUp().
-      // It passes fullName and userType as user_metadata so the
-      // on_auth_user_created trigger can write them to the profiles table.
-      //
-      // For hospital users: professionalId and institution are stored for
-      // reference but Supabase auth itself just uses email + password.
-      // Hospital-specific validation (domain check) comes later via hospital-sso.
-      const result = await register({
-        email,
-        password,
-        fullName,
-        userType,
-      });
+      const result = await login(email, password);
 
       if (!result.success) {
-        // Show the Supabase error message (e.g. "User already registered")
-        setErrors({ email: result.error });
-        return;
+        // authError in context is already set by login().
+        // We also push it into fieldErrors so it shows under the email field.
+        setFieldErrors({ email: result.error });
       }
+      // On success: onAuthStateChange fires in AuthContext → user is set →
+      // AppNavigator switches to MainApp automatically. No navigate() needed.
 
-      if (result.requiresConfirmation) {
-        // Email confirmation is turned ON in Supabase settings.
-        // User needs to check their inbox before they can log in.
-        Alert.alert(
-          "Check your email",
-          `We've sent a confirmation link to ${email.trim().toLowerCase()}. Click it to activate your account, then sign in.`,
-          [{ text: "Go to Sign In", onPress: () => navigation.navigate("SignIn") }]
-        );
-      }
-      // If requiresConfirmation = false:
-      // onAuthStateChange fires SIGNED_IN, setUser runs in AuthContext,
-      // AppNavigator detects user != null and renders MainAppNavigator.
-      // No navigation.navigate() needed here.
-
-    } catch (error) {
-      Alert.alert("Registration Failed", error.message ?? "Please try again.");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
-  };
+  }
 
-  // ─── FIELD RENDERER HELPER ───────────────────────────────────────────────
-  // A plain function (not a component) that returns one field's JSX.
-  // The 'visible' prop lets hospital-only fields show/hide cleanly.
-  const renderField = ({
-    label,
-    iconName,
-    value,
-    onChangeText,
-    errorKey,
-    placeholder,
-    secureTextEntry = false,
-    showToggle = false,
-    showState,
-    toggleFn,
-    keyboardType = "default",
-    autoCapitalize = "words",
-    visible = true,
-  }) => {
-    if (!visible) return null;
-
-    const hasError = !!errors[errorKey];
-
-    return (
-      <View style={styles.fieldGroup} key={label}>
-        <Text style={styles.label}>{label}</Text>
-        <View style={[styles.inputBox, hasError && styles.inputBoxError]}>
-          <MaterialIcons
-            name={iconName}
-            size={20}
-            color={hasError ? "#EF4444" : "#94A3B8"}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={placeholder}
-            placeholderTextColor="#94A3B8"
-            value={value}
-            onChangeText={(text) => {
-              onChangeText(text);
-              clearError(errorKey);
-            }}
-            secureTextEntry={showToggle ? !showState : secureTextEntry}
-            keyboardType={keyboardType}
-            autoCapitalize={autoCapitalize}
-            autoCorrect={false}
-          />
-          {showToggle && (
-            <TouchableOpacity
-              onPress={toggleFn}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Feather
-                name={showState ? "eye-off" : "eye"}
-                size={20}
-                color="#94A3B8"
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-        {hasError && <Text style={styles.errorText}>{errors[errorKey]}</Text>}
-      </View>
-    );
-  };
-
-  // ─── RENDER ──────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={styles.flex}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoRow}>
-              <MaterialCommunityIcons name="microscope" size={28} color="#0EA5E9" />
-              <Text style={styles.logoText}>AidePoint</Text>
-            </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
-              {isHospital
-                ? "Enter your professional details to register."
-                : "Create your individual AidePoint account."}
-            </Text>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Logo */}
+        <View style={styles.header}>
+          <View style={styles.logoRow}>
+            <MaterialCommunityIcons name="microscope" size={28} color={COLORS.primary} />
+            <Text style={styles.logoText}>AidePoint</Text>
           </View>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Sign in to your AidePoint account</Text>
+        </View>
 
-          {renderField({
-            label: "Full Name",
-            iconName: "person",
-            value: fullName,
-            onChangeText: setFullName,
-            errorKey: "fullName",
-            placeholder: "e.g. Kwame Mensah",
-          })}
+        {/* Global auth error banner (from Supabase) */}
+        {authError ? (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+            <Text style={styles.errorBannerText}>{authError}</Text>
+          </View>
+        ) : null}
 
-          {renderField({
-            label: "Professional ID",
-            iconName: "badge",
-            value: professionalId,
-            onChangeText: setProfessionalId,
-            errorKey: "professionalId",
-            placeholder: "e.g. GHS-2024-001",
-            autoCapitalize: "characters",
-            visible: isHospital,
-          })}
+        {/* Email */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Email Address</Text>
+          <View style={[styles.inputBox, fieldErrors.email && styles.inputBoxError]}>
+            <MaterialIcons
+              name="email"
+              size={20}
+              color={fieldErrors.email ? '#EF4444' : '#94A3B8'}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="your@email.com"
+              placeholderTextColor="#94A3B8"
+              value={email}
+              onChangeText={t => { setEmail(t); clearField('email'); }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+            />
+          </View>
+          {fieldErrors.email
+            ? <Text style={styles.fieldError}>{fieldErrors.email}</Text>
+            : null}
+        </View>
 
-          {renderField({
-            label: "Institution / Hospital",
-            iconName: "business",
-            value: institution,
-            onChangeText: setInstitution,
-            errorKey: "institution",
-            placeholder: "e.g. Korle Bu Teaching Hospital",
-            visible: isHospital,
-          })}
+        {/* Password */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Password</Text>
+          <View style={[styles.inputBox, fieldErrors.password && styles.inputBoxError]}>
+            <MaterialIcons
+              name="lock"
+              size={20}
+              color={fieldErrors.password ? '#EF4444' : '#94A3B8'}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Your password"
+              placeholderTextColor="#94A3B8"
+              value={password}
+              onChangeText={t => { setPassword(t); clearField('password'); }}
+              secureTextEntry={!showPass}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+            />
+            <TouchableOpacity
+              onPress={() => setShowPass(p => !p)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Feather name={showPass ? 'eye-off' : 'eye'} size={20} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+          {fieldErrors.password
+            ? <Text style={styles.fieldError}>{fieldErrors.password}</Text>
+            : null}
+        </View>
 
-          {renderField({
-            label: isHospital ? "Hospital Email" : "Email Address",
-            iconName: "email",
-            value: email,
-            onChangeText: setEmail,
-            errorKey: "email",
-            placeholder: isHospital ? "name@hospital.org" : "your@email.com",
-            keyboardType: "email-address",
-            autoCapitalize: "none",
-          })}
+        {/* Forgot password */}
+        <TouchableOpacity style={styles.forgotRow}>
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </TouchableOpacity>
 
-          {renderField({
-            label: "Password",
-            iconName: "lock",
-            value: password,
-            onChangeText: setPassword,
-            errorKey: "password",
-            placeholder: "Minimum 8 characters",
-            showToggle: true,
-            showState: showPassword,
-            toggleFn: () => setShowPassword(!showPassword),
-            autoCapitalize: "none",
-          })}
-
-          {renderField({
-            label: "Confirm Password",
-            iconName: "lock",
-            value: confirmPassword,
-            onChangeText: setConfirmPassword,
-            errorKey: "confirmPassword",
-            placeholder: "Re-enter your password",
-            showToggle: true,
-            showState: showConfirm,
-            toggleFn: () => setShowConfirm(!showConfirm),
-            autoCapitalize: "none",
-          })}
-
-          {/* Submit */}
-          <TouchableOpacity
-            style={[styles.primaryButton, isSubmitting && styles.btnDisabled]}
-            onPress={handleRegister}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.buttonText}>Register Account</Text>
+        {/* Submit */}
+        <TouchableOpacity
+          style={[styles.btn, isLoading && styles.btnDisabled]}
+          onPress={handleLogin}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          {isLoading
+            ? <ActivityIndicator color="#FFFFFF" />
+            : <>
+                <Text style={styles.btnText}>Sign In</Text>
                 <Feather name="arrow-right" size={20} color="#FFFFFF" />
               </>
-            )}
-          </TouchableOpacity>
+          }
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate("SignIn")}
-            style={styles.signInLink}
-          >
-            <Text style={styles.footerText}>
-              Already have an account?{" "}
-              <Text style={styles.linkText}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+      <Button label="Continue with Google" />
+
+        {/* Sign in link */}
+        <TouchableOpacity
+          style={styles.signInLink}
+          onPress={() => navigation.navigate('UserType')}
+        >
+          <Text style={styles.footerText}>
+            Don't have an account?{' '}
+            <Text style={styles.linkText}>Create one</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: "#FFFFFF" },
-  flex:          { flex: 1 },
+  safe:          { flex: 1, backgroundColor: '#FFFFFF' },
   container:     { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
-  header:        { paddingTop: 36, paddingBottom: 24 },
-  logoRow:       { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 24 },
-  logoText:      { fontSize: 22, fontWeight: "700", color: "#0F172A" },
-  title:         { fontSize: 26, fontWeight: "700", color: "#0F172A", marginBottom: 8 },
-  subtitle:      { fontSize: 14, color: "#64748B", lineHeight: 21 },
+  header:        { paddingTop: 48, paddingBottom: 32 },
+  logoRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 28 },
+  logoText:      { fontSize: 22, fontWeight: '700', color: '#0F172A' },
+  title:         { fontSize: 28, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+  subtitle:      { fontSize: 15, color: '#64748B' },
+
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: { fontSize: 13, color: '#DC2626', flex: 1 },
+
   fieldGroup:    { marginBottom: 16 },
-  label:         { fontSize: 14, fontWeight: "600", color: "#374151", marginBottom: 8 },
+  label:         { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
   inputBox: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: Platform.OS === "ios" ? 14 : 10,
-    backgroundColor: "#F8FAFC",
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    backgroundColor: '#F8FAFC',
     gap: 10,
   },
-  inputBoxError: { borderColor: "#EF4444", backgroundColor: "#FEF2F2" },
-  input:         { flex: 1, fontSize: 15, color: "#0F172A" },
-  errorText:     { fontSize: 12, color: "#EF4444", marginTop: 4, marginLeft: 2 },
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0EA5E9",
+  inputBoxError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+  input:         { flex: 1, fontSize: 15, color: '#0F172A' },
+  fieldError:    { fontSize: 12, color: '#EF4444', marginTop: 4, marginLeft: 2 },
+
+  forgotRow:     { alignItems: 'flex-end', marginBottom: 24, marginTop: -4 },
+  forgotText:    { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
     borderRadius: 14,
     gap: 8,
-    marginTop: 8,
     marginBottom: 20,
   },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+dividerText: { fontSize: 13, color: '#94A3B8' },
   btnDisabled:   { opacity: 0.65 },
-  buttonText:    { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
-  signInLink:    { alignItems: "center" },
-  footerText:    { fontSize: 14, color: "#64748B" },
-  linkText:      { color: "#0EA5E9", fontWeight: "600" },
+  btnText:       { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+
+  signUpLink:    { alignItems: 'center' },
+  footerText:    { fontSize: 14, color: '#64748B' },
+  linkText:      { color: COLORS.primary, fontWeight: '600' },
 });
 
-export default SignUp;
+export default SignIn;

@@ -29,17 +29,17 @@ const AuthNavigator = () => {
   // isFirstLaunch is always true or false by the time this renders
   // because AppNavigator shows the SplashScreen while isLoading = true,
   // and isLoading only becomes false AFTER AsyncStorage has been read.
-  // So isFirstLaunch is never null here — Bug 5 is fixed by the startup flow.
+  // So isFirstLaunch is never null here, is fixed by the startup flow.
 
   return (
     <Stack.Navigator
-      initialRouteName={isFirstLaunch ? "Onboarding" : "SignIn"}
+      initialRouteName={isFirstLaunch ? "SignUp" : "SignIn"}
       screenOptions={{ headerShown: false, animation: "slide_from_right" }}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="UserType"   component={UserTypeScreen} />
-      <Stack.Screen name="SignIn"     component={SignIn} />
-      <Stack.Screen name="SignUp"     component={SignUp} />
+      <Stack.Screen name="UserType" component={UserTypeScreen} />
+      <Stack.Screen name="SignIn" component={SignIn} />
+      <Stack.Screen name="SignUp" component={SignUp} />
     </Stack.Navigator>
   );
 };

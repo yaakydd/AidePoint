@@ -17,15 +17,15 @@ import {
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
-import HomeScreen        from "../screens/HomeScreen";
+import HomeScreen from "../screens/HomeScreen";
 import ScanScreenNavigator from "./ScanScreenNavigator"; // Scan has its OWN stack navigator
-import ReportScreen      from "../screens/ReportScreen";
-import Chatbot           from "../screens/Chatbot";
-import ProfileScreen     from "../screens/ProfileScreen";
+import ReportScreen from "../screens/ReportScreen";
+import Chatbot from "../screens/Chatbot";
+import ProfileScreen from "../screens/ProfileScreen";
 
 // createBottomTabNavigator() gives us two things:
 //   Tab.Navigator  = the container with the tab bar
-//   Tab.Screen     = each individual tab/screen pair
+//   Tab.Screen  = each individual tab/screen pair
 const Tab = createBottomTabNavigator();
 
 // We get the physical screen width once here at module level.
@@ -110,12 +110,12 @@ function MainAppNavigator() {
             let iconName;
 
             switch (route.name) {
-              case "Home":    iconName = focused ? "home"                  : "home-outline";                break;
-              case "Scan":    iconName = focused ? "scan"                  : "scan-outline";                break;
+              case "Home": iconName = focused ? "home"                  : "home-outline";                break;
+              case "Scan": iconName = focused ? "scan"                  : "scan-outline";                break;
               case "Report":  iconName = focused ? "document-text"         : "document-text-outline";       break;
               case "Chatbot": iconName = focused ? "chatbubble-ellipses"   : "chatbubble-ellipses-outline"; break;
               case "Profile": iconName = focused ? "person"                : "person-outline";              break;
-              default:        iconName = "ellipse";
+              default: iconName = "ellipse";
             }
 
             return (
@@ -138,19 +138,19 @@ function MainAppNavigator() {
           We call animateTab(index) in the listener so the underline
           moves when the user taps. The index matches the tab position: 0-4.
         */}
-        <Tab.Screen name="Home"    component={HomeScreen}          listeners={{ tabPress: () => animateTab(0),   // focus fires when this screen becomes active by ANY means
+        <Tab.Screen name="Home" component={HomeScreen} listeners={{ tabPress: () => animateTab(0),   // focus fires when this screen becomes active by ANY means
   // (tab press, programmatic navigation, deep link, etc.)
   focus: () => animateTab(0)}} />
-        <Tab.Screen name="Scan"    component={ScanScreenNavigator} listeners={{ tabPress: () => animateTab(1),   // focus fires when this screen becomes active by ANY means
+        <Tab.Screen name="Scan" component={ScanScreenNavigator} listeners={{ tabPress: () => animateTab(1),   // focus fires when this screen becomes active by ANY means
   // (tab press, programmatic navigation, deep link, etc.)
   focus: () => animateTab(1)}} />
-        <Tab.Screen name="Report"  component={ReportScreen}        listeners={{ tabPress: () => animateTab(2),   // focus fires when this screen becomes active by ANY means
+        <Tab.Screen name="Report"  component={ReportScreen} listeners={{ tabPress: () => animateTab(2),   // focus fires when this screen becomes active by ANY means
   // (tab press, programmatic navigation, deep link, etc.)
   focus: () => animateTab(2)}} />
-        <Tab.Screen name="Chatbot" component={Chatbot}             listeners={{ tabPress: () => animateTab(3),   // focus fires when this screen becomes active by ANY means
+        <Tab.Screen name="Chatbot" component={Chatbot} listeners={{ tabPress: () => animateTab(3),   // focus fires when this screen becomes active by ANY means
   // (tab press, programmatic navigation, deep link, etc.)
   focus: () => animateTab(3)}} />
-        <Tab.Screen name="Profile" component={ProfileScreen}       listeners={{ tabPress: () => animateTab(4),   // focus fires when this screen becomes active by ANY means
+        <Tab.Screen name="Profile" component={ProfileScreen} listeners={{ tabPress: () => animateTab(4),   // focus fires when this screen becomes active by ANY means
   // (tab press, programmatic navigation, deep link, etc.)
   focus: () => animateTab(4)}} />
       </Tab.Navigator>
