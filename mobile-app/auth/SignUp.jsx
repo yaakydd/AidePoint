@@ -1,10 +1,12 @@
 // screens/auth/SignUp.js
 //
 // Collects name, email, and password.
-// Does NOT call register() — that happens in UserTypeScreen
-// after the user picks hospital vs solo.
+// Calls register() directly — no UserType screen, no Google auth.
+// All users are solo lab technicians.
 //
-// On submit: validate → navigate('UserType', { pendingUser: { name, email, password } })
+// On success: AuthContext sets needsConsent = true
+//             AppNavigator detects this and shows ConsentScreen automatically.
+//             No navigation.navigate() needed here.
 
 import React, { useState } from 'react';
 import {
@@ -13,12 +15,49 @@ import {
   StatusBar, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { useAuth } from '../context/AuthContext';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../assets/theme';
-import { Button } from '../components/Button';
+import { useAuth } from '../../context/AuthContext';
+import { COLORS } from '../../assets/theme';
+
+// ── Password strength ──────────────────────────────────────────────────────────
+// Each requirement is tested independently.
+// score 1 = Weak, 2 = Fair, 3 = Strong, 4 = Very Strong.
+// The register button stays disabled until score >= 3 (Strong).
+
+const PASSWORD_CHECKS = [
+  {
+    key:   'length',
+    label: 'At least 8 characters',
+    test:  (p) => p.length >= 8,
+  },
+  {
+    key:   'uppercase',
+    label: 'At least one uppercase letter',
+    test:  (p) => /[A-Z]/.test(p),
+  },
+  {
+    key:   'number',
+    label: 'At least one number',
+    test:  (p) => /[0-9]/.test(p),
+  },
+  {
+    key:   'special',
+    label: 'At least one special character (@, #, !)',
+    test:  (p) => /[@#!$%^&*()\-_=+]/.test(p),
+  },
+];
+
+function getStrength(pwd) {
+  const passed = PASSWORD_CHECKS.filter(c => c.test(pwd)).length;
+  if (passed <= 1) return { label: 'Weak',        color: '#EF4444', score: 1 };
+  if (passed === 2) return { label: 'Fair',        color: '#F97316', score: 2 };
+  if (passed === 3) return { label: 'Strong',      color: '#84CC16', score: 3 };
+  return             { label: 'Very Strong',       color: '#10B981', score: 4 };
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 const SignUp = () => {
   const [name,            setName]            = useState('');
@@ -28,15 +67,21 @@ const SignUp = () => {
   const [showPass,        setShowPass]        = useState(false);
   const [showConfirm,     setShowConfirm]     = useState(false);
   const [fieldErrors,     setFieldErrors]     = useState({});
+  const [isRegistering,   setIsRegistering]   = useState(false);
 
-  // authError is set by AuthContext if register() fails (shown after UserType).
-  // clearError resets it when the user starts editing.
-  const { authError, clearError } = useAuth();
+  // register() is already wired to Supabase inside AuthContext.
+  // authError is set by AuthContext if Supabase rejects the signup.
+  const { register, authError, clearError } = useAuth();
   const navigation = useNavigation();
 
-  // ── Validation ────────────────────────────────────────────────────────────
+  // Compute strength on every render — no extra state needed.
+  const strength = getStrength(password);
+  const canSubmit = strength.score >= 3 && !isRegistering;
+
+  // ── Validation ──────────────────────────────────────────────────────────────
   function validate() {
     const e = {};
+
     if (!name.trim())
       e.name = 'Full name is required';
     else if (name.trim().length < 2)
@@ -49,8 +94,8 @@ const SignUp = () => {
 
     if (!password)
       e.password = 'Password is required';
-    else if (password.length < 8)
-      e.password = 'Must be at least 8 characters';
+    else if (strength.score < 3)
+      e.password = 'Password must be at least Strong';
 
     if (!confirmPassword)
       e.confirmPassword = 'Please confirm your password';
@@ -63,26 +108,41 @@ const SignUp = () => {
 
   function clearField(key) {
     if (fieldErrors[key]) setFieldErrors(p => ({ ...p, [key]: null }));
-    clearError();
+    clearError(); // also resets the Supabase-level error from context
   }
 
-  // ── Submit handler ────────────────────────────────────────────────────────
-  // We do NOT register here. We pass the collected data to UserTypeScreen
-  // as a route param. UserTypeScreen calls register() after the user picks
-  // hospital vs solo. This way the userType is included in the Supabase
-  // sign-up call and the trigger can set up the profile correctly.
-  function handleContinue() {
+  // ── Register handler ────────────────────────────────────────────────────────
+  async function handleRegister() {
     if (!validate()) return;
-    navigation.navigate('UserType', {
-      pendingUser: {
+
+    setIsRegistering(true);
+    try {
+      const result = await register({
         name:     name.trim(),
         email:    email.trim().toLowerCase(),
         password,
-      },
-    });
+        // userType is hardcoded to 'solo' inside register() — never collected from the user
+      });
+
+      if (!result.success) {
+        // Show the Supabase error under the email field.
+        // Common errors: "User already registered", "Invalid email", etc.
+        setFieldErrors({ email: result.error });
+      }
+      // On success:
+      // 1. Supabase creates auth.users row
+      // 2. on_auth_user_created trigger creates profiles row
+      // 3. onAuthStateChange fires → fetchAndSetUser runs
+      // 4. AuthContext sets needsConsent = true, persists to AsyncStorage
+      // 5. AppNavigator re-renders → shows ConsentScreen
+      // No navigate() needed.
+
+    } finally {
+      setIsRegistering(false);
+    }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -92,7 +152,8 @@ const SignUp = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+
+        {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
             <MaterialCommunityIcons name="microscope" size={28} color={COLORS.primary} />
@@ -100,23 +161,27 @@ const SignUp = () => {
           </View>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
-            Set up your AidePoint account in two quick steps.
+            Create your AidePoint account to start running blood smear analysis.
           </Text>
         </View>
 
-        {/* Auth error from a previous register() attempt */}
+        {/* ── Supabase-level auth error (e.g. "User already registered") ── */}
         {authError ? (
           <View style={styles.errorBanner}>
-            <Feather name="alert-circle" size={16} color="#DC2626" />
+            <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
             <Text style={styles.errorBannerText}>{authError}</Text>
           </View>
         ) : null}
 
-        {/* Full name */}
+        {/* ── Full Name ── */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Full Name</Text>
           <View style={[styles.inputBox, fieldErrors.name && styles.inputBoxError]}>
-            <MaterialIcons name="person" size={20} color={fieldErrors.name ? '#EF4444' : '#94A3B8'} />
+            <MaterialIcons
+              name="person"
+              size={20}
+              color={fieldErrors.name ? '#EF4444' : '#94A3B8'}
+            />
             <TextInput
               style={styles.input}
               placeholder="e.g. Kwame Mensah"
@@ -127,14 +192,20 @@ const SignUp = () => {
               autoCorrect={false}
             />
           </View>
-          {fieldErrors.name ? <Text style={styles.fieldError}>{fieldErrors.name}</Text> : null}
+          {fieldErrors.name
+            ? <Text style={styles.fieldError}>{fieldErrors.name}</Text>
+            : null}
         </View>
 
-        {/* Email */}
+        {/* ── Email ── */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Email Address</Text>
           <View style={[styles.inputBox, fieldErrors.email && styles.inputBoxError]}>
-            <MaterialIcons name="email" size={20} color={fieldErrors.email ? '#EF4444' : '#94A3B8'} />
+            <MaterialIcons
+              name="email"
+              size={20}
+              color={fieldErrors.email ? '#EF4444' : '#94A3B8'}
+            />
             <TextInput
               style={styles.input}
               placeholder="your@email.com"
@@ -147,14 +218,20 @@ const SignUp = () => {
               autoComplete="email"
             />
           </View>
-          {fieldErrors.email ? <Text style={styles.fieldError}>{fieldErrors.email}</Text> : null}
+          {fieldErrors.email
+            ? <Text style={styles.fieldError}>{fieldErrors.email}</Text>
+            : null}
         </View>
 
-        {/* Password */}
+        {/* ── Password + strength meter ── */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Password</Text>
           <View style={[styles.inputBox, fieldErrors.password && styles.inputBoxError]}>
-            <MaterialIcons name="lock" size={20} color={fieldErrors.password ? '#EF4444' : '#94A3B8'} />
+            <MaterialIcons
+              name="lock"
+              size={20}
+              color={fieldErrors.password ? '#EF4444' : '#94A3B8'}
+            />
             <TextInput
               style={styles.input}
               placeholder="Minimum 8 characters"
@@ -173,14 +250,65 @@ const SignUp = () => {
               <Feather name={showPass ? 'eye-off' : 'eye'} size={20} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-          {fieldErrors.password ? <Text style={styles.fieldError}>{fieldErrors.password}</Text> : null}
+
+          {fieldErrors.password
+            ? <Text style={styles.fieldError}>{fieldErrors.password}</Text>
+            : null}
+
+          {/* Strength meter — visible as soon as the user starts typing */}
+          {password.length > 0 && (
+            <View style={styles.strengthContainer}>
+
+              {/* Label row */}
+              <View style={styles.strengthLabelRow}>
+                <Text style={styles.strengthLabel}>Password strength</Text>
+                <Text style={[styles.strengthScore, { color: strength.color }]}>
+                  {strength.label}
+                </Text>
+              </View>
+
+              {/* 4-segment bar */}
+              <View style={styles.strengthBar}>
+                {[1, 2, 3, 4].map(i => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.strengthSegment,
+                      { backgroundColor: i <= strength.score ? strength.color : '#E2E8F0' },
+                    ]}
+                  />
+                ))}
+              </View>
+
+              {/* Per-requirement checklist */}
+              <View style={styles.checkList}>
+                {PASSWORD_CHECKS.map(check => {
+                  const passed = check.test(password);
+                  return (
+                    <View key={check.key} style={styles.checkRow}>
+                      <Text style={[styles.checkIcon, { color: passed ? '#10B981' : '#EF4444' }]}>
+                        {passed ? '✓' : '✗'}
+                      </Text>
+                      <Text style={[styles.checkLabel, { color: passed ? '#10B981' : '#94A3B8' }]}>
+                        {check.label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* Confirm password */}
+        {/* ── Confirm Password ── */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Confirm Password</Text>
           <View style={[styles.inputBox, fieldErrors.confirmPassword && styles.inputBoxError]}>
-            <MaterialIcons name="lock" size={20} color={fieldErrors.confirmPassword ? '#EF4444' : '#94A3B8'} />
+            <MaterialIcons
+              name="lock"
+              size={20}
+              color={fieldErrors.confirmPassword ? '#EF4444' : '#94A3B8'}
+            />
             <TextInput
               style={styles.input}
               placeholder="Re-enter your password"
@@ -204,27 +332,24 @@ const SignUp = () => {
             : null}
         </View>
 
-        {/* Continue button — goes to UserType, does NOT register yet */}
+        {/* ── Create Account button ── */}
+        {/* Disabled until password is Strong (score >= 3) AND not in-flight */}
         <TouchableOpacity
-          style={styles.btn}
-          onPress={handleContinue}
+          style={[styles.btn, !canSubmit && styles.btnDisabled]}
+          onPress={handleRegister}
+          disabled={!canSubmit}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnText}>Continue</Text>
-          <Feather name="arrow-right" size={20} color="#FFFFFF" />
+          {isRegistering
+            ? <ActivityIndicator color="#FFFFFF" />
+            : <>
+                <Text style={styles.btnText}>Create Account</Text>
+                <Feather name="arrow-right" size={20} color="#FFFFFF" />
+              </>
+          }
         </TouchableOpacity>
 
-        {/* Divider */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Google sign-in */}
-        <GoogleSignInButton label="Sign up with Google" />
-
-        {/* Sign in link */}
+        {/* ── Sign in link ── */}
         <TouchableOpacity
           style={styles.signInLink}
           onPress={() => navigation.navigate('SignIn')}
@@ -234,19 +359,23 @@ const SignUp = () => {
             <Text style={styles.linkText}>Sign In</Text>
           </Text>
         </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  safe:        { flex: 1, backgroundColor: '#FFFFFF' },
-  container:   { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
-  header:      { paddingTop: 48, paddingBottom: 28 },
-  logoRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 },
-  logoText:    { fontSize: 22, fontWeight: '700', color: '#0F172A' },
-  title:       { fontSize: 26, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  subtitle:    { fontSize: 14, color: '#64748B', lineHeight: 21 },
+  safe:      { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+
+  header:    { paddingTop: 48, paddingBottom: 28 },
+  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 },
+  logoText:  { fontSize: 22, fontWeight: '700', color: '#0F172A' },
+  title:     { fontSize: 26, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+  subtitle:  { fontSize: 14, color: '#64748B', lineHeight: 21 },
 
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -268,20 +397,30 @@ const styles = StyleSheet.create({
   input:         { flex: 1, fontSize: 15, color: '#0F172A' },
   fieldError:    { fontSize: 12, color: '#EF4444', marginTop: 4, marginLeft: 2 },
 
+  // ── Strength meter ──
+  strengthContainer: { marginTop: 10 },
+  strengthLabelRow:  {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 6,
+  },
+  strengthLabel:   { fontSize: 12, color: '#64748B' },
+  strengthScore:   { fontSize: 12, fontWeight: '700' },
+  strengthBar:     { flexDirection: 'row', gap: 4, marginBottom: 10 },
+  strengthSegment: { flex: 1, height: 4, borderRadius: 2 },
+  checkList:       { gap: 5 },
+  checkRow:        { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  checkIcon:       { fontSize: 13, fontWeight: '700', width: 14, textAlign: 'center' },
+  checkLabel:      { fontSize: 12, lineHeight: 17 },
+
   btn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: COLORS.primary, paddingVertical: 16,
-    borderRadius: 14, gap: 8, marginBottom: 20, marginTop: 4,
+    borderRadius: 14, gap: 8, marginBottom: 20, marginTop: 8,
   },
-  btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  btnDisabled: { opacity: 0.45 },
+  btnText:     { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 
-  dividerRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { fontSize: 13, color: '#94A3B8' },
-
-  signInLink: { alignItems: 'center', marginTop: 20 },
+  signInLink: { alignItems: 'center', marginTop: 4, paddingBottom: 8 },
   footerText: { fontSize: 14, color: '#64748B' },
   linkText:   { color: COLORS.primary, fontWeight: '600' },
 });
