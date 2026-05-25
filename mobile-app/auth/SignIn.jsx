@@ -184,7 +184,7 @@ const SignIn = () => {
         {/* Sign in link */}
         <TouchableOpacity
           style={styles.signInLink}
-          onPress={() => navigation.navigate('UserType')}
+          onPress={() => navigation.navigate('SignUp')}
         >
           <Text style={styles.footerText}>
             Don't have an account?{' '}
