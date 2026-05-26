@@ -1,12 +1,13 @@
 // screens/auth/SignUp.js
 //
-// Collects name, email, and password.
-// Calls register() directly — no UserType screen, no Google auth.
-// All users are solo lab technicians.
+// Collects name, email, password.
+// Calls register() directly — no UserType step.
+// All users are solo lab technicians (hardcoded in AuthContext.register).
+// No Google auth — email + password only.
 //
-// On success: AuthContext sets needsConsent = true
-//             AppNavigator detects this and shows ConsentScreen automatically.
-//             No navigation.navigate() needed here.
+// Password strength meter blocks submit until strength >= Strong.
+// On success: AppNavigator detects needsConsent=true → ConsentScreen.
+// No navigation.navigate() needed here after register().
 
 import React, { useState } from 'react';
 import {
@@ -15,49 +16,31 @@ import {
   StatusBar, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../assets/theme';
 
-// ── Password strength ──────────────────────────────────────────────────────────
-// Each requirement is tested independently.
-// score 1 = Weak, 2 = Fair, 3 = Strong, 4 = Very Strong.
-// The register button stays disabled until score >= 3 (Strong).
-
+// ── PASSWORD STRENGTH ──────────────────────────────────────────────────────────
+// Each check is tested live as the user types.
+// The button is disabled until score >= 3 (Strong).
 const PASSWORD_CHECKS = [
-  {
-    key:   'length',
-    label: 'At least 8 characters',
-    test:  (p) => p.length >= 8,
-  },
-  {
-    key:   'uppercase',
-    label: 'At least one uppercase letter',
-    test:  (p) => /[A-Z]/.test(p),
-  },
-  {
-    key:   'number',
-    label: 'At least one number',
-    test:  (p) => /[0-9]/.test(p),
-  },
-  {
-    key:   'special',
-    label: 'At least one special character (@, #, !)',
-    test:  (p) => /[@#!$%^&*()\-_=+]/.test(p),
-  },
+  { key: 'length',    label: 'At least 8 characters',          test: p => p.length >= 8 },
+  { key: 'uppercase', label: 'At least one uppercase letter',  test: p => /[A-Z]/.test(p) },
+  { key: 'number',    label: 'At least one number',            test: p => /[0-9]/.test(p) },
+  { key: 'special',   label: 'At least one special character (@#!)', test: p => /[@#!$%^&*()\-_=+]/.test(p) },
 ];
 
 function getStrength(pwd) {
+  if (!pwd) return { label: '', color: '', score: 0 };
   const passed = PASSWORD_CHECKS.filter(c => c.test(pwd)).length;
   if (passed <= 1) return { label: 'Weak',        color: '#EF4444', score: 1 };
   if (passed === 2) return { label: 'Fair',        color: '#F97316', score: 2 };
   if (passed === 3) return { label: 'Strong',      color: '#84CC16', score: 3 };
-  return             { label: 'Very Strong',       color: '#10B981', score: 4 };
+  return            { label: 'Very Strong',        color: '#10B981', score: 4 };
 }
-
-// ── Component ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
 
 const SignUp = () => {
   const [name,            setName]            = useState('');
@@ -69,19 +52,16 @@ const SignUp = () => {
   const [fieldErrors,     setFieldErrors]     = useState({});
   const [isRegistering,   setIsRegistering]   = useState(false);
 
-  // register() is already wired to Supabase inside AuthContext.
-  // authError is set by AuthContext if Supabase rejects the signup.
   const { register, authError, clearError } = useAuth();
   const navigation = useNavigation();
 
-  // Compute strength on every render — no extra state needed.
+  // Computed live — drives the strength bar and button disabled state
   const strength = getStrength(password);
   const canSubmit = strength.score >= 3 && !isRegistering;
 
-  // ── Validation ──────────────────────────────────────────────────────────────
+  // ── Validation ─────────────────────────────────────────────────────────────
   function validate() {
     const e = {};
-
     if (!name.trim())
       e.name = 'Full name is required';
     else if (name.trim().length < 2)
@@ -108,11 +88,14 @@ const SignUp = () => {
 
   function clearField(key) {
     if (fieldErrors[key]) setFieldErrors(p => ({ ...p, [key]: null }));
-    clearError(); // also resets the Supabase-level error from context
+    clearError();
   }
 
-  // ── Register handler ────────────────────────────────────────────────────────
-  async function handleRegister() {
+  // ── Register ────────────────────────────────────────────────────────────────
+  // Calls register() directly. userType = 'solo' is hardcoded inside register().
+  // On success: AuthContext sets needsConsent=true → AppNavigator shows ConsentScreen.
+  // No navigate() needed here.
+  async function handleCreateAccount() {
     if (!validate()) return;
 
     setIsRegistering(true);
@@ -121,22 +104,12 @@ const SignUp = () => {
         name:     name.trim(),
         email:    email.trim().toLowerCase(),
         password,
-        // userType is hardcoded to 'solo' inside register() — never collected from the user
       });
 
       if (!result.success) {
-        // Show the Supabase error under the email field.
-        // Common errors: "User already registered", "Invalid email", etc.
-        setFieldErrors({ email: result.error });
+        // Show the Supabase error under the email field
+        setFieldErrors(prev => ({ ...prev, email: result.error }));
       }
-      // On success:
-      // 1. Supabase creates auth.users row
-      // 2. on_auth_user_created trigger creates profiles row
-      // 3. onAuthStateChange fires → fetchAndSetUser runs
-      // 4. AuthContext sets needsConsent = true, persists to AsyncStorage
-      // 5. AppNavigator re-renders → shows ConsentScreen
-      // No navigate() needed.
-
     } finally {
       setIsRegistering(false);
     }
@@ -152,7 +125,6 @@ const SignUp = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-
         {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
@@ -161,14 +133,14 @@ const SignUp = () => {
           </View>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
-            Create your AidePoint account to start running blood smear analysis.
+            Set up your account to start running blood smear analysis.
           </Text>
         </View>
 
-        {/* ── Supabase-level auth error (e.g. "User already registered") ── */}
+        {/* ── Global auth error banner (from Supabase) ── */}
         {authError ? (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+            <Feather name="alert-circle" size={16} color="#DC2626" />
             <Text style={styles.errorBannerText}>{authError}</Text>
           </View>
         ) : null}
@@ -223,7 +195,7 @@ const SignUp = () => {
             : null}
         </View>
 
-        {/* ── Password + strength meter ── */}
+        {/* ── Password ── */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Password</Text>
           <View style={[styles.inputBox, fieldErrors.password && styles.inputBoxError]}>
@@ -250,24 +222,24 @@ const SignUp = () => {
               <Feather name={showPass ? 'eye-off' : 'eye'} size={20} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-
           {fieldErrors.password
             ? <Text style={styles.fieldError}>{fieldErrors.password}</Text>
             : null}
 
-          {/* Strength meter — visible as soon as the user starts typing */}
+          {/* ── Password Strength Meter ── */}
+          {/* Shown as soon as the user starts typing */}
           {password.length > 0 && (
-            <View style={styles.strengthContainer}>
+            <View style={styles.strengthWrap}>
 
               {/* Label row */}
-              <View style={styles.strengthLabelRow}>
-                <Text style={styles.strengthLabel}>Password strength</Text>
-                <Text style={[styles.strengthScore, { color: strength.color }]}>
+              <View style={styles.strengthHeader}>
+                <Text style={styles.strengthLabelText}>Password strength</Text>
+                <Text style={[styles.strengthValue, { color: strength.color }]}>
                   {strength.label}
                 </Text>
               </View>
 
-              {/* 4-segment bar */}
+              {/* 4-segment progress bar */}
               <View style={styles.strengthBar}>
                 {[1, 2, 3, 4].map(i => (
                   <View
@@ -280,7 +252,7 @@ const SignUp = () => {
                 ))}
               </View>
 
-              {/* Per-requirement checklist */}
+              {/* Per-requirement checklist with live ✓ / ✗ */}
               <View style={styles.checkList}>
                 {PASSWORD_CHECKS.map(check => {
                   const passed = check.test(password);
@@ -332,20 +304,21 @@ const SignUp = () => {
             : null}
         </View>
 
-        {/* ── Create Account button ── */}
-        {/* Disabled until password is Strong (score >= 3) AND not in-flight */}
+        {/* ── Submit — disabled until password is Strong ── */}
         <TouchableOpacity
           style={[styles.btn, !canSubmit && styles.btnDisabled]}
-          onPress={handleRegister}
+          onPress={handleCreateAccount}
           disabled={!canSubmit}
           activeOpacity={0.85}
         >
           {isRegistering
             ? <ActivityIndicator color="#FFFFFF" />
-            : <>
+            : (
+              <>
                 <Text style={styles.btnText}>Create Account</Text>
                 <Feather name="arrow-right" size={20} color="#FFFFFF" />
               </>
+            )
           }
         </TouchableOpacity>
 
@@ -359,17 +332,15 @@ const SignUp = () => {
             <Text style={styles.linkText}>Sign In</Text>
           </Text>
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
+// ── Styles ──────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+  container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 48 },
 
   header:    { paddingTop: 48, paddingBottom: 28 },
   logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 },
@@ -397,30 +368,27 @@ const styles = StyleSheet.create({
   input:         { flex: 1, fontSize: 15, color: '#0F172A' },
   fieldError:    { fontSize: 12, color: '#EF4444', marginTop: 4, marginLeft: 2 },
 
-  // ── Strength meter ──
-  strengthContainer: { marginTop: 10 },
-  strengthLabelRow:  {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 6,
-  },
-  strengthLabel:   { fontSize: 12, color: '#64748B' },
-  strengthScore:   { fontSize: 12, fontWeight: '700' },
-  strengthBar:     { flexDirection: 'row', gap: 4, marginBottom: 10 },
-  strengthSegment: { flex: 1, height: 4, borderRadius: 2 },
-  checkList:       { gap: 5 },
-  checkRow:        { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  checkIcon:       { fontSize: 13, fontWeight: '700', width: 14, textAlign: 'center' },
-  checkLabel:      { fontSize: 12, lineHeight: 17 },
+  // Strength meter
+  strengthWrap:     { marginTop: 10 },
+  strengthHeader:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  strengthLabelText:{ fontSize: 12, color: '#64748B' },
+  strengthValue:    { fontSize: 12, fontWeight: '600' },
+  strengthBar:      { flexDirection: 'row', gap: 4, marginBottom: 8 },
+  strengthSegment:  { flex: 1, height: 4, borderRadius: 2 },
+  checkList:        { gap: 4 },
+  checkRow:         { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  checkIcon:        { fontSize: 13, fontWeight: '700', width: 14 },
+  checkLabel:       { fontSize: 12 },
 
   btn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: COLORS.primary, paddingVertical: 16,
     borderRadius: 14, gap: 8, marginBottom: 20, marginTop: 8,
   },
-  btnDisabled: { opacity: 0.45 },
+  btnDisabled: { opacity: 0.50 },
   btnText:     { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 
-  signInLink: { alignItems: 'center', marginTop: 4, paddingBottom: 8 },
+  signInLink: { alignItems: 'center', marginTop: 4 },
   footerText: { fontSize: 14, color: '#64748B' },
   linkText:   { color: COLORS.primary, fontWeight: '600' },
 });
