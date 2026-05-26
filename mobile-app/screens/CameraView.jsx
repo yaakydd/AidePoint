@@ -1,371 +1,257 @@
 // screens/CameraView.js
 //
-// Full-screen blood smear camera screen for AidePoint.
+// CRITICAL FIX: expo-camera v15 (Expo SDK 54) CameraView does NOT allow children.
+// Controls must be siblings of CameraView inside a parent View, not nested inside it.
 //
-// Flow:
-// 1. Request camera permission
-// 2. Show live camera preview
-// 3. Overlay microscope alignment UI
-// 4. Capture image
-// 5. Review image
-// 6. Retake OR confirm image
+// Navigation flow:
+//   ScanScreen → navigate('CameraView') → user takes photo →
+//   navigate('ScanHome', { capturedPhoto: uri }) → ScanScreen.focus listener picks it up
+//
+// Image quality:
+//   quality: 0.85 — good balance for microscope images.
+//   skipProcessing: false — ensures EXIF is stripped cleanly.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  Animated,
+  View, Text, TouchableOpacity, StyleSheet,
+  ActivityIndicator, Platform, Alert,
 } from 'react-native';
-
-import {
-  CameraView as ExpoCameraView,
-  useCameraPermissions,
-} from 'expo-camera';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS } from '../assets/theme';
 
-import {
-  MaterialIcons,
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-
-import { CameraStyles as s, FRAME_SIZE } from '../styles/CameraStyles';
-
-export default function CameraView({ navigation }) {
-
-  // Camera permission hook
+const CameraScreen = ({ navigation }) => {
   const [permission, requestPermission] = useCameraPermissions();
-
-  // Captured image URI
-  const [photo, setPhoto] = useState(null);
-
-  // Torch state
-  const [torchOn, setTorchOn] = useState(false);
-
-  // Camera ref
+  const [facing,      setFacing]      = useState('back');
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [flashMode,   setFlashMode]   = useState('off');  // 'off' | 'on'
   const cameraRef = useRef(null);
 
-  // Capture flash animation
-  const flashAnim = useRef(new Animated.Value(0)).current;
+  // ── Permission gate ───────────────────────────────────────────────────────
+  if (!permission) {
+    // Still loading permission status
+    return (
+      <View style={styles.centred}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
-  // Pulse animation
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={styles.permissionScreen}>
+        <MaterialCommunityIcons name="camera-off" size={64} color="#CBD5E1" />
+        <Text style={styles.permissionTitle}>Camera Access Required</Text>
+        <Text style={styles.permissionSub}>
+          AidePoint needs camera access to capture blood smear images.
+        </Text>
+        <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+          <Text style={styles.permissionBtnText}>Grant Access</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.cancelLink}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.cancelLinkText}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
-  // Request permissions + start animations
-  useEffect(() => {
-    requestPermission();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.03,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  // Capture image
+  // ── Capture ───────────────────────────────────────────────────────────────
   async function takePicture() {
-
-    if (!cameraRef.current) return;
-
+    if (!cameraRef.current || isCapturing) return;
+    setIsCapturing(true);
     try {
-
-      // Camera flash effect
-      Animated.sequence([
-        Animated.timing(flashAnim, {
-          toValue: 1,
-          duration: 70,
-          useNativeDriver: true,
-        }),
-
-        Animated.timing(flashAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      // Capture image
-      const data = await cameraRef.current.takePictureAsync({
-        quality: 0.85,
-        skipProcessing: false,
+      const photo = await cameraRef.current.takePictureAsync({
+        quality:         0.85,   // 85% quality — sharp enough for AI, not oversized
+        base64:          false,  // we read base64 in ScanScreen only when needed
+        exif:            false,  // strip EXIF — no GPS or device data needed
+        skipProcessing:  false,
       });
-
-      setPhoto(data.uri);
-
+      // Navigate back to ScanScreen with the captured URI
+      navigation.navigate('ScanHome', { capturedPhoto: photo.uri });
     } catch (err) {
-      console.log('Capture Error:', err);
+      console.error('CameraView capture error:', err);
+      Alert.alert('Capture Failed', 'Could not take photo. Please try again.');
+    } finally {
+      setIsCapturing(false);
     }
   }
 
-  // Confirm image
-  function confirmPhoto() {
-
-    if (!photo) return;
-
-    navigation.navigate('ScanHome', {
-      capturedPhoto: photo,
-    });
-  }
-
-  // Retake image
-  function retakePhoto() {
-    setPhoto(null);
-  }
-
-  // Go back
-  function handleBack() {
-    navigation.goBack();
-  }
-
-  // Permission loading
-  if (!permission) {
-    return <View style={s.blank} />;
-  }
-
-  // Permission denied
-  if (!permission.granted) {
-    return (
-      <SafeAreaView style={s.permissionScreen}>
-
-        <View style={s.permissionIcon}>
-          <MaterialIcons
-            name="no-photography"
-            size={44}
-            color="#94A3B8"
-          />
-        </View>
-
-        <Text style={s.permissionTitle}>
-          Camera Access Required
-        </Text>
-
-        <Text style={s.permissionSub}>
-          AidePoint requires camera permission
-          to capture blood smear samples.
-        </Text>
-
-        <TouchableOpacity
-          style={s.permissionBtn}
-          onPress={requestPermission}
-        >
-          <Text style={s.permissionBtnText}>
-            Grant Access
-          </Text>
-        </TouchableOpacity>
-
-      </SafeAreaView>
-    );
-  }
-
-  // Review captured image
-  if (photo) {
-
-    return (
-      <SafeAreaView style={s.container}>
-
-        <Image
-          source={{ uri: photo }}
-          style={s.previewImage}
-          resizeMode="cover"
-        />
-
-        <View style={s.previewOverlay}>
-
-          <View style={s.previewHeader}>
-
-            <Text style={s.previewTitle}>
-              Review Capture
-            </Text>
-
-            <Text style={s.previewSubtitle}>
-              Ensure the blood cells are sharp,
-              centered, and properly illuminated.
-            </Text>
-
-          </View>
-
-          <View style={s.previewBottom}>
-
-            <TouchableOpacity
-              style={s.retakeButton}
-              onPress={retakePhoto}
-            >
-              <MaterialIcons
-                name="refresh"
-                size={20}
-                color="#fff"
-              />
-
-              <Text style={s.actionText}>
-                Retake
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.confirmButton}
-              onPress={confirmPhoto}
-            >
-              <MaterialIcons
-                name="check"
-                size={20}
-                color="#fff"
-              />
-
-              <Text style={s.actionText}>
-                Use Photo
-              </Text>
-            </TouchableOpacity>
-
-          </View>
-
-        </View>
-
-      </SafeAreaView>
-    );
-  }
-
-  // Live Camera Screen
+  // ── Render ────────────────────────────────────────────────────────────────
+  // KEY: CameraView has NO children. All controls are siblings inside the
+  // parent View and float on top via StyleSheet.absoluteFill + zIndex.
   return (
+    <View style={styles.container}>
 
-    <SafeAreaView style={s.container} edges={[]}>
-
-      {/* CAMERA */}
-      <ExpoCameraView
+      {/* ── Camera feed — fills the whole screen ── */}
+      {/* NO children nested here — this was the source of the error */}
+      <CameraView
+        style={StyleSheet.absoluteFill}
         ref={cameraRef}
-        style={s.camera}
-        facing="back"
-        torch={torchOn ? 'on' : 'off'}
+        facing={facing}
+        flash={flashMode}
       />
 
-      {/* OVERLAYS */}
-      <View style={s.overlay} pointerEvents="box-none">
+      {/* ── Overlay controls — sibling to CameraView, NOT inside it ── */}
+      <View style={[StyleSheet.absoluteFill, styles.overlay]}>
 
         {/* Top bar */}
-        <View style={s.topBar}>
-
+        <SafeAreaView edges={['top']} style={styles.topBar}>
           <TouchableOpacity
-            style={s.iconBtn}
-            onPress={handleBack}
+            style={styles.iconBtn}
+            onPress={() => navigation.goBack()}
           >
-            <MaterialIcons
-              name="arrow-back"
-              size={22}
-              color="#fff"
-            />
+            <MaterialIcons name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Text style={s.topBarTitle}>
-            Blood Smear Capture
-          </Text>
+          <Text style={styles.topTitle}>Blood Smear Capture</Text>
 
+          {/* Flash toggle */}
           <TouchableOpacity
-            style={s.iconBtn}
-            onPress={() => setTorchOn(!torchOn)}
+            style={styles.iconBtn}
+            onPress={() => setFlashMode(m => m === 'off' ? 'on' : 'off')}
           >
             <MaterialIcons
-              name={
-                torchOn
-                  ? 'flashlight-on'
-                  : 'flashlight-off'
-              }
-              size={22}
-              color="#fff"
+              name={flashMode === 'on' ? 'flash-on' : 'flash-off'}
+              size={26}
+              color={flashMode === 'on' ? '#FCD34D' : '#FFFFFF'}
             />
           </TouchableOpacity>
+        </SafeAreaView>
 
+        {/* Centre guide frame */}
+        <View style={styles.guideFrame}>
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
         </View>
+        <Text style={styles.guideText}>
+          Centre the blood smear within the frame
+        </Text>
 
-        {/* Instruction */}
-        <View style={s.instructionBanner}>
+        {/* Bottom controls */}
+        <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
 
-          <MaterialCommunityIcons
-            name="microscope"
-            size={15}
-            color="#fff"
-          />
-
-          <Text style={s.instructionText}>
-            Align blood smear within guide
-          </Text>
-
-        </View>
-
-        {/* Viewfinder */}
-        <View style={s.viewfinderContainer}>
-
-          <Animated.View
-            style={[
-              s.frame,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <View style={s.centerDot} />
-          </Animated.View>
-
-          <View style={s.zoomBadge}>
-            <Text style={s.zoomText}>40×</Text>
-          </View>
-
-        </View>
-
-        {/* AI Status */}
-        <View style={s.statusRow}>
-
-          <View style={s.statusBadge}>
-            <View style={s.greenDot} />
-
-            <Text style={s.statusText}>
-              Focus Stable
-            </Text>
-          </View>
-
-          <View style={s.statusBadge}>
-            <View style={s.greenDot} />
-
-            <Text style={s.statusText}>
-              Lighting Good
-            </Text>
-          </View>
-
-        </View>
-
-        {/* Shutter */}
-        <View style={s.shutterBar}>
-
+          {/* Flip camera */}
           <TouchableOpacity
-            style={s.shutterRing}
+            style={styles.sideBtn}
+            onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}
+          >
+            <MaterialIcons name="flip-camera-ios" size={30} color="#FFFFFF" />
+            <Text style={styles.sideBtnText}>Flip</Text>
+          </TouchableOpacity>
+
+          {/* Capture button */}
+          <TouchableOpacity
+            style={[styles.captureBtn, isCapturing && styles.captureBtnDisabled]}
             onPress={takePicture}
+            disabled={isCapturing}
+            activeOpacity={0.8}
           >
-            <View style={s.shutterDisc} />
+            {isCapturing
+              ? <ActivityIndicator size="large" color={COLORS.primary} />
+              : <View style={styles.captureInner} />
+            }
           </TouchableOpacity>
 
-        </View>
-
+          {/* Placeholder to balance the row */}
+          <View style={styles.sideBtn} />
+        </SafeAreaView>
       </View>
-
-      {/* Capture flash */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          s.flashOverlay,
-          { opacity: flashAnim },
-        ]}
-      />
-
-    </SafeAreaView>
+    </View>
   );
-}
+};
+
+export default CameraScreen;
+
+// ── Styles ──────────────────────────────────────────────────────────────────────
+const CORNER_SIZE = 24;
+const CORNER_THICK = 3;
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  centred:   { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
+
+  // Overlay sits on top of the camera feed
+  overlay: {
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 16 : 4,
+  },
+  topTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  iconBtn:  { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+
+  // Guide frame (corner brackets)
+  guideFrame: {
+    width: 240,
+    height: 240,
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  corner:     { position: 'absolute', width: CORNER_SIZE, height: CORNER_SIZE, borderColor: '#FFFFFF' },
+  cornerTL:   { top: 0,  left: 0,  borderTopWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK },
+  cornerTR:   { top: 0,  right: 0, borderTopWidth: CORNER_THICK, borderRightWidth: CORNER_THICK },
+  cornerBL:   { bottom: 0, left: 0,  borderBottomWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK },
+  cornerBR:   { bottom: 0, right: 0, borderBottomWidth: CORNER_THICK, borderRightWidth: CORNER_THICK },
+  guideText:  {
+    color: 'rgba(255,255,255,0.8)', textAlign: 'center',
+    fontSize: 13, marginTop: 12,
+  },
+
+  // Bottom controls
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    paddingBottom: Platform.OS === 'ios' ? 16 : 24,
+    paddingHorizontal: 32,
+  },
+  sideBtn:     { width: 60, alignItems: 'center' },
+  sideBtnText: { color: '#FFFFFF', fontSize: 11, marginTop: 4 },
+
+  // Capture shutter button
+  captureBtn: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  captureBtnDisabled: { opacity: 0.6 },
+  captureInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+  },
+
+  // Permission screen
+  permissionScreen: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#0F172A', paddingHorizontal: 32, gap: 12,
+  },
+  permissionTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', textAlign: 'center' },
+  permissionSub:   { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 21 },
+  permissionBtn: {
+    backgroundColor: COLORS.primary, paddingHorizontal: 32, paddingVertical: 14,
+    borderRadius: 12, marginTop: 8,
+  },
+  permissionBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  cancelLink:        { marginTop: 8 },
+  cancelLinkText:    { color: '#64748B', fontSize: 14 },
+});
