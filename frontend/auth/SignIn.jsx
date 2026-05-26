@@ -1,5 +1,3 @@
-// screens/auth/SignIn.js
-
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -11,23 +9,22 @@ import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/Button';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../assets/theme';
 
 const SignIn = () => {
-  const [email,       setEmail]       = useState('');
-  const [password,    setPassword]    = useState('');
-  const [showPass,    setShowPass]    = useState(false);
-  const [isLoading,   setIsLoading]   = useState(false);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword]    = useState('');
+  const [showPass, setShowPass]    = useState(false);
+  const [isLoading, setIsLoading]   = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // login()     → calls supabase.auth.signInWithPassword()
-  // authError   → set by AuthContext if Supabase returns an error
-  // clearError  → call when user starts editing after an error
+  // login() = calls supabase.auth.signInWithPassword()
+  // authError = set by AuthContext if Supabase returns an error
+  // clearError = call when user starts editing after an error
   const { login, authError, clearError } = useAuth();
   const navigation = useNavigation();
 
-  // ── Validation ─────────────────────────────────────────────────────────────
+  //  Validation 
   function validate() {
     const e = {};
     if (!email.trim())
@@ -45,7 +42,7 @@ const SignIn = () => {
     clearError(); // also clears the Supabase-level error from context
   }
 
-  // ── Login handler ──────────────────────────────────────────────────────────
+  //  Login handler 
   async function handleLogin() {
     if (!validate()) return;
 
@@ -66,7 +63,7 @@ const SignIn = () => {
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Render 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -173,13 +170,6 @@ const SignIn = () => {
           }
         </TouchableOpacity>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-      <Button label="Continue with Google" />
 
         {/* Sign in link */}
         <TouchableOpacity

@@ -1,9 +1,7 @@
-// screens/auth/SignUp.js
-//
 // Collects name, email, password.
 // Calls register() directly — no UserType step.
 // All users are solo lab technicians (hardcoded in AuthContext.register).
-// No Google auth — email + password only.
+
 //
 // Password strength meter blocks submit until strength >= Strong.
 // On success: AppNavigator detects needsConsent=true → ConsentScreen.
@@ -19,14 +17,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { useAuth } from '../../context/AuthContext';
-import { COLORS } from '../../assets/theme';
+import { useAuth } from '../context/AuthContext';
+import { COLORS } from '../assets/theme';
 
-// ── PASSWORD STRENGTH ──────────────────────────────────────────────────────────
+// PASSWORD STRENGTH
 // Each check is tested live as the user types.
 // The button is disabled until score >= 3 (Strong).
 const PASSWORD_CHECKS = [
-  { key: 'length',    label: 'At least 8 characters',          test: p => p.length >= 8 },
+  { key: 'length',    label: 'At least 8 characters', test: p => p.length >= 8 },
   { key: 'uppercase', label: 'At least one uppercase letter',  test: p => /[A-Z]/.test(p) },
   { key: 'number',    label: 'At least one number',            test: p => /[0-9]/.test(p) },
   { key: 'special',   label: 'At least one special character (@#!)', test: p => /[@#!$%^&*()\-_=+]/.test(p) },
@@ -35,22 +33,24 @@ const PASSWORD_CHECKS = [
 function getStrength(pwd) {
   if (!pwd) return { label: '', color: '', score: 0 };
   const passed = PASSWORD_CHECKS.filter(c => c.test(pwd)).length;
-  if (passed <= 1) return { label: 'Weak',        color: '#EF4444', score: 1 };
-  if (passed === 2) return { label: 'Fair',        color: '#F97316', score: 2 };
-  if (passed === 3) return { label: 'Strong',      color: '#84CC16', score: 3 };
-  return            { label: 'Very Strong',        color: '#10B981', score: 4 };
+  if (passed <= 1) return { label: 'Weak', color: '#EF4444', score: 1 };
+  if (passed === 2) return { label: 'Fair', color: '#F97316', score: 2 };
+  if (passed === 3) return { label: 'Strong', color: '#84CC16', score: 3 };
+  return{ 
+    label: 'Very Strong', color: '#10B981', score: 4 
+  };
 }
-// ──────────────────────────────────────────────────────────────────────────────
+
 
 const SignUp = () => {
-  const [name,            setName]            = useState('');
-  const [email,           setEmail]           = useState('');
-  const [password,        setPassword]        = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail]= useState('');
+  const [password,  setPassword]= useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPass,        setShowPass]        = useState(false);
-  const [showConfirm,     setShowConfirm]     = useState(false);
-  const [fieldErrors,     setFieldErrors]     = useState({});
-  const [isRegistering,   setIsRegistering]   = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const { register, authError, clearError } = useAuth();
   const navigation = useNavigation();
@@ -59,7 +59,7 @@ const SignUp = () => {
   const strength = getStrength(password);
   const canSubmit = strength.score >= 3 && !isRegistering;
 
-  // ── Validation ─────────────────────────────────────────────────────────────
+  // Validation 
   function validate() {
     const e = {};
     if (!name.trim())
@@ -91,7 +91,7 @@ const SignUp = () => {
     clearError();
   }
 
-  // ── Register ────────────────────────────────────────────────────────────────
+  // Register 
   // Calls register() directly. userType = 'solo' is hardcoded inside register().
   // On success: AuthContext sets needsConsent=true → AppNavigator shows ConsentScreen.
   // No navigate() needed here.
@@ -115,7 +115,7 @@ const SignUp = () => {
     }
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // Render 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -125,7 +125,7 @@ const SignUp = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ── */}
+        {/* ── Header */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
             <MaterialCommunityIcons name="microscope" size={28} color={COLORS.primary} />
@@ -145,7 +145,7 @@ const SignUp = () => {
           </View>
         ) : null}
 
-        {/* ── Full Name ── */}
+        {/* Full Name  */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Full Name</Text>
           <View style={[styles.inputBox, fieldErrors.name && styles.inputBoxError]}>
@@ -169,7 +169,7 @@ const SignUp = () => {
             : null}
         </View>
 
-        {/* ── Email ── */}
+        {/*  Email  */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Email Address</Text>
           <View style={[styles.inputBox, fieldErrors.email && styles.inputBoxError]}>
@@ -195,7 +195,7 @@ const SignUp = () => {
             : null}
         </View>
 
-        {/* ── Password ── */}
+        {/* Password */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Password</Text>
           <View style={[styles.inputBox, fieldErrors.password && styles.inputBoxError]}>
@@ -226,7 +226,7 @@ const SignUp = () => {
             ? <Text style={styles.fieldError}>{fieldErrors.password}</Text>
             : null}
 
-          {/* ── Password Strength Meter ── */}
+          {/* Password Strength Meter */}
           {/* Shown as soon as the user starts typing */}
           {password.length > 0 && (
             <View style={styles.strengthWrap}>
@@ -252,7 +252,7 @@ const SignUp = () => {
                 ))}
               </View>
 
-              {/* Per-requirement checklist with live ✓ / ✗ */}
+              {/* Per-requirement checklist with live  */}
               <View style={styles.checkList}>
                 {PASSWORD_CHECKS.map(check => {
                   const passed = check.test(password);
@@ -272,7 +272,7 @@ const SignUp = () => {
           )}
         </View>
 
-        {/* ── Confirm Password ── */}
+        {/* Confirm Password */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Confirm Password</Text>
           <View style={[styles.inputBox, fieldErrors.confirmPassword && styles.inputBoxError]}>
@@ -304,7 +304,7 @@ const SignUp = () => {
             : null}
         </View>
 
-        {/* ── Submit — disabled until password is Strong ── */}
+        {/*  Submit — disabled until password is Strong ─ */}
         <TouchableOpacity
           style={[styles.btn, !canSubmit && styles.btnDisabled]}
           onPress={handleCreateAccount}
@@ -322,7 +322,7 @@ const SignUp = () => {
           }
         </TouchableOpacity>
 
-        {/* ── Sign in link ── */}
+        {/*  Sign in link  */}
         <TouchableOpacity
           style={styles.signInLink}
           onPress={() => navigation.navigate('SignIn')}
@@ -337,7 +337,7 @@ const SignUp = () => {
   );
 };
 
-// ── Styles ──────────────────────────────────────────────────────────────────────
+// Styles 
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 48 },

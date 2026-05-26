@@ -6,9 +6,9 @@ import {
   FlatList,
   Dimensions,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from "@react-navigation/native";
@@ -58,7 +58,7 @@ const SLIDES = [
     title: "Capture the smear image",
     description:
       "Tap 'Take Photo' to open the camera. Hold your phone steady over the microscope eyepiece and tap the shutter. The clearer the image, the more accurate the result.",
-    tip: "Tip: Use 40× or 100× objective lens for best results.",
+    tip: "Tip: Use 40x or 100x objective lens for best results.",
   },
   {
     id: "4",
@@ -102,17 +102,17 @@ const handleNext = () => {
     flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
   } else {
     // User has seen all 5 slides. Mark onboarding as done.
-    // AuthContext clears needsOnboarding → AppNavigator shows ConsentScreen.
+    // AuthContext clears needsOnboarding to AppNavigator shows ConsentScreen.
     completeOnboardingSlides();
+    navigation.replace('SignUp');
   }
 };
 
-// Remove the "Sign In" link entirely — user is already logged in here:
-// DELETE the entire <TouchableOpacity onPress={() => navigation.navigate('SignIn')}> block
-// and the handleSkip still navigates to the first slide — update it too:
+
 const handleSkip = () => {
   // Skip all slides and go straight to consent.
   completeOnboardingSlides();
+  navigation.replace('SignUp');
 };
 
   const renderSlide = ({ item }) => (
@@ -242,11 +242,11 @@ const handleSkip = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate("SignIn")}
+          onPress={() => navigation.navigate("SignUp")}
           style={styles.signInLink}
         >
           <Text style={styles.signInText}>
-            Already have an account?{" "}
+            Let's Get Started!{" "}
             <Text
               style={[
                 styles.signInHighlight,
