@@ -1,15 +1,9 @@
 // src/utils/supabase.js
 
-import 'react-native-url-polyfill/auto';
 
-import { createClient } from '@supabase/supabase-js';
-
+import 'react-native-url-polyfill/auto';  // Required for Supabase in React Native
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
-
-// Environment Variables
-
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -17,25 +11,12 @@ const SUPABASE_URL =
 const SUPABASE_ANON_KEY =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: AsyncStorage,     // saves login session on the phone (works offline)
+    autoRefreshToken: true,    // keeps session alive without re-logging in
+    persistSession: true,      // survives app restarts
+    detectSessionInUrl: false, // only needed for web apps, not React Native
+  },
+});
 
-// DEBUG (temporary)
-console.log('SUPABASE URL:', SUPABASE_URL);
-console.log('SUPABASE KEY EXISTS:', !!SUPABASE_ANON_KEY);
-
-
-
-// Create Supabase Client
-
-
-export const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  {
-    auth: {
-      storage: AsyncStorage,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
-  }
-);

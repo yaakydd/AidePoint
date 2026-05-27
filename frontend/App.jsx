@@ -8,7 +8,7 @@ import ConsentScreen from "./screens/ConsentScreen";
 import SplashScreen from "./screens/SplashScreen";
 
 function RootRouter() {
-  const { user, isLoading, needsConsent } = useAuth();
+  const { user, needsConsent, isBooting } = useAuth();
 
   const [showSplash, setShowSplash] = React.useState(true);
 
@@ -17,17 +17,11 @@ function RootRouter() {
     return () => clearTimeout(t);
   }, []);
 
-  if (isLoading || showSplash) {
-    return <SplashScreen />;
-  }
+  if (isBooting || showSplash) return <SplashScreen />;
 
-  if (!user) {
-    return <AuthNavigator />;
-  }
+  if (!user) return <AuthNavigator />;
 
-  if (needsConsent) {
-    return <ConsentScreen />;
-  }
+  if (needsConsent) return <ConsentScreen />;
 
   return <MainAppNavigator />;
 }

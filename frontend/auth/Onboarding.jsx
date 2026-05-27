@@ -96,16 +96,14 @@ const Onboarding = () => {
     setCurrentIndex(index);
   };
 
-  // ✅ FIXED: THIS NOW ACTUALLY WORKS
-  const finishOnboarding = async () => {
-    await AsyncStorage.setItem(ONBOARDING_KEY, "true");
+const finishOnboarding = async () => {
+  await AsyncStorage.setItem("aidepoint_has_launched", "true");
 
-    // IMPORTANT: reset stack properly
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "SignUp" }],
-    });
-  };
+  navigation.reset({
+    index: 0,
+    routes: [{ name: "SignUp" }],
+  });
+};
 
   const handleNext = async () => {
     if (currentIndex < SLIDES.length - 1) {

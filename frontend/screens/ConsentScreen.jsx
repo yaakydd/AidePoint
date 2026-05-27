@@ -1,16 +1,3 @@
-// screens/auth/ConsentScreen.js
-//
-// Shown ONCE after a new user registers — before the main app.
-// Asks whether the user wants blood smear images saved to cloud storage.
-//
-// This preference is stored on the user's profile (store_images column).
-// It can be changed later at any time from the Profile screen.
-//
-// When completeOnboarding() is called:
-//   → saves to Supabase profiles table
-//   → sets needsConsent = false in AuthContext
-//   → AppNavigator automatically switches to MainAppNavigator
-
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Switch,
@@ -20,9 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale, mScale } from '../assets/theme';
+import {
+  COLORS, FONTS, SPACING, RADIUS, SHADOWS,
+  layout, scale, mScale
+} from '../assets/theme';
 
-// What each choice means — shown as info cards on the screen
 const INFO_ITEMS = [
   {
     icon: 'cloud-check-outline',
@@ -36,7 +25,7 @@ const INFO_ITEMS = [
     color: '#6366F1',
     bg: '#EEF2FF',
     title: 'If you decline',
-    body: 'Images are used only for AI analysis and immediately discarded. Nothing is stored. Reports are still generated — only the image itself is not kept.',
+    body: 'Images are used only for AI analysis and immediately discarded. Reports are still generated — only the image itself is not kept.',
   },
   {
     icon: 'pencil-outline',
@@ -49,19 +38,25 @@ const INFO_ITEMS = [
 
 export default function ConsentScreen() {
   const [storeImages, setStoreImages] = useState(false);
-  const [isSaving,    setIsSaving]    = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const { completeOnboarding, user } = useAuth();
+  const { completeConsent } = useAuth();
 
-async function handleContinue() {
-  if (isSaving) return;
+  async function handleContinue() {
+    if (isSaving) return;
 
-  setIsSaving(true);
+    try {
+      setIsSaving(true);
 
-  await completeOnboarding(storeImages);
+      // ✅ correct place for await
+      await completeConsent(storeImages);
 
-  setIsSaving(false);
-}
+    } catch (error) {
+      console.error('Consent save failed:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -80,6 +75,7 @@ async function handleContinue() {
               color={COLORS.primary}
             />
           </View>
+
           <Text style={styles.title}>Image Storage</Text>
           <Text style={styles.subtitle}>
             Before you start, tell us how you'd like blood smear images handled.
@@ -99,7 +95,7 @@ async function handleContinue() {
           </View>
         ))}
 
-        {/* Toggle row */}
+        {/* Toggle */}
         <View style={styles.toggleCard}>
           <View style={styles.toggleLeft}>
             <MaterialCommunityIcons
@@ -107,6 +103,7 @@ async function handleContinue() {
               size={24}
               color={storeImages ? '#10B981' : COLORS.textMuted}
             />
+
             <View>
               <Text style={styles.toggleLabel}>
                 {storeImages ? 'Storage allowed' : 'Do not store images'}
@@ -118,6 +115,7 @@ async function handleContinue() {
               </Text>
             </View>
           </View>
+
           <Switch
             value={storeImages}
             onValueChange={setStoreImages}
@@ -129,25 +127,25 @@ async function handleContinue() {
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>
           AidePoint stores images in a private, encrypted bucket. Images are never shared
-          with third parties. This setting applies to all future scans until you change it.
+          with third parties.
         </Text>
       </ScrollView>
 
-      {/* Sticky footer button */}
+      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.btn, isSaving && styles.btnDisabled]}
           onPress={handleContinue}
           disabled={isSaving}
-          activeOpacity={0.85}
         >
-          {isSaving
-            ? <ActivityIndicator color={COLORS.white} />
-            : <>
-                <Text style={styles.btnText}>Continue to AidePoint</Text>
-                <Feather name="arrow-right" size={20} color={COLORS.white} />
-              </>
-          }
+          {isSaving ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <>
+              <Text style={styles.btnText}>Continue to AidePoint</Text>
+              <Feather name="arrow-right" size={20} color={COLORS.white} />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -155,14 +153,15 @@ async function handleContinue() {
 }
 
 const styles = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: COLORS.white },
-  container:  { paddingHorizontal: SPACING.pagePad, paddingBottom: 120 },
+  safe: { flex: 1, backgroundColor: COLORS.white },
+  container: { paddingHorizontal: SPACING.pagePad, paddingBottom: 120 },
 
   header: {
     alignItems: 'center',
     paddingTop: scale(40),
     paddingBottom: SPACING['2xl'],
   },
+
   iconWrap: {
     width: scale(88),
     height: scale(88),
@@ -172,6 +171,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: SPACING.lg,
   },
+
   title: {
     fontSize: FONTS['2xl'],
     fontWeight: FONTS.bold,
@@ -179,6 +179,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     textAlign: 'center',
   },
+
   subtitle: {
     fontSize: FONTS.md,
     color: COLORS.textSecondary,
@@ -196,21 +197,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
+
   infoIconWrap: {
     width: scale(44),
     height: scale(44),
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
-  infoBody:  { flex: 1 },
-  infoTitle: { fontSize: FONTS.sm, fontWeight: FONTS.semibold, color: COLORS.textPrimary, marginBottom: 4 },
-  infoText:  { fontSize: FONTS.sm, color: COLORS.textSecondary, lineHeight: mScale(19) },
+
+  infoBody: { flex: 1 },
+  infoTitle: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    lineHeight: mScale(19),
+  },
 
   toggleCard: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -221,16 +231,31 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     ...SHADOWS.sm,
   },
-  toggleLeft:  { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, flex: 1 },
-  toggleLabel: { fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
-  toggleSub:   { fontSize: FONTS.xs, color: COLORS.textSecondary, marginTop: 2 },
+
+  toggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    flex: 1,
+  },
+
+  toggleLabel: {
+    fontSize: FONTS.md,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textPrimary,
+  },
+
+  toggleSub: {
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
 
   disclaimer: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,
     lineHeight: mScale(18),
     textAlign: 'center',
-    paddingHorizontal: SPACING.sm,
   },
 
   footer: {
@@ -245,15 +270,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
   },
+
   btn: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.lg,
     gap: SPACING.sm,
   },
+
   btnDisabled: { opacity: 0.65 },
-  btnText:     { color: COLORS.white, fontSize: FONTS.lg, fontWeight: FONTS.semibold },
+
+  btnText: {
+    color: COLORS.white,
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.semibold,
+  },
 });
