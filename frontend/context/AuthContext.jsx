@@ -132,6 +132,7 @@ export function AuthProvider({ children }) {
       email:       session.user.email,
       name:        profile?.name          || 'Unknown',
       role:        profile?.role          || 'lab_technician',
+      hospitalLab: profile?.hospital_lab   || null, 
       storeImages: profile?.store_images  ?? false,
       consentDone: profile?.consent_required === false,
       token:       session.access_token,
