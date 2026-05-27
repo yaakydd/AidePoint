@@ -254,6 +254,48 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
+  // Add this function inside AuthProvider, alongside login/logout/etc.
+
+async function updateProfile(changes) {
+  if (!user) return { success: false, error: 'Not logged in' };
+
+  // Build the fields to update in Supabase
+  // We accept: storeImages, hospitalLab, name, role
+  const dbChanges = {};
+  if (changes.storeImages !== undefined) dbChanges.store_images = changes.storeImages;
+  if (changes.hospitalLab !== undefined) dbChanges.hospital_lab = changes.hospitalLab;
+  if (changes.name        !== undefined) dbChanges.name          = changes.name;
+
+  const updated = {
+    ...user,
+    ...(changes.storeImages  !== undefined && { storeImages:  changes.storeImages }),
+    ...(changes.hospitalLab  !== undefined && { hospitalLab:  changes.hospitalLab }),
+    ...(changes.name         !== undefined && { name:         changes.name }),
+  };
+
+  // Save locally first so UI updates instantly (optimistic update)
+  await cacheUser(updated);
+  setUser(updated);
+
+  // Then sync to Supabase if online
+  if (isOnline) {
+    const { error } = await supabase
+      .from('profiles')
+      .update(dbChanges)
+      .eq('id', user.id);
+
+    if (error) {
+      // Revert local state on failure
+      await cacheUser(user);
+      setUser(user);
+      return { success: false, error: error.message };
+    }
+  }
+  // If offline: change is saved locally, will sync on next login
+
+  return { success: true };
+}
+
   // ─── LOGOUT ──────────────────────────────────────────────
   async function logout() {
     await supabase.auth.signOut();
