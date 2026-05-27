@@ -8,10 +8,11 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useAuth } from '../context/AuthContext';
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
   COLORS,
@@ -26,6 +27,8 @@ import {
 
 const { width } = Dimensions.get("window");
 
+const ONBOARDING_KEY = "aidepoint_has_launched";
+
 const SLIDES = [
   {
     id: "1",
@@ -35,7 +38,7 @@ const SLIDES = [
     step: "01",
     title: "Welcome to AidePoint",
     description:
-      "AidePoint uses AI to analyse blood smear images from your microscope and detect 8 critical blood conditions — in seconds.",
+      "AidePoint uses AI to analyse blood smear images and detect conditions.",
     tip: null,
   },
   {
@@ -45,9 +48,8 @@ const SLIDES = [
     bg: "#EEF2FF",
     step: "02",
     title: "Enter patient details first",
-    description:
-      "Before every scan, go to the Scan tab and fill in the patient's name, age, blood pressure, and temperature. This data becomes part of the final report.",
-    tip: "Tip: Patient vitals affect the AI's confidence score.",
+    description: "Fill patient details before scanning.",
+    tip: "Tip: improves accuracy",
   },
   {
     id: "3",
@@ -55,10 +57,9 @@ const SLIDES = [
     color: "#F59E0B",
     bg: "#FFFBEB",
     step: "03",
-    title: "Capture the smear image",
-    description:
-      "Tap 'Take Photo' to open the camera. Hold your phone steady over the microscope eyepiece and tap the shutter. The clearer the image, the more accurate the result.",
-    tip: "Tip: Use 40x or 100x objective lens for best results.",
+    title: "Capture image",
+    description: "Take a clear microscope image.",
+    tip: null,
   },
   {
     id: "4",
@@ -66,10 +67,9 @@ const SLIDES = [
     color: "#10B981",
     bg: "#ECFDF5",
     step: "04",
-    title: "Read and share the report",
-    description:
-      "After analysis, a full clinical report is generated automatically. You can download it as a PDF, share it with a doctor, or sign it to verify the findings.",
-    tip: "Tip: Doctors on the hospital portal receive reports instantly.",
+    title: "Read reports",
+    description: "Get instant AI reports.",
+    tip: null,
   },
   {
     id: "5",
@@ -77,104 +77,60 @@ const SLIDES = [
     color: "#EC4899",
     bg: "#FDF2F8",
     step: "05",
-    title: "Ask AidePoint AI anything",
-    description:
-      "The chatbot tab is always available. Ask it to explain a blood condition, walk you through the app, or help you understand a report result.",
-    tip: "Tip: AidePoint AI knows all 8 detectable conditions in detail.",
+    title: "Ask AI",
+    description: "Chat with AI anytime.",
+    tip: null,
   },
 ];
 
 const Onboarding = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+  const navigation = useNavigation();
   const flatListRef = useRef(null);
 
-  const navigation = useNavigation();
-  const { completeOnboardingSlides } = useAuth();
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleScroll = (event) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    const index = Math.round(
+      event.nativeEvent.contentOffset.x / width
+    );
     setCurrentIndex(index);
   };
 
-const handleNext = () => {
-  if (currentIndex < SLIDES.length - 1) {
-    flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
-  } else {
-    // User has seen all 5 slides. Mark onboarding as done.
-    // AuthContext clears needsOnboarding to AppNavigator shows ConsentScreen.
-    completeOnboardingSlides();
-    navigation.replace('SignUp');
-  }
-};
+  // ✅ FIXED: THIS NOW ACTUALLY WORKS
+  const finishOnboarding = async () => {
+    await AsyncStorage.setItem(ONBOARDING_KEY, "true");
 
+    // IMPORTANT: reset stack properly
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "SignUp" }],
+    });
+  };
 
-const handleSkip = () => {
-  // Skip all slides and go straight to consent.
-  completeOnboardingSlides();
-  navigation.replace('SignUp');
-};
+  const handleNext = async () => {
+    if (currentIndex < SLIDES.length - 1) {
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex + 1,
+        animated: true,
+      });
+      return;
+    }
 
-  const renderSlide = ({ item }) => (
-    <View style={[styles.slide, { width }]}>
-      <Text style={[styles.stepCounter, { color: item.color }]}>
-        {item.step} / 0{SLIDES.length}
-      </Text>
+    await finishOnboarding();
+  };
 
-      <View style={[styles.iconCircle, { backgroundColor: item.bg }]}>
-        <MaterialCommunityIcons
-          name={item.icon}
-          size={scale(80)}
-          color={item.color}
-        />
-      </View>
+  const handleSkip = async () => {
+    await finishOnboarding();
+  };
 
-      <Text style={styles.slideTitle}>{item.title}</Text>
-
-      <Text style={styles.slideDescription}>
-        {item.description}
-      </Text>
-
-      {item.tip ? (
-        <View style={[styles.tipBox, { borderLeftColor: item.color }]}>
-          <Text style={[styles.tipText, { color: item.color }]}>
-            {item.tip}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-
-  const renderDots = () => (
-    <View style={styles.dotsRow}>
-      {SLIDES.map((slide, index) => (
-        <View
-          key={slide.id}
-          style={[
-            styles.dot,
-            {
-              backgroundColor:
-                index === currentIndex
-                  ? SLIDES[currentIndex].color
-                  : COLORS.border,
-              width: index === currentIndex ? scale(28) : scale(8),
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-
-  const current = SLIDES[currentIndex];
+  const currentSlide = SLIDES[currentIndex];
   const isLastSlide = currentIndex === SLIDES.length - 1;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={COLORS.white}
-      />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
+      {/* HEADER */}
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
           <MaterialCommunityIcons
@@ -182,80 +138,76 @@ const handleSkip = () => {
             size={scale(22)}
             color={COLORS.primary}
           />
-
           <Text style={styles.logoText}>AidePoint</Text>
         </View>
 
         {!isLastSlide && (
-          <TouchableOpacity
-            onPress={handleSkip}
-            hitSlop={{
-              top: 10,
-              bottom: 10,
-              left: 10,
-              right: 10,
-            }}
-          >
+          <TouchableOpacity onPress={handleSkip}>
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         )}
       </View>
 
+      {/* SLIDES */}
       <FlatList
         ref={flatListRef}
         data={SLIDES}
-        renderItem={renderSlide}
+        renderItem={({ item }) => (
+          <View style={[styles.slide, { width }]}>
+            <Text style={[styles.stepCounter, { color: item.color }]}>
+              {item.step} / 0{SLIDES.length}
+            </Text>
+
+            <View style={[styles.iconCircle, { backgroundColor: item.bg }]}>
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={scale(80)}
+                color={item.color}
+              />
+            </View>
+
+            <Text style={styles.slideTitle}>{item.title}</Text>
+            <Text style={styles.slideDescription}>{item.description}</Text>
+          </View>
+        )}
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        getItemLayout={(_, index) => ({
-          length: width,
-          offset: width * index,
-          index,
-        })}
-        style={styles.flatList}
       />
 
-      <View style={styles.bottomSection}>
-        {renderDots()}
+      {/* DOTS (FIXED — YOU LOST THIS BEFORE) */}
+      <View style={styles.dotsRow}>
+        {SLIDES.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              {
+                backgroundColor:
+                  index === currentIndex
+                    ? currentSlide.color
+                    : COLORS.border,
+                width: index === currentIndex ? 22 : 8,
+              },
+            ]}
+          />
+        ))}
+      </View>
 
+      {/* BUTTON */}
+      <View style={styles.bottomSection}>
         <TouchableOpacity
-          style={[
-            styles.nextBtn,
-            { backgroundColor: current.color },
-          ]}
+          style={[styles.nextBtn, { backgroundColor: currentSlide.color }]}
           onPress={handleNext}
-          activeOpacity={0.85}
         >
           <Text style={styles.nextBtnText}>
             {isLastSlide ? "Get Started" : "Next"}
           </Text>
 
-          <Feather
-            name="arrow-right"
-            size={scale(20)}
-            color={COLORS.white}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate("SignUp")}
-          style={styles.signInLink}
-        >
-          <Text style={styles.signInText}>
-            Let's Get Started!{" "}
-            <Text
-              style={[
-                styles.signInHighlight,
-                { color: current.color },
-              ]}
-            >
-              Sign In
-            </Text>
-          </Text>
+          <Feather name="arrow-right" size={scale(20)} color="white" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -295,13 +247,8 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.medium,
   },
 
-  flatList: {
-    flex: 1,
-  },
-
   slide: {
     paddingHorizontal: scale(28),
-    paddingTop: SPACING.xl,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -309,7 +256,6 @@ const styles = StyleSheet.create({
   stepCounter: {
     fontSize: FONTS.sm,
     fontWeight: FONTS.bold,
-    letterSpacing: 1.5,
     marginBottom: scale(28),
     alignSelf: "flex-start",
   },
@@ -318,68 +264,58 @@ const styles = StyleSheet.create({
     width: scale(160),
     height: scale(160),
     borderRadius: RADIUS.full,
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
     marginBottom: scale(36),
   },
 
   slideTitle: {
     fontSize: FONTS["2xl"],
     fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
     textAlign: "center",
     marginBottom: SPACING.md,
-    lineHeight: mScale(32),
+    color: COLORS.textPrimary,
   },
 
   slideDescription: {
     fontSize: FONTS.md,
-    color: COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: mScale(24),
+    color: COLORS.textSecondary,
     marginBottom: SPACING.xl,
   },
 
   tipBox: {
-    borderLeftWidth: scale(3),
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    borderLeftWidth: 3,
+    padding: SPACING.sm,
     alignSelf: "stretch",
-    marginTop: SPACING.xs,
   },
 
   tipText: {
     fontSize: FONTS.sm,
     fontWeight: FONTS.semibold,
-    lineHeight: mScale(18),
-  },
-
-  bottomSection: {
-    paddingHorizontal: SPACING["2xl"],
-    paddingBottom:
-      layout.bottomInset + SPACING.lg,
-    paddingTop: SPACING.lg,
-    alignItems: "center",
-    gap: SPACING.lg,
   },
 
   dotsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.xs,
+    justifyContent: "center",
+    marginBottom: SPACING.md,
   },
 
   dot: {
-    height: scale(8),
+    height: 8,
     borderRadius: RADIUS.full,
+    marginHorizontal: 4,
+  },
+
+  bottomSection: {
+    paddingHorizontal: SPACING["2xl"],
+    paddingBottom: layout.bottomInset + SPACING.lg,
   },
 
   nextBtn: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    width: "100%",
+    alignItems: "center",
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.lg,
     gap: SPACING.sm,
@@ -391,19 +327,6 @@ const styles = StyleSheet.create({
     fontSize: FONTS.lg,
     fontWeight: FONTS.semibold,
   },
-
-  signInLink: {
-    paddingVertical: SPACING.xs,
-  },
-
-  signInText: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-  },
-
-  signInHighlight: {
-    fontWeight: FONTS.semibold,
-  },
-}); 
+});
 
 export default Onboarding;

@@ -53,14 +53,15 @@ export default function ConsentScreen() {
 
   const { completeOnboarding, user } = useAuth();
 
-  async function handleContinue() {
-    setIsSaving(true);
-    await completeOnboarding(storeImages);
-    // completeOnboarding() sets needsConsent = false in AuthContext.
-    // AppNavigator reacts to this and switches to MainAppNavigator.
-    // No navigation.navigate() needed here.
-    setIsSaving(false);
-  }
+async function handleContinue() {
+  if (isSaving) return;
+
+  setIsSaving(true);
+
+  await completeOnboarding(storeImages);
+
+  setIsSaving(false);
+}
 
   return (
     <SafeAreaView style={styles.safe}>
