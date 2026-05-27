@@ -1,28 +1,42 @@
+// App.js
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import AuthNavigator from "./navigation/AuthNavigator";
-import MainAppNavigator from "./navigation/MainAppNavigator";
-import ConsentScreen from "./screens/ConsentScreen";
-import SplashScreen from "./screens/SplashScreen";
+import AuthNavigator     from "./navigation/AuthNavigator";
+import MainAppNavigator  from "./navigation/MainAppNavigator";
+import ConsentScreen     from "./screens/ConsentScreen";
+import SplashScreen      from "./screens/SplashScreen";
 
 function RootRouter() {
-  const { user, needsConsent, isBooting } = useAuth();
+  const { authState } = useAuth();
 
-  const [showSplash, setShowSplash] = React.useState(true);
+  // The splash must show for at least 2 seconds (for branding),
+  // AND we must wait for auth to finish booting.
+  // Both conditions have to clear before we move on.
+  const [timerDone, setTimerDone] = React.useState(false);
 
   React.useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 2000);
+    const t = setTimeout(() => setTimerDone(true), 2000);
     return () => clearTimeout(t);
   }, []);
 
-  if (isBooting || showSplash) return <SplashScreen />;
+  // Still loading — show splash
+  if (authState === 'BOOTING' || !timerDone) {
+    return <SplashScreen />;
+  }
 
-  if (!user) return <AuthNavigator />;
+  // Not logged in — show Onboarding → SignIn → SignUp flow
+  if (authState === 'AUTH') {
+    return <AuthNavigator />;
+  }
 
-  if (needsConsent) return <ConsentScreen />;
+  // Logged in but hasn't picked data preference yet
+  if (authState === 'CONSENT') {
+    return <ConsentScreen />;
+  }
 
+  // Fully set up — show the main app
   return <MainAppNavigator />;
 }
 
