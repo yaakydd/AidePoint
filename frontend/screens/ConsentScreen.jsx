@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Switch,
-  StyleSheet, StatusBar, ScrollView, ActivityIndicator,
+  StyleSheet, StatusBar, ScrollView, ActivityIndicator,Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -42,21 +42,31 @@ export default function ConsentScreen() {
 
   const { completeConsent } = useAuth();
 
-  async function handleContinue() {
-    if (isSaving) return;
+// Replace just this function in your ConsentScreen
+async function handleContinue() {
+  if (isSaving) return;
 
-    try {
-      setIsSaving(true);
+  setIsSaving(true);
+  try {
+    const result = await completeConsent(storeImages);
 
-      // ✅ correct place for await
-      await completeConsent(storeImages);
-
-    } catch (error) {
-      console.error('Consent save failed:', error);
-    } finally {
-      setIsSaving(false);
+    if (!result.success) {
+      Alert.alert(
+        'Something went wrong',
+        result.error || 'Could not save your preference. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
+    // On success: authState changes to 'APP' automatically in AuthContext.
+    // App.js sees the change and switches to MainAppNavigator. No navigate() needed.
+
+  } catch (err) {
+    Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    console.error('Consent save failed:', err);
+  } finally {
+    setIsSaving(false);
   }
+}
 
   return (
     <SafeAreaView style={styles.safe}>
