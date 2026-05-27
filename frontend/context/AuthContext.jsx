@@ -319,6 +319,7 @@ async function updateProfile(changes) {
       authError,   // string or null
       isOnline,    // boolean — useful for showing offline banners in screens
       register,
+      updateProfile,
       login,
       logout,
       completeConsent,
