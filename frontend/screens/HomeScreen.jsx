@@ -1,9 +1,4 @@
 // screens/HomeScreen.js
-//
-// Dashboard for solo lab technicians.
-// Queries Supabase scans table for: today's count, weekly totals, recent scans.
-// No userType/hospital logic. No pending-review card. Always 2 stat cards.
-// Pull-to-refresh supported.
 
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import {
@@ -20,7 +15,6 @@ import { homeStyles as styles } from '../styles/HomeStyles';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
-// Human-readable condition labels for the recent scans list
 const CONDITION_LABELS = {
   sickle_cell:     'Sickle Cell Anaemia',
   iron_deficiency: 'Iron Deficiency Anaemia',
@@ -33,7 +27,6 @@ const CONDITION_LABELS = {
   normal:          'No Condition Detected',
 };
 
-// These conditions show a red card in the recent scans list
 const HIGH_SEVERITY_SET = new Set([
   'sickle_cell', 'malaria', 'thalassemia', 'hemolytic', 'aplastic',
 ]);
@@ -73,6 +66,7 @@ function getRelativeTime(iso) {
 }
 
 // ── Weekly Bar Chart ──────────────────────────────────────────────────────────
+
 const WeeklyBarChart = ({ data }) => {
   const maxCount   = Math.max(...data.map(d => d.count), 1);
   const BAR_MAX    = 72;
@@ -110,6 +104,7 @@ const WeeklyBarChart = ({ data }) => {
 };
 
 // ── Scan Card ─────────────────────────────────────────────────────────────────
+
 const ScanCard = ({ scan, onPress }) => {
   const { bg, color, icon } = getSeverityStyle(scan.severity);
   return (
@@ -139,9 +134,10 @@ const ScanCard = ({ scan, onPress }) => {
 };
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
+
 const HomeScreen = () => {
-  const { user }     = useContext(AuthContext);
-  const navigation   = useNavigation();
+  const { user }   = useContext(AuthContext);
+  const navigation = useNavigation();
 
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
@@ -152,44 +148,59 @@ const HomeScreen = () => {
   const displayName = user?.name ?? 'Lab Technician';
 
   // ── Fetch ────────────────────────────────────────────────────────────────
+
   const fetchDashboardData = useCallback(async () => {
-    if (!user?.id) return;
+    // FIX: release loading state immediately if no user, not stuck forever
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     setFetchError(null);
 
     try {
       const now          = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const sevenDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString();
+      const startOfToday = new Date(
+        now.getFullYear(), now.getMonth(), now.getDate()
+      ).toISOString();
 
-      // Run all three queries in parallel for speed
+      // FIX: was 6 * 24h (6 days back). Now a true 7-day window.
+      const sevenDaysAgo = new Date(
+        now.getTime() - 7 * 24 * 60 * 60 * 1000
+      ).toISOString();
+
       const [todayRes, weekRes, recentRes] = await Promise.all([
 
-        // Count of today's scans (head: true → returns count, no rows)
+        // Today's count — head:true returns only the count, no row data
         supabase
           .from('scans')
           .select('*', { count: 'exact', head: true })
-          .eq('lab_tech_id', user.id)
+          // FIX: column is created_by, not lab_tech_id
+          .eq('created_by', user.id)
           .gte('created_at', startOfToday),
 
-        // This week's scans — used for chart + weekly total
+        // This week's scans for the chart
         supabase
           .from('scans')
-          .select('created_at, condition, status')
-          .eq('lab_tech_id', user.id)
+          .select('created_at, status, results')
+          // FIX: created_by
+          .eq('created_by', user.id)
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false }),
 
         // 4 most recent scans for the list
+        // FIX: patient_name doesn't exist on scans — join patients table.
+        // FIX: condition doesn't exist on scans — it lives inside results JSONB.
         supabase
           .from('scans')
-          .select('id, patient_name, condition, status, created_at')
-          .eq('lab_tech_id', user.id)
+          .select('id, status, created_at, results, patients(name)')
+          .eq('created_by', user.id)
           .order('created_at', { ascending: false })
           .limit(4),
       ]);
 
-      if (todayRes.error) throw todayRes.error;
-      if (weekRes.error)  throw weekRes.error;
+      if (todayRes.error)  throw todayRes.error;
+      if (weekRes.error)   throw weekRes.error;
       if (recentRes.error) throw recentRes.error;
 
       const weekScans = weekRes.data  ?? [];
@@ -212,23 +223,36 @@ const HomeScreen = () => {
         weeklyData,
       });
 
-      // Map raw scan rows to UI shape
-      setRecentScans(recentRaw.map(s => ({
-        id:          s.id,
-        shortId:     s.id.slice(-6).toUpperCase(),
-        patientName: s.patient_name,
-        condition:
-          s.condition
-            ? (CONDITION_LABELS[s.condition] ?? s.condition)
-            : 'Pending Analysis',
-        severity:
-          (!s.condition || s.status === 'pending' || s.status === 'processing')
-            ? 'yellow'
-            : s.condition === 'normal'
-            ? 'green'
-            : HIGH_SEVERITY_SET.has(s.condition) ? 'red' : 'yellow',
-        time: getRelativeTime(s.created_at),
-      })));
+      // Map raw rows to UI shape
+      setRecentScans(recentRaw.map(s => {
+        // FIX: name comes from the joined patients row
+        const patientName = s.patients?.name ?? 'Unknown Patient';
+
+        // FIX: condition lives inside the results JSONB, not a top-level column
+        const rawCondition = s.results?.condition ?? null;
+
+        const isPending =
+          !rawCondition ||
+          s.status === 'pending' ||
+          s.status === 'processing';
+
+        const severity = isPending
+          ? 'yellow'
+          : rawCondition === 'normal'
+          ? 'green'
+          : HIGH_SEVERITY_SET.has(rawCondition) ? 'red' : 'yellow';
+
+        return {
+          id:          s.id,
+          shortId:     s.id.slice(-6).toUpperCase(),
+          patientName,
+          condition:   isPending
+            ? 'Pending Analysis'
+            : (CONDITION_LABELS[rawCondition] ?? rawCondition),
+          severity,
+          time:        getRelativeTime(s.created_at),
+        };
+      }));
 
     } catch (err) {
       console.error('HomeScreen fetchDashboardData:', err.message);
@@ -248,20 +272,18 @@ const HomeScreen = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // FIX: divide by 7 (true weekly average), not by days-with-scans (inflated)
   const avgPerDay = stats
-    ? Math.round(
-        stats.weeklyData.reduce((s, d) => s + d.count, 0) /
-        Math.max(stats.weeklyData.filter(d => d.count > 0).length, 1)
-      )
+    ? Math.round(stats.thisWeek / 7)
     : 0;
 
-  // ── Navigate to report detail from recent scan card ────────────────────
+  // FIX: pass scanId so Reports screen can navigate to the specific record
   function handleScanPress(scan) {
-    navigation.navigate('Reports');
-    // Future: navigate to the specific report detail using scan.id
+    navigation.navigate('Reports', { scanId: scan.id });
   }
 
   // ── UI ───────────────────────────────────────────────────────────────────
+
   return (
     <SafeAreaView style={styles.container}>
 
@@ -286,7 +308,10 @@ const HomeScreen = () => {
       {/* ── Scrollable Content ── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: TAB_BAR_CLEARANCE }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: TAB_BAR_CLEARANCE },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -303,16 +328,13 @@ const HomeScreen = () => {
           </View>
         ) : null}
 
-        {/* ── Stat Cards — always 2 (solo users only) ── */}
+        {/* ── Stat Cards ── */}
         <Text style={styles.sectionTitle}>Today's Overview</Text>
         <View style={styles.statsRow}>
 
-          {/* Card 1: Today */}
           <View style={[styles.statCard, styles.statCardPrimary, { width: '48%' }]}>
             <MaterialCommunityIcons
-              name="microscope"
-              size={20}
-              color="#6200EE"
+              name="microscope" size={20} color="#6200EE"
               style={{ marginBottom: 6 }}
             />
             <Text style={styles.statLabel}>TODAY</Text>
@@ -322,12 +344,9 @@ const HomeScreen = () => {
             <Text style={styles.statSub}>scans done</Text>
           </View>
 
-          {/* Card 2: This Week */}
           <View style={[styles.statCard, { width: '48%' }]}>
             <MaterialCommunityIcons
-              name="calendar-week"
-              size={20}
-              color="#10B981"
+              name="calendar-week" size={20} color="#10B981"
               style={{ marginBottom: 6 }}
             />
             <Text style={styles.statLabel}>THIS WEEK</Text>
@@ -367,9 +386,7 @@ const HomeScreen = () => {
         >
           <View style={styles.quickActionLeft}>
             <MaterialCommunityIcons
-              name="plus-circle-outline"
-              size={22}
-              color="#FFFFFF"
+              name="plus-circle-outline" size={22} color="#FFFFFF"
             />
             <Text style={styles.quickActionText}>Start a New Scan</Text>
           </View>
@@ -397,9 +414,7 @@ const HomeScreen = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={48}
-              color="#CBD5E1"
+              name="clipboard-text-outline" size={48} color="#CBD5E1"
             />
             <Text style={styles.emptyText}>No scans recorded yet.</Text>
             <Text style={styles.emptySubText}>
