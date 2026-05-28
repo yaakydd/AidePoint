@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
 
   // ─── STARTUP ─────────────────────────────────────────────
   useEffect(() => {
-    let alive = true;  // prevents state updates if component unmounts mid-way
+    let alive = true; // prevents state updates if component unmounts mid-way
 
     async function bootstrap() {
       try {
@@ -130,10 +130,10 @@ export function AuthProvider({ children }) {
     const userData = {
       id:          uid,
       email:       session.user.email,
-      name:        profile?.name          || 'Unknown',
-      role:        profile?.role          || 'lab_technician',
-      hospitalLab: profile?.hospital_lab   || null, 
-      storeImages: profile?.store_images  ?? false,
+      name:        profile?.name             || 'Unknown',
+      role:        profile?.role             || 'lab_technician',
+      hospitalLab: profile?.hospital_lab     || null,
+      storeImages: profile?.store_images     ?? false,
       consentDone: profile?.consent_required === false,
       token:       session.access_token,
     };
@@ -171,17 +171,16 @@ export function AuthProvider({ children }) {
   async function register({ name, email, password }) {
     setAuthError(null);
 
-    // Don't even try if there's no internet
     if (!isOnline) {
       const msg = 'No internet connection. You need internet to create an account.';
       setAuthError(msg);
       return { success: false, error: msg };
     }
 
-    const { error } = await supabase.auth.signUp({
-      email:    email.trim().toLowerCase(),
+    const { data, error } = await supabase.auth.signUp({
+      email:   email.trim().toLowerCase(),
       password,
-      options:  { data: { name: name.trim() } },
+      options: { data: { name: name.trim() } },
     });
 
     if (error) {
@@ -189,12 +188,50 @@ export function AuthProvider({ children }) {
       return { success: false, error: error.message };
     }
 
-    // If email confirmation is OFF in Supabase: onAuthStateChange fires
-    // immediately and logs the user in — no extra step needed here.
+    // ── How email confirmation works ──────────────────────────────────────
+    // Supabase tells us whether the user needs to verify their email by
+    // checking if a session was returned immediately:
     //
-    // If email confirmation is ON: user must verify email before logging in.
-    // We return needsVerification: true so the UI can show a message.
-    return { success: true, needsVerification: false };
+    //   data.session !== null  →  confirmation OFF  →  user is logged in now
+    //   data.session === null  →  confirmation ON   →  user must check email
+    //
+    const needsVerification = data.session === null;
+
+    // Pass email back so SignUp can forward it to the VerifyEmail screen
+    // without the user having to retype it
+    return { success: true, needsVerification, email: email.trim().toLowerCase() };
+  }
+
+  // ─── VERIFY EMAIL OTP ────────────────────────────────────
+  // Called from the VerifyEmail screen with the 6-digit code the user types.
+  // On success Supabase fires onAuthStateChange → hydrateUser runs →
+  // authState moves to 'CONSENT' or 'APP' automatically.
+  async function verifyEmail(email, token) {
+    setAuthError(null);
+
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: token.trim(),
+      type:  'signup', // 'signup' = email confirmation after sign-up
+    });
+
+    if (error) {
+      setAuthError(error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  }
+
+  // ─── RESEND VERIFICATION EMAIL ────────────────────────────
+  async function resendVerification(email) {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   }
 
   // ─── LOGIN ───────────────────────────────────────────────
@@ -226,14 +263,9 @@ export function AuthProvider({ children }) {
   async function completeConsent(storeImages) {
     if (!user) return { success: false, error: 'Not logged in' };
 
-    // Build the updated user locally first
     const updated = { ...user, storeImages, consentDone: true };
 
     if (!isOnline) {
-      // Offline: save locally and let them into the app.
-      // The Supabase update will be retried next time they're online and
-      // open the app (hydrateUser will overwrite with fresh data only if
-      // consent_required is still true — so we save a pending flag too).
       await cacheUser({ ...updated, consentPending: true });
       setUser(updated);
       setAuthState('APP');
@@ -245,9 +277,7 @@ export function AuthProvider({ children }) {
       .update({ store_images: storeImages, consent_required: false })
       .eq('id', user.id);
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
 
     await cacheUser(updated);
     setUser(updated);
@@ -255,47 +285,42 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
-  // Add this function inside AuthProvider, alongside login/logout/etc.
+  // ─── UPDATE PROFILE ──────────────────────────────────────
+  async function updateProfile(changes) {
+    if (!user) return { success: false, error: 'Not logged in' };
 
-async function updateProfile(changes) {
-  if (!user) return { success: false, error: 'Not logged in' };
+    const dbChanges = {};
+    if (changes.storeImages !== undefined) dbChanges.store_images = changes.storeImages;
+    if (changes.hospitalLab !== undefined) dbChanges.hospital_lab = changes.hospitalLab;
+    if (changes.name        !== undefined) dbChanges.name         = changes.name;
 
-  // Build the fields to update in Supabase
-  // We accept: storeImages, hospitalLab, name, role
-  const dbChanges = {};
-  if (changes.storeImages !== undefined) dbChanges.store_images = changes.storeImages;
-  if (changes.hospitalLab !== undefined) dbChanges.hospital_lab = changes.hospitalLab;
-  if (changes.name        !== undefined) dbChanges.name          = changes.name;
+    const updated = {
+      ...user,
+      ...(changes.storeImages !== undefined && { storeImages: changes.storeImages }),
+      ...(changes.hospitalLab !== undefined && { hospitalLab: changes.hospitalLab }),
+      ...(changes.name        !== undefined && { name:        changes.name }),
+    };
 
-  const updated = {
-    ...user,
-    ...(changes.storeImages  !== undefined && { storeImages:  changes.storeImages }),
-    ...(changes.hospitalLab  !== undefined && { hospitalLab:  changes.hospitalLab }),
-    ...(changes.name         !== undefined && { name:         changes.name }),
-  };
+    // Optimistic update — save locally first so UI responds instantly
+    await cacheUser(updated);
+    setUser(updated);
 
-  // Save locally first so UI updates instantly (optimistic update)
-  await cacheUser(updated);
-  setUser(updated);
+    if (isOnline) {
+      const { error } = await supabase
+        .from('profiles')
+        .update(dbChanges)
+        .eq('id', user.id);
 
-  // Then sync to Supabase if online
-  if (isOnline) {
-    const { error } = await supabase
-      .from('profiles')
-      .update(dbChanges)
-      .eq('id', user.id);
-
-    if (error) {
-      // Revert local state on failure
-      await cacheUser(user);
-      setUser(user);
-      return { success: false, error: error.message };
+      if (error) {
+        // Revert on failure
+        await cacheUser(user);
+        setUser(user);
+        return { success: false, error: error.message };
+      }
     }
-  }
-  // If offline: change is saved locally, will sync on next login
 
-  return { success: true };
-}
+    return { success: true };
+  }
 
   // ─── LOGOUT ──────────────────────────────────────────────
   async function logout() {
@@ -314,11 +339,13 @@ async function updateProfile(changes) {
   // ─── PROVIDE ─────────────────────────────────────────────
   return (
     <AuthContext.Provider value={{
-      authState,   // 'BOOTING' | 'AUTH' | 'CONSENT' | 'APP'
-      user,        // { id, email, name, role, storeImages, consentDone, token }
-      authError,   // string or null
-      isOnline,    // boolean — useful for showing offline banners in screens
+      authState,          // 'BOOTING' | 'AUTH' | 'CONSENT' | 'APP'
+      user,               // { id, email, name, role, storeImages, consentDone, token }
+      authError,          // string or null
+      isOnline,           // boolean
       register,
+      verifyEmail,
+      resendVerification,
       updateProfile,
       login,
       logout,
