@@ -142,7 +142,8 @@ export default function ProfileScreen() {
             iconBg="#F0F9FF"
             icon={<MaterialCommunityIcons name="shield-lock-outline" size={19} color="#0EA5E9" />}
             label="Security & Password"
-            onPress={() => {}}
+            value="Change password"
+            onPress={() => navigation.navigate('ForgotPassword')}  
           />
           <Divider />
 
@@ -172,7 +173,7 @@ export default function ProfileScreen() {
           {/* Subtle offline hint under toggle when offline */}
           {!isOnline && (
             <Text style={styles.offlineNote}>
-              ⚠ Offline — preference saved locally, will sync when connected
+              Offline — preference saved locally, will sync when connected
             </Text>
           )}
         </SectionCard>

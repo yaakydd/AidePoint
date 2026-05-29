@@ -9,7 +9,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../assets/theme';
 
-const BOXES = 6;
+const BOXES = 6;   //  Supabase sends 6-digit OTPs by default
 
 export default function VerifyEmail() {
   const navigation   = useNavigation();
@@ -18,11 +18,11 @@ export default function VerifyEmail() {
 
   const { verifyEmail, resendVerification, authError, clearError } = useAuth();
 
-  const [digits, setDigits]     = useState(Array(BOXES).fill(''));
-  const [loading, setLoading]   = useState(false);
-  const [resending, setResend]  = useState(false);
+  const [digits, setDigits]       = useState(Array(BOXES).fill(''));
+  const [loading, setLoading]     = useState(false);
+  const [resending, setResend]    = useState(false);
   const [resendMsg, setResendMsg] = useState('');
-  const [error, setError]       = useState('');
+  const [error, setError]         = useState('');
 
   const refs = useRef([]);        // one ref per input box
 
@@ -190,9 +190,9 @@ export default function VerifyEmail() {
 const styles = StyleSheet.create({
   safe:       { flex: 1, backgroundColor: '#fff' },
   back:       { padding: 16 },
-  container:  { flex: 1, paddingHorizontal: 28, alignItems: 'center', paddingTop: 20 },
+  container:  { flex: 1, paddingHorizontal: 20, alignItems: 'center', paddingTop: 20 },
 
-  iconWrap:   { 
+  iconWrap:   {
     width: 90, height: 90, borderRadius: 45,
     backgroundColor: '#EEF2FF',
     alignItems: 'center', justifyContent: 'center',
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   boxRow:     { flexDirection: 'row', gap: 10, marginBottom: 16 },
 
   box: {
-    width: 46, height: 56,
+    width: 46, height: 56,        // slightly narrower to fit 6 boxes on screen
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
     borderRadius: 10,

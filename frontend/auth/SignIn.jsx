@@ -1,252 +1,222 @@
+// screens/auth/SignIn.js
+//
+// Standard email + password sign-in.
+// "Forgot password?" → navigates to ForgotPassword screen.
+// On success: onAuthStateChange fires → AuthContext → RootRouter swaps to APP/CONSENT.
+
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, StyleSheet,
-  StatusBar, Platform,
+  ActivityIndicator, StyleSheet, StatusBar,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
+import { SafeAreaView }  from 'react-native-safe-area-context';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { useAuth } from '../context/AuthContext';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS } from '../assets/theme';
+import { useAuth }  from '../context/AuthContext';
+import { COLORS }   from '../assets/theme';
 
-const SignIn = () => {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword]    = useState('');
-  const [showPass, setShowPass]    = useState(false);
-  const [isLoading, setIsLoading]   = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({});
-
-  // login() = calls supabase.auth.signInWithPassword()
-  // authError = set by AuthContext if Supabase returns an error
-  // clearError = call when user starts editing after an error
-  const { login, authError, clearError } = useAuth();
+export default function SignIn() {
   const navigation = useNavigation();
+  const { login, authError, clearError } = useAuth();
 
-  //  Validation 
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [errors,   setErrors]   = useState({});
+  const [loading,  setLoading]  = useState(false);
+
   function validate() {
     const e = {};
     if (!email.trim())
       e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      e.email = 'Enter a valid email address';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      e.email = 'Invalid email address';
     if (!password)
       e.password = 'Password is required';
-    setFieldErrors(e);
+    setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  function clearField(key) {
-    if (fieldErrors[key]) setFieldErrors(p => ({ ...p, [key]: null }));
-    clearError(); // also clears the Supabase-level error from context
-  }
+  async function handleSignIn() {
+    if (!validate() || loading) return;
+    setLoading(true);
+    clearError?.();
 
-  //  Login handler 
-  async function handleLogin() {
-    if (!validate()) return;
-
-    setIsLoading(true);
     try {
       const result = await login(email, password);
-
-      if (!result.success) {
-        // authError in context is already set by login().
-        // We also push it into fieldErrors so it shows under the email field.
-        setFieldErrors({ email: result.error });
+      if (!result?.success) {
+        // Show error under email field for clean UX
+        setErrors({ email: result?.error ?? 'Invalid email or password.' });
       }
-      // On success: onAuthStateChange fires in AuthContext → user is set →
-      // AppNavigator switches to MainApp automatically. No navigate() needed.
-
+      // On success: AuthContext moves authState → APP or CONSENT automatically
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }
 
-  // Render 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
 
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Logo */}
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <MaterialCommunityIcons name="microscope" size={28} color={COLORS.primary} />
-            <Text style={styles.logoText}>AidePoint</Text>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.logoCircle}>
+              <MaterialCommunityIcons name="microscope" size={34} color="#fff" />
+            </View>
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>Sign in to AidePoint</Text>
           </View>
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to your AidePoint account</Text>
-        </View>
 
-        {/* Global auth error banner (from Supabase) */}
-        {authError ? (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
-            <Text style={styles.errorBannerText}>{authError}</Text>
-          </View>
-        ) : null}
+          {/* Server error */}
+          {!!authError && (
+            <View style={styles.errorBox}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#B91C1C" />
+              <Text style={styles.errorText}>{authError}</Text>
+            </View>
+          )}
 
-        {/* Email */}
-        <View style={styles.fieldGroup}>
+          {/* Email */}
           <Text style={styles.label}>Email Address</Text>
-          <View style={[styles.inputBox, fieldErrors.email && styles.inputBoxError]}>
-            <MaterialIcons
-              name="email"
-              size={20}
-              color={fieldErrors.email ? '#EF4444' : '#94A3B8'}
-            />
+          <View style={[styles.inputRow, errors.email && styles.inputError]}>
+            <MaterialCommunityIcons name="email-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
-              placeholder="your@email.com"
-              placeholderTextColor="#94A3B8"
+              placeholder="you@example.com"
+              placeholderTextColor="#9CA3AF"
               value={email}
-              onChangeText={t => { setEmail(t); clearField('email'); }}
-              keyboardType="email-address"
+              onChangeText={t => { setEmail(t); setErrors(e => ({ ...e, email: null })); clearError?.(); }}
               autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
+              keyboardType="email-address"
+              style={styles.input}
             />
           </View>
-          {fieldErrors.email
-            ? <Text style={styles.fieldError}>{fieldErrors.email}</Text>
-            : null}
-        </View>
+          {errors.email && <Text style={styles.err}>{errors.email}</Text>}
 
-        {/* Password */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Password</Text>
-          <View style={[styles.inputBox, fieldErrors.password && styles.inputBoxError]}>
-            <MaterialIcons
-              name="lock"
-              size={20}
-              color={fieldErrors.password ? '#EF4444' : '#94A3B8'}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Your password"
-              placeholderTextColor="#94A3B8"
-              value={password}
-              onChangeText={t => { setPassword(t); clearField('password'); }}
-              secureTextEntry={!showPass}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-            />
-            <TouchableOpacity
-              onPress={() => setShowPass(p => !p)}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Feather name={showPass ? 'eye-off' : 'eye'} size={20} color="#94A3B8" />
+          {/* Password */}
+          <View style={styles.passwordHeader}>
+            <Text style={styles.label}>Password</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
-          {fieldErrors.password
-            ? <Text style={styles.fieldError}>{fieldErrors.password}</Text>
-            : null}
-        </View>
+          <View style={[styles.inputRow, errors.password && styles.inputError]}>
+            <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
+            <TextInput
+              placeholder="Enter your password"
+              placeholderTextColor="#9CA3AF"
+              value={password}
+              onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: null })); }}
+              secureTextEntry={!showPass}
+              style={styles.input}
+            />
+            <TouchableOpacity onPress={() => setShowPass(p => !p)} style={styles.eyeBtn}>
+              <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+          {errors.password && <Text style={styles.err}>{errors.password}</Text>}
 
-        {/* Forgot password */}
-        <TouchableOpacity style={styles.forgotRow}>
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </TouchableOpacity>
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.btn, loading && styles.btnDisabled]}
+            disabled={loading}
+            onPress={handleSignIn}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Sign In</Text>
+            }
+          </TouchableOpacity>
 
-        {/* Submit */}
-        <TouchableOpacity
-          style={[styles.btn, isLoading && styles.btnDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
-          activeOpacity={0.85}
-        >
-          {isLoading
-            ? <ActivityIndicator color="#FFFFFF" />
-            : <>
-                <Text style={styles.btnText}>Sign In</Text>
-                <Feather name="arrow-right" size={20} color="#FFFFFF" />
-              </>
-          }
-        </TouchableOpacity>
+          {/* Sign up link */}
+          <TouchableOpacity
+            style={styles.signupRow}
+            onPress={() => navigation.navigate('SignUp')}
+          >
+            <Text style={styles.signupText}>
+              Don't have an account?{' '}
+              <Text style={styles.signupLink}>Create one</Text>
+            </Text>
+          </TouchableOpacity>
 
-
-        {/* Sign in link */}
-        <TouchableOpacity
-          style={styles.signInLink}
-          onPress={() => navigation.navigate('SignUp')}
-        >
-          <Text style={styles.footerText}>
-            Don't have an account?{' '}
-            <Text style={styles.linkText}>Create one</Text>
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safe:          { flex: 1, backgroundColor: '#FFFFFF' },
-  container:     { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
-  header:        { paddingTop: 48, paddingBottom: 32 },
-  logoRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 28 },
-  logoText:      { fontSize: 22, fontWeight: '700', color: '#0F172A' },
-  title:         { fontSize: 28, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-  subtitle:      { fontSize: 15, color: '#64748B' },
+  safe:       { flex: 1, backgroundColor: '#fff' },
+  container:  { padding: 24, paddingBottom: 48, flexGrow: 1 },
 
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 10,
-    padding: 12,
+  header:     { alignItems: 'center', marginTop: 40, marginBottom: 36 },
+  logoCircle: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  errorBannerText: { fontSize: 13, color: '#DC2626', flex: 1 },
+  title:     { fontSize: 26, fontWeight: '700', color: '#111827' },
+  subtitle:  { fontSize: 14, color: '#6B7280', marginTop: 4 },
 
-  fieldGroup:    { marginBottom: 16 },
-  label:         { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  inputBox: {
+  label:     { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 16 },
+
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    backgroundColor: '#F8FAFC',
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    backgroundColor: '#FAFAFA',
   },
-  inputBoxError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
-  input:         { flex: 1, fontSize: 15, color: '#0F172A' },
-  fieldError:    { fontSize: 12, color: '#EF4444', marginTop: 4, marginLeft: 2 },
+  inputError: { borderColor: '#EF4444' },
+  inputIcon:  { marginRight: 8 },
+  input:      { flex: 1, fontSize: 15, color: '#111827' },
+  eyeBtn:     { padding: 4 },
 
-  forgotRow:     { alignItems: 'flex-end', marginBottom: 24, marginTop: -4 },
-  forgotText:    { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+  passwordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  forgotText: { fontSize: 13, color: COLORS.primary, fontWeight: '600', marginTop: 16 },
 
   btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 14,
-    gap: 8,
-    marginBottom: 20,
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 28,
+    alignItems: 'center',
   },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-dividerText: { fontSize: 13, color: '#94A3B8' },
-  btnDisabled:   { opacity: 0.65 },
-  btnText:       { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  btnDisabled: { opacity: 0.5 },
+  btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
 
-  signUpLink:    { alignItems: 'center' },
-  footerText:    { fontSize: 14, color: '#64748B' },
-  linkText:      { color: COLORS.primary, fontWeight: '600' },
+  signupRow:  { marginTop: 20, alignItems: 'center' },
+  signupText: { fontSize: 14, color: '#6B7280' },
+  signupLink: { color: COLORS.primary, fontWeight: '600' },
+
+  err:       { color: '#EF4444', fontSize: 12, marginTop: 3 },
+  errorBox:  {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', padding: 12,
+    borderRadius: 10, marginBottom: 8,
+  },
+  errorText: { color: '#B91C1C', fontSize: 13, flex: 1 },
 });
-
-export default SignIn;

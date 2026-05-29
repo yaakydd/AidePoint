@@ -1,0 +1,507 @@
+// screens/auth/ForgotPassword.js
+//
+// 3-step password reset flow (used by both AuthNavigator and ProfileScreen):
+//
+//   Step 1 — Enter email → supabase.auth.resetPasswordForEmail()
+//   Step 2 — Enter 8-digit OTP → supabase.auth.verifyOtp({ type: 'recovery' })
+//   Step 3 — Enter new password + confirm → supabase.auth.updateUser()
+//            → insert notification into public.notifications
+//            → navigate back / to APP
+//
+// Navigation:
+//   From AuthNavigator:  navigation.goBack() → returns to SignIn
+//   From ProfileScreen:  navigation.goBack() → returns to Profile
+
+import React, { useState, useRef } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  ActivityIndicator, StyleSheet, StatusBar,
+  KeyboardAvoidingView, Platform, ScrollView,
+  Alert,
+} from 'react-native';
+import { SafeAreaView }  from 'react-native-safe-area-context';
+import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+
+import { supabase }  from '../utils/supabase';
+import { COLORS }    from '../assets/theme';
+
+const OTP_BOXES = 6;
+
+const PASSWORD_CHECKS = [
+  { key: 'length',  label: 'At least 8 characters',         test: p => p.length >= 8 },
+  { key: 'upper',   label: 'At least one uppercase letter',  test: p => /[A-Z]/.test(p) },
+  { key: 'number',  label: 'At least one number',            test: p => /[0-9]/.test(p) },
+  { key: 'special', label: 'At least one special character', test: p => /[@#!$%^&*()\-_=+]/.test(p) },
+];
+
+function getStrength(pwd) {
+  const passed = PASSWORD_CHECKS.filter(c => c.test(pwd)).length;
+  if (passed <= 1) return { label: 'Weak',        color: '#EF4444', score: 1 };
+  if (passed === 2) return { label: 'Fair',        color: '#F97316', score: 2 };
+  if (passed === 3) return { label: 'Strong',      color: '#84CC16', score: 3 };
+  return              { label: 'Very Strong',      color: '#10B981', score: 4 };
+}
+
+export default function ForgotPassword() {
+  const navigation = useNavigation();
+
+  const [step,    setStep]    = useState(1);   // 1 | 2 | 3
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+
+  // Step 1
+  const [email, setEmail] = useState('');
+
+  // Step 2 — OTP boxes
+  const [digits,    setDigits]    = useState(Array(OTP_BOXES).fill(''));
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
+  const otpRefs = useRef([]);
+
+  // Step 3
+  const [newPassword,     setNewPassword]     = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNew,         setShowNew]         = useState(false);
+  const [showConfirm,     setShowConfirm]     = useState(false);
+
+  const strength = getStrength(newPassword);
+
+  // ─── STEP 1: Send reset email ──────────────────────────
+
+  async function handleSendOTP() {
+    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Invalid email address.'); return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      // redirectTo is NOT used for OTP — Supabase sends a 6-digit code
+      // because you have email OTP enabled. No redirect URL needed.
+    });
+
+    setLoading(false);
+
+    if (err) {
+      // Don't reveal if email exists — generic message for security
+      setError('If that email is registered, a reset code has been sent.');
+      // Still move to step 2 so user can try
+    }
+    setStep(2);
+  }
+
+  // ─── STEP 2: OTP input handlers ───────────────────────
+
+  function handleOtpChange(text, index) {
+    if (text.length === OTP_BOXES) {
+      const pasted = text.replace(/\D/g, '').slice(0, OTP_BOXES).split('');
+      const filled = Array(OTP_BOXES).fill('').map((_, i) => pasted[i] ?? '');
+      setDigits(filled);
+      otpRefs.current[OTP_BOXES - 1]?.focus();
+      return;
+    }
+    const char = text.replace(/\D/g, '').slice(-1);
+    const next = [...digits];
+    next[index] = char;
+    setDigits(next);
+    setError('');
+    if (char && index < OTP_BOXES - 1) otpRefs.current[index + 1]?.focus();
+  }
+
+  function handleOtpKeyPress(e, index) {
+    if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  }
+
+  async function handleVerifyOTP() {
+    const token = digits.join('');
+    if (token.length < OTP_BOXES) { setError('Please enter all 6 digits.'); return; }
+
+    setLoading(true);
+    setError('');
+
+    const { error: err } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',   // ← must be 'recovery' for password reset flow
+    });
+
+    setLoading(false);
+
+    if (err) {
+      setError('Invalid or expired code. Please try again.');
+      setDigits(Array(OTP_BOXES).fill(''));
+      otpRefs.current[0]?.focus();
+      return;
+    }
+
+    setStep(3);
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setResendMsg('');
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email);
+    setResending(false);
+    setResendMsg(
+      err
+        ? 'Could not resend. Please try again.'
+        : 'A new code has been sent to your email.'
+    );
+  }
+
+  // ─── STEP 3: Set new password ──────────────────────────
+
+  async function handleSetPassword() {
+    if (strength.score < 3) { setError('Password is too weak.'); return; }
+    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
+
+    setLoading(true);
+    setError('');
+
+    // updateUser works because verifyOtp (step 2) gave us an active session
+    const { data, error: err } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (err) {
+      setLoading(false);
+      setError(err.message ?? 'Could not update password. Please try again.');
+      return;
+    }
+
+    // Insert a notification so the user sees a "password changed" alert in-app
+    const userId = data?.user?.id;
+    if (userId) {
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title:   'Password Changed',
+        body:    'Your AidePoint password was successfully updated. If you did not make this change, contact support immediately.',
+      });
+    }
+
+    setLoading(false);
+
+    Alert.alert(
+      'Password Updated',
+      'Your password has been changed successfully.',
+      [{ text: 'OK', onPress: () => navigation.goBack() }]
+    );
+  }
+
+  // ─── RENDER ────────────────────────────────────────────
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+
+          {/* Back button */}
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+
+          {/* Step indicator */}
+          <View style={styles.stepRow}>
+            {[1, 2, 3].map(s => (
+              <View key={s} style={styles.stepItem}>
+                <View style={[styles.stepDot, step >= s && styles.stepDotActive]}>
+                  {step > s
+                    ? <MaterialCommunityIcons name="check" size={13} color="#fff" />
+                    : <Text style={[styles.stepNum, step === s && styles.stepNumActive]}>{s}</Text>
+                  }
+                </View>
+                {s < 3 && (
+                  <View style={[styles.stepLine, step > s && styles.stepLineActive]} />
+                )}
+              </View>
+            ))}
+          </View>
+
+          {/* ─── STEP 1: Email ─── */}
+          {step === 1 && (
+            <>
+              <View style={styles.iconWrap}>
+                <MaterialCommunityIcons name="lock-reset" size={48} color={COLORS.primary} />
+              </View>
+              <Text style={styles.title}>Reset Password</Text>
+              <Text style={styles.subtitle}>
+                Enter the email you signed up with and we'll send you a reset code.
+              </Text>
+
+              {!!error && <Text style={styles.err}>{error}</Text>}
+
+              <Text style={styles.label}>Email Address</Text>
+              <View style={[styles.inputRow, error && styles.inputError]}>
+                <MaterialCommunityIcons name="email-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+                <TextInput
+                  placeholder="you@example.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={t => { setEmail(t); setError(''); }}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  style={styles.input}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btn, loading && styles.btnDisabled]}
+                disabled={loading}
+                onPress={handleSendOTP}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnText}>Send Reset Code</Text>
+                }
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* ─── STEP 2: OTP ─── */}
+          {step === 2 && (
+            <>
+              <View style={styles.iconWrap}>
+                <MaterialCommunityIcons name="email-check-outline" size={48} color={COLORS.primary} />
+              </View>
+              <Text style={styles.title}>Check your email</Text>
+              <Text style={styles.subtitle}>
+                We sent a 6-digit reset code to{'\n'}
+                <Text style={styles.emailHighlight}>{email}</Text>
+              </Text>
+
+              {!!error && <Text style={styles.err}>{error}</Text>}
+              {!!resendMsg && (
+                <Text style={[styles.resendMsg, { color: resendMsg.includes('sent') ? '#10B981' : '#EF4444' }]}>
+                  {resendMsg}
+                </Text>
+              )}
+
+              {/* OTP boxes */}
+              <View style={styles.otpRow}>
+                {digits.map((d, i) => (
+                  <TextInput
+                    key={i}
+                    ref={r => (otpRefs.current[i] = r)}
+                    style={[
+                      styles.otpBox,
+                      d && styles.otpBoxFilled,
+                      error && styles.otpBoxError,
+                    ]}
+                    value={d}
+                    onChangeText={t => handleOtpChange(t, i)}
+                    onKeyPress={e => handleOtpKeyPress(e, i)}
+                    keyboardType="number-pad"
+                    maxLength={OTP_BOXES}
+                    textAlign="center"
+                    autoFocus={i === 0}
+                    selectTextOnFocus
+                  />
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btn, (loading || digits.join('').length < OTP_BOXES) && styles.btnDisabled]}
+                disabled={loading || digits.join('').length < OTP_BOXES}
+                onPress={handleVerifyOTP}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnText}>Verify Code</Text>
+                }
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending}>
+                {resending
+                  ? <ActivityIndicator size="small" color={COLORS.primary} />
+                  : <Text style={styles.resendText}>
+                      Didn't get a code? <Text style={styles.resendLink}>Resend</Text>
+                    </Text>
+                }
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* ─── STEP 3: New password ─── */}
+          {step === 3 && (
+            <>
+              <View style={styles.iconWrap}>
+                <MaterialCommunityIcons name="lock-check-outline" size={48} color={COLORS.primary} />
+              </View>
+              <Text style={styles.title}>New Password</Text>
+              <Text style={styles.subtitle}>
+                Choose a strong password for your account.
+              </Text>
+
+              {!!error && <Text style={styles.err}>{error}</Text>}
+
+              {/* New password */}
+              <Text style={styles.label}>New Password</Text>
+              <View style={styles.inputRow}>
+                <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+                <TextInput
+                  placeholder="Enter new password"
+                  placeholderTextColor="#9CA3AF"
+                  value={newPassword}
+                  onChangeText={t => { setNewPassword(t); setError(''); }}
+                  secureTextEntry={!showNew}
+                  style={styles.input}
+                />
+                <TouchableOpacity onPress={() => setShowNew(p => !p)}>
+                  <Feather name={showNew ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Strength */}
+              {newPassword.length > 0 && (
+                <>
+                  <View style={styles.barRow}>
+                    {[1, 2, 3, 4].map(i => (
+                      <View
+                        key={i}
+                        style={[styles.bar, { backgroundColor: i <= strength.score ? strength.color : '#E5E7EB' }]}
+                      />
+                    ))}
+                    <Text style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
+                  </View>
+                  <View style={{ gap: 3, marginBottom: 8 }}>
+                    {PASSWORD_CHECKS.map(c => (
+                      <Text
+                        key={c.key}
+                        style={[styles.check, c.test(newPassword) ? styles.checkPass : styles.checkFail]}
+                      >
+                        {c.test(newPassword) ? '✓' : '✗'}  {c.label}
+                      </Text>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* Confirm */}
+              <Text style={styles.label}>Confirm New Password</Text>
+              <View style={styles.inputRow}>
+                <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+                <TextInput
+                  placeholder="Re-enter new password"
+                  placeholderTextColor="#9CA3AF"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirm}
+                  style={styles.input}
+                />
+                <TouchableOpacity onPress={() => setShowConfirm(p => !p)}>
+                  <Feather name={showConfirm ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.btn, loading && styles.btnDisabled]}
+                disabled={loading}
+                onPress={handleSetPassword}
+                activeOpacity={0.85}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnText}>Update Password</Text>
+                }
+              </TouchableOpacity>
+            </>
+          )}
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe:       { flex: 1, backgroundColor: '#fff' },
+  container:  { padding: 24, paddingBottom: 48 },
+
+  backBtn:    { marginBottom: 8 },
+
+  // Step indicator
+  stepRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 32 },
+  stepItem:   { flexDirection: 'row', alignItems: 'center' },
+  stepDot:    {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stepDotActive: { backgroundColor: COLORS.primary },
+  stepNum:       { fontSize: 12, color: '#9CA3AF', fontWeight: '700' },
+  stepNumActive: { color: '#fff' },
+  stepLine:      { width: 48, height: 2, backgroundColor: '#E5E7EB', marginHorizontal: 4 },
+  stepLineActive: { backgroundColor: COLORS.primary },
+
+  iconWrap:  {
+    width: 84, height: 84, borderRadius: 42,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'center', marginBottom: 20,
+  },
+  title:     { fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center' },
+  subtitle:  { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginTop: 6, marginBottom: 24 },
+  emailHighlight: { fontWeight: '600', color: '#111827' },
+
+  label:     { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 16 },
+
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#E5E7EB',
+    borderRadius: 12, paddingHorizontal: 12,
+    paddingVertical: 11, backgroundColor: '#FAFAFA',
+  },
+  inputError: { borderColor: '#EF4444' },
+  input:      { flex: 1, fontSize: 15, color: '#111827' },
+
+  // OTP
+  otpRow:    { flexDirection: 'row', gap: 10, justifyContent: 'center', marginVertical: 20 },
+  otpBox: {
+    width: 46, height: 56,
+    borderWidth: 1.5, borderColor: '#D1D5DB',
+    borderRadius: 10, fontSize: 22,
+    fontWeight: '700', color: '#111827',
+    backgroundColor: '#F9FAFB',
+  },
+  otpBoxFilled: { borderColor: COLORS.primary, backgroundColor: '#EEF2FF' },
+  otpBoxError:  { borderColor: '#EF4444' },
+
+  resendBtn:  { marginTop: 16, alignItems: 'center', padding: 8 },
+  resendText: { fontSize: 14, color: '#6B7280' },
+  resendLink: { color: COLORS.primary, fontWeight: '600' },
+  resendMsg:  { fontSize: 13, textAlign: 'center', marginBottom: 8 },
+
+  // Password strength
+  barRow:        { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
+  bar:           { flex: 1, height: 5, borderRadius: 3 },
+  strengthLabel: { fontSize: 12, fontWeight: '600', marginLeft: 6, minWidth: 68 },
+  check:         { fontSize: 12, marginLeft: 2 },
+  checkPass:     { color: '#10B981' },
+  checkFail:     { color: '#9CA3AF' },
+
+  btn: {
+    backgroundColor: COLORS.primary,
+    padding: 15, borderRadius: 12,
+    marginTop: 24, alignItems: 'center',
+  },
+  btnDisabled: { opacity: 0.45 },
+  btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  err:       { color: '#EF4444', fontSize: 13, textAlign: 'center', marginTop: 4 },
+});
