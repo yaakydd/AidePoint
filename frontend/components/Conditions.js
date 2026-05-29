@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 import { CONDITION_CONFIG } from '../utils/ReportUtils';
+import { ReportStyles as styles } from '../styles/ReportStyles';
 
 // ─── CONDITION ICONS (UNCHANGED) ───────────────────────────────
 // (Keeping your SVG icons exactly as-is for brevity in this fix)
@@ -171,7 +172,7 @@ function ConditionBadge({ condition }) {
   return (
     <View style={[styles.badge, { backgroundColor: cfg.badgeBg ?? '#000' }]}>
       <View style={[styles.badgeDot, { backgroundColor: cfg.badgeDot  }]} />
-      <Text style={[styles.badgeLabel, { color: cfg.badgeText ?? 'Unknown' }]}>
+      <Text style={[styles.badgeLabel, { color: cfg.badgeText ?? '#000' }]}>
         {cfg.label}
       </Text>
     </View>

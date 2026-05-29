@@ -83,7 +83,8 @@ function SickleCellIcon({ size = 56 }) {
   <Circle cx="13" cy="20" r="8" fill="#FECACA" stroke="#EF4444" strokeWidth="1.5" /> 
   {/* Sickle/crescent — quadratic bezier curves forming the crescent */} 
   <Path d="M26 34 Q40 16 45 26 Q44 40 32 43 Q23 43 26 34 Z" fill="#EF4444" opacity="0.9" /> 
-  {/* Second sickle partially visible */} <Path d="M16 40 Q28 30 34 34 Q29 46 16 40 Z" fill="#B91C1C" opacity="0.7" /> </Svg> 
+  {/* Second sickle partially visible */} 
+  <Path d="M16 40 Q28 30 34 34 Q29 46 16 40 Z" fill="#B91C1C" opacity="0.7" /> </Svg> 
   ); 
 } 
 // Iron Deficiency — small pale cells with enlarged central pallor 
@@ -138,7 +139,9 @@ function ThalassemiaIcon({ size = 56 }) {
   {/* central dense spot */} 
   {/* Smaller target cell */} 
   <Circle cx="43" cy="19" r="9" fill="#BFDBFE" stroke="#2563EB" strokeWidth="1.5" opacity="0.75" /> 
-  <Circle cx="43" cy="19" r="4.5" fill="#60A5FA" opacity="0.75" /> <Circle cx="43" cy="19" r="1.8" fill="#1D4ED8" opacity="0.75" /> </Svg> 
+  <Circle cx="43" cy="19" r="4.5" fill="#60A5FA" opacity="0.75" /> 
+  <Circle cx="43" cy="19" r="1.8" fill="#1D4ED8" opacity="0.75" /> 
+  </Svg> 
   );
  } 
  
@@ -168,7 +171,8 @@ function MegaloblasticIcon({ size = 56 }) {
   <Circle cx="34" cy="30" r="4.5" fill="#0D9488" opacity="0.7" /> 
   {/* Lines connecting the nuclear lobes */} 
   <Line x1="26" y1="30" x2="24" y2="27" stroke="#0D9488" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" /> 
-  <Line x1="30" y1="27" x2="32" y2="28" stroke="#0D9488" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" /> </Svg> 
+  <Line x1="30" y1="27" x2="32" y2="28" stroke="#0D9488" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" /> 
+  </Svg> 
   ); 
 } 
 
@@ -184,7 +188,8 @@ function AplasticIcon({ size = 56 }) {
   {/* Ghost outlines where cells should be — shows hypocellularity */} 
   <Circle cx="32" cy="17" r="5.5" fill="none" stroke="#FCA5A5" strokeWidth="1" strokeDasharray="2 2" /> 
   <Circle cx="16" cy="38" r="5" fill="none" stroke="#FCA5A5" strokeWidth="1" strokeDasharray="2 2" /> 
-  <Circle cx="42" cy="20" r="4.5" fill="none" stroke="#FCA5A5" strokeWidth="1" strokeDasharray="2 2" /> </Svg> 
+  <Circle cx="42" cy="20" r="4.5" fill="none" stroke="#FCA5A5" strokeWidth="1" strokeDasharray="2 2" /> 
+  </Svg> 
   ); 
 } 
 
@@ -202,7 +207,8 @@ function HemolyticIcon({ size = 56 }) {
    <Path d="M16 40 L27 38 L25 46 Z" fill="#FDBA74" stroke="#EA580C" strokeWidth="1.5" opacity="0.8" /> 
    {/* Partially lysed cell with crack line */} 
    <Circle cx="39" cy="39" r="8" fill="#FED7AA" stroke="#EA580C" strokeWidth="1.5" /> 
-   <Line x1="36" y1="35" x2="42" y2="41" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round" /> </Svg> 
+   <Line x1="36" y1="35" x2="42" y2="41" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round" /> 
+   </Svg> 
    ); 
   } 
   // Normal — healthy biconcave disc erythrocytes 
@@ -214,7 +220,8 @@ function HemolyticIcon({ size = 56 }) {
     <Circle cx="20" cy="30" r="12" fill="#BBF7D0" stroke="#16A34A" strokeWidth="1.5" /> 
     <Circle cx="20" cy="30" r="5.5" fill="#D1FAE5" /> {/* Round cell 2 */} 
     <Circle cx="39" cy="23" r="10" fill="#86EFAC" stroke="#16A34A" strokeWidth="1.5" opacity="0.9" /> 
-    <Circle cx="39" cy="23" r="4.5" fill="#D1FAE5" opacity="0.9" /> </Svg> 
+    <Circle cx="39" cy="23" r="4.5" fill="#D1FAE5" opacity="0.9" /> 
+    </Svg> 
     ); 
   }
 
