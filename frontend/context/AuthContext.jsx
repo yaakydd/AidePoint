@@ -168,39 +168,51 @@ export function AuthProvider({ children }) {
   }
 
   // ─── REGISTER ────────────────────────────────────────────
-  async function register({ name, email, password }) {
-    setAuthError(null);
+async function register({ name, email, password, hospitalLab }) {
+  setAuthError(null);
 
+  try {
+    // ── Offline check (from second version)
     if (!isOnline) {
-      const msg = 'No internet connection. You need internet to create an account.';
+      const msg =
+        'No internet connection. You need internet to create an account.';
       setAuthError(msg);
       return { success: false, error: msg };
     }
 
+    // ── Supabase signup (merged both versions)
     const { data, error } = await supabase.auth.signUp({
-      email:   email.trim().toLowerCase(),
+      email: email.trim().toLowerCase(),
       password,
-      options: { data: { name: name.trim() } },
+      options: {
+        data: {
+          name: name.trim(),
+          hospital_lab: hospitalLab, // stored in auth metadata → used by trigger
+        },
+      },
     });
 
+    // ── Handle signup error
     if (error) {
       setAuthError(error.message);
       return { success: false, error: error.message };
     }
 
-    // ── How email confirmation works ──────────────────────────────────────
-    // Supabase tells us whether the user needs to verify their email by
-    // checking if a session was returned immediately:
-    //
-    //   data.session !== null  →  confirmation OFF  →  user is logged in now
-    //   data.session === null  →  confirmation ON   →  user must check email
-    //
+    // ── Email verification logic (cleaned + unified)
     const needsVerification = data.session === null;
 
-    // Pass email back so SignUp can forward it to the VerifyEmail screen
-    // without the user having to retype it
-    return { success: true, needsVerification, email: email.trim().toLowerCase() };
+    return {
+      success: true,
+      needsVerification,
+      email: email.trim().toLowerCase(),
+      user: data.user,
+    };
+  } catch (err) {
+    const msg = 'Signup failed. Please try again.';
+    setAuthError(msg);
+    return { success: false, error: msg };
   }
+}
 
   // ─── VERIFY EMAIL OTP ────────────────────────────────────
   // Called from the VerifyEmail screen with the 6-digit code the user types.
