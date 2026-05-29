@@ -8,11 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import ForgotPassword from '../auth/ForgotPassword';
 import { COLORS, FONTS, SPACING } from '../assets/theme';
 
 // ─── HELPERS ────────────────────────────────────────────────
 
-// "Joshua Antwi" → "JA"
+// "Joshua Antwi"  "JA"
 function getInitials(name = '') {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
@@ -26,7 +27,7 @@ const ROLE_DISPLAY = {
   senior_lab_technician: 'Senior Lab Technician',
 };
 
-// ─── COMPONENT ──────────────────────────────────────────────
+
 
 export default function ProfileScreen() {
   const navigation = useNavigation();

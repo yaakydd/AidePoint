@@ -212,7 +212,7 @@ const Scan = ({ navigation, route }) => {
 
       await saveReport({ ...report, id: scanRow.id });
 
-      navigation.navigate('Reports', {
+      navigation.navigate('ReportScreen', {
         newScanId:   scanRow.id,
         patientName: patientName.trim(),
       });

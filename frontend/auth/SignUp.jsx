@@ -1,24 +1,23 @@
-// screens/auth/SignUp.js
-//
-// Hospital/lab picker:
-//   - Loads from ghana_hospitals table on mount
-//   - User types → list filters live (fuzzy prefix match)
-//   - "Other" row lets user type a custom name
-//   - Selected value is saved to profiles.hospital_lab via raw_user_meta_data
+//   1. Hospital dropdown rendered in a Modal, avoids z-index/overflow
+//      issues inside ScrollView on Android.
+//   2. "Other" custom input shown inside the modal before confirming.
+//   3. Required asterisk removed from Hospital/Lab label.
+//   4. Unused FlatList import removed.
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, StyleSheet,
-  StatusBar, FlatList, Keyboard,
+  StatusBar, Keyboard, Modal, FlatList,
+  TouchableWithoutFeedback, Platform,
 } from 'react-native';
-import { SafeAreaView }  from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { useAuth }   from '../context/AuthContext';
-import { supabase }  from '../utils/supabase';
-import { COLORS }    from '../assets/theme';
+import { useAuth }  from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
+import { COLORS }   from '../assets/theme';
 
 // ─── PASSWORD STRENGTH ──────────────────────────────────────
 
@@ -50,11 +49,11 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // ── Hospital picker state ────────────────────────────────
-  const [hospitalQuery,    setHospitalQuery]    = useState('');   // typed text
+  const [hospitalQuery,    setHospitalQuery]    = useState('');   // text shown in the field
   const [hospitalSelected, setHospitalSelected] = useState('');   // confirmed value
   const [hospitalList,     setHospitalList]     = useState([]);   // full DB list
   const [filteredList,     setFilteredList]     = useState([]);   // live-filtered
-  const [showDropdown,     setShowDropdown]     = useState(false);
+  const [modalVisible,     setModalVisible]     = useState(false);
   const [showCustomInput,  setShowCustomInput]  = useState(false);
   const [customHospital,   setCustomHospital]   = useState('');
   const [hospitalsLoading, setHospitalsLoading] = useState(true);
@@ -69,48 +68,90 @@ export default function SignUp() {
   const canSubmit = strength.score >= 3 && !loading;
 
   // ── Load hospital list once ──────────────────────────────
-  useEffect(() => {
-    async function fetchHospitals() {
+useEffect(() => {
+  let mounted = true;
+
+  async function fetchHospitals() {
+    try {
+      setHospitalsLoading(true);
+
       const { data, error } = await supabase
         .from('ghana_hospitals')
         .select('name, city, type')
         .order('name');
 
-      if (!error && data) setHospitalList(data);
-      setHospitalsLoading(false);
-    }
-    fetchHospitals();
-  }, []);
+      if (error) {
+        console.log(error);
+        return;
+      }
 
-  // ── Live filter as user types ────────────────────────────
+      if (mounted && data) {
+        setHospitalList(data);
+        setFilteredList(data.slice(0, 20));
+      }
+    } catch (err) {
+      console.log(err);
+    } finally {
+      mounted && setHospitalsLoading(false);
+    }
+  }
+
+  fetchHospitals();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
+
+  // ── Live filter as user types inside the modal ───────────
   useEffect(() => {
-    if (!hospitalQuery.trim()) {
-      setFilteredList(hospitalList.slice(0, 8)); // show first 8 when empty
+  const timeout = setTimeout(() => {
+    const q = hospitalQuery.trim().toLowerCase();
+
+    if (!q) {
+      setFilteredList(hospitalList.slice(0, 20));
       return;
     }
-    const q = hospitalQuery.toLowerCase();
-    const filtered = hospitalList.filter(h =>
-      h.name.toLowerCase().includes(q) ||
-      (h.city && h.city.toLowerCase().includes(q))
-    );
-    setFilteredList(filtered.slice(0, 10));
-  }, [hospitalQuery, hospitalList]);
 
-  // ── Select a hospital from dropdown ─────────────────────
+    const results = hospitalList.filter(item =>
+      item.name?.toLowerCase().includes(q) ||
+      item.city?.toLowerCase().includes(q) ||
+      item.type?.toLowerCase().includes(q)
+    );
+
+    setFilteredList(results.slice(0, 30));
+  }, 150);
+
+  return () => clearTimeout(timeout);
+}, [hospitalQuery, hospitalList]);
+  // ── Open / close modal ───────────────────────────────────
+function openModal() {
+  Keyboard.dismiss();
+
+  setFilteredList(hospitalList.slice(0, 20));
+
+  setShowCustomInput(false);
+  setCustomHospital('');
+  setModalVisible(true);
+}
+
+  function closeModal() {
+    setModalVisible(false);
+    setShowCustomInput(false);
+    setHospitalQuery(hospitalSelected); // reset search text to confirmed value
+  }
+
+  // ── Select a hospital from the list ─────────────────────
   function handleSelectHospital(hospital) {
     if (hospital.name === 'Other') {
       setShowCustomInput(true);
-      setShowDropdown(false);
-      setHospitalQuery('');
-      setHospitalSelected('');
       return;
     }
     setHospitalSelected(hospital.name);
     setHospitalQuery(hospital.name);
-    setShowDropdown(false);
+    setModalVisible(false);
     setShowCustomInput(false);
     clearField('hospital');
-    Keyboard.dismiss();
   }
 
   function handleConfirmCustom() {
@@ -118,19 +159,17 @@ export default function SignUp() {
     if (!val) return;
     setHospitalSelected(val);
     setHospitalQuery(val);
+    setModalVisible(false);
     setShowCustomInput(false);
     clearField('hospital');
   }
 
   // The effective hospital value for submission
-  const effectiveHospital = showCustomInput
-    ? customHospital.trim()
-    : hospitalSelected;
+  const effectiveHospital = hospitalSelected;
 
   // ── Validation ───────────────────────────────────────────
   function validate() {
     const e = {};
-
     if (!name.trim())              e.name = 'Name is required';
     if (!email.trim())             e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -140,7 +179,6 @@ export default function SignUp() {
     if (password !== confirmPassword)
                                    e.confirmPassword = 'Passwords do not match';
     if (!effectiveHospital)        e.hospital = 'Hospital / Lab is required';
-
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -153,10 +191,8 @@ export default function SignUp() {
   // ── Submit ───────────────────────────────────────────────
   async function handleSignup() {
     if (!validate() || loading) return;
-
     setLoading(true);
     clearError?.();
-
     try {
       const result = await register({
         name,
@@ -164,12 +200,10 @@ export default function SignUp() {
         password,
         hospitalLab: effectiveHospital,
       });
-
       if (!result.success) {
         setErrors(prev => ({ ...prev, email: result.error }));
         return;
       }
-
       if (result.needsVerification) {
         navigation.navigate('VerifyEmail', { email: result.email });
       }
@@ -227,105 +261,160 @@ export default function SignUp() {
         {errors.email && <Text style={styles.err}>{errors.email}</Text>}
 
         {/* ── Hospital / Lab Picker ── */}
-        <Text style={styles.label}>Hospital / Lab <Text style={styles.required}>*</Text></Text>
+        <Text style={styles.label}>Hospital / Lab</Text>
 
-        <View style={styles.hospitalWrapper}>
-          {/* Search input */}
-          <View style={[
-            styles.hospitalInputRow,
-            errors.hospital && styles.inputError,
-            showDropdown && styles.hospitalInputFocused,
-          ]}>
-            <MaterialCommunityIcons
-              name="hospital-building"
-              size={18}
-              color={hospitalSelected ? COLORS.primary : '#9CA3AF'}
-              style={{ marginRight: 8 }}
-            />
-            <TextInput
-              placeholder={hospitalsLoading ? 'Loading hospitals…' : 'Search hospital or lab'}
-              placeholderTextColor="#9CA3AF"
-              value={hospitalQuery}
-              onChangeText={t => {
-                setHospitalQuery(t);
-                setHospitalSelected(''); // clear confirmed selection on re-type
-                setShowDropdown(true);
-                setShowCustomInput(false);
-                clearField('hospital');
-              }}
-              onFocus={() => setShowDropdown(true)}
-              style={styles.hospitalInput}
-              editable={!hospitalsLoading}
-            />
-            {hospitalSelected ? (
-              <MaterialCommunityIcons name="check-circle" size={18} color="#10B981" />
-            ) : (
-              <MaterialCommunityIcons
-                name={showDropdown ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color="#9CA3AF"
-              />
-            )}
-          </View>
-
-          {/* Dropdown list */}
-          {showDropdown && filteredList.length > 0 && (
-            <View style={styles.dropdown}>
-              {filteredList.map((hospital, idx) => (
-                <TouchableOpacity
-                  key={hospital.name}
-                  style={[
-                    styles.dropdownItem,
-                    idx < filteredList.length - 1 && styles.dropdownDivider,
-                  ]}
-                  onPress={() => handleSelectHospital(hospital)}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.dropdownName}>{hospital.name}</Text>
-                    {hospital.city && (
-                      <Text style={styles.dropdownCity}>{hospital.city}</Text>
-                    )}
-                  </View>
-                  {hospital.type && hospital.name !== 'Other' && (
-                    <View style={[styles.typePill, getTypePillStyle(hospital.type)]}>
-                      <Text style={[styles.typePillText, getTypePillStyle(hospital.type)]}>
-                        {hospital.type}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Custom hospital input (shown when "Other" selected) */}
-          {showCustomInput && (
-            <View style={styles.customBox}>
-              <Text style={styles.customLabel}>Enter your hospital or lab name:</Text>
-              <View style={styles.customRow}>
-                <TextInput
-                  placeholder="e.g. My City Lab"
-                  placeholderTextColor="#9CA3AF"
-                  value={customHospital}
-                  onChangeText={setCustomHospital}
-                  style={styles.customInput}
-                  autoFocus
-                />
-                <TouchableOpacity
-                  style={styles.customConfirmBtn}
-                  onPress={handleConfirmCustom}
-                >
-                  <Text style={styles.customConfirmText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
+        {/* Tappable field that opens the modal */}
+        <TouchableOpacity
+          style={[styles.hospitalInputRow, errors.hospital && styles.inputError]}
+          onPress={openModal}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="hospital-building"
+            size={18}
+            color={hospitalSelected ? COLORS.primary : '#9CA3AF'}
+            style={{ marginRight: 8 }}
+          />
+          <Text
+            style={[
+              styles.hospitalInputText,
+              !hospitalSelected && { color: '#9CA3AF' },
+            ]}
+            numberOfLines={1}
+          >
+            {hospitalsLoading
+              ? 'Loading hospitals…'
+              : hospitalSelected || 'Search hospital or lab'}
+          </Text>
+          {hospitalSelected
+            ? <MaterialCommunityIcons name="check-circle" size={18} color="#10B981" />
+            : <MaterialCommunityIcons name="chevron-down" size={18} color="#9CA3AF" />
+          }
+        </TouchableOpacity>
 
         {errors.hospital && (
           <Text style={[styles.err, { marginTop: 4 }]}>{errors.hospital}</Text>
         )}
+
+        {/* ── Hospital picker Modal ── */}
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={closeModal}
+        >
+          <TouchableWithoutFeedback onPress={closeModal}>
+            <View style={styles.modalOverlay} />
+          </TouchableWithoutFeedback>
+
+          <View style={styles.modalSheet}>
+            {/* Modal header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Hospital / Lab</Text>
+              <TouchableOpacity onPress={closeModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search box inside modal */}
+            <View style={styles.modalSearchRow}>
+              <MaterialCommunityIcons name="magnify" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Search hospital or city…"
+                placeholderTextColor="#9CA3AF"
+                value={hospitalQuery}
+                onChangeText={t => {
+                  setHospitalQuery(t);
+                  setShowCustomInput(false);
+                }}
+                style={styles.modalSearchInput}
+                autoFocus
+                clearButtonMode="while-editing"
+              />
+            </View>
+
+            {/* Custom name entry (shown after tapping "Other") */}
+            {showCustomInput && (
+              <View style={styles.customBox}>
+                <Text style={styles.customLabel}>Enter your hospital or lab name:</Text>
+                <View style={styles.customRow}>
+                  <TextInput
+                    placeholder="e.g. My City Lab"
+                    placeholderTextColor="#9CA3AF"
+                    value={customHospital}
+                    onChangeText={setCustomHospital}
+                    style={styles.customInput}
+                    returnKeyType="done"
+                    onSubmitEditing={handleConfirmCustom}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.customConfirmBtn,
+                      !customHospital.trim() && { opacity: 0.4 },
+                    ]}
+                    onPress={handleConfirmCustom}
+                    disabled={!customHospital.trim()}
+                  >
+                    <Text style={styles.customConfirmText}>Confirm</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Hospital list */}
+            <FlatList
+              data={filteredList}
+              keyExtractor={item => item.name}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 24 }}
+              ItemSeparatorComponent={() => <View style={styles.separator} 
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              removeClippedSubviews={true}
+              keyboardShouldPersistTaps="handled"
+              />}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.listItem}
+                  onPress={() => handleSelectHospital(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[
+                      styles.listItemName,
+                      hospitalSelected === item.name && { color: COLORS.primary },
+                    ]}>
+                      {item.name}
+                    </Text>
+                    {item.city ? (
+                      <Text style={styles.listItemCity}>{item.city}</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {item.type && item.name !== 'Other' && (
+                      <View style={[styles.typePill, getTypePillStyle(item.type)]}>
+                        <Text style={[styles.typePillText, { color: getTypePillStyle(item.type).color }]}>
+                          {item.type}
+                        </Text>
+                      </View>
+                    )}
+                    {hospitalSelected === item.name && (
+                      <MaterialCommunityIcons name="check" size={16} color={COLORS.primary} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>
+                  {hospitalsLoading ? 'Loading…' : 'No results found'}
+                </Text>
+              }
+            />
+          </View>
+        </Modal>
 
         {/* Password */}
         <Text style={styles.label}>Password</Text>
@@ -439,15 +528,14 @@ function getTypePillStyle(type) {
 // ─── STYLES ─────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: '#fff' },
-  container:  { padding: 24, paddingBottom: 48 },
+  safe:      { flex: 1, backgroundColor: '#fff' },
+  container: { padding: 24, paddingBottom: 48 },
 
-  header:     { marginTop: 20, marginBottom: 28 },
-  title:      { fontSize: 26, fontWeight: '700', color: '#111827', marginTop: 10 },
-  subtitle:   { fontSize: 14, color: '#6B7280', marginTop: 4 },
+  header:   { marginTop: 20, marginBottom: 28 },
+  title:    { fontSize: 26, fontWeight: '700', color: '#111827', marginTop: 10 },
+  subtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },
 
-  label:      { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 14 },
-  required:   { color: '#EF4444' },
+  label:    { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 14 },
 
   input: {
     borderWidth: 1.5,
@@ -460,62 +548,115 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: '#EF4444' },
 
-  // ── Hospital picker ─────────────────────────────────────
-  hospitalWrapper:   { position: 'relative', zIndex: 100 },
+  // ── Hospital field (tappable, looks like the other inputs) ──
   hospitalInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingHorizontal: 13,
+    paddingVertical: 13,
     backgroundColor: '#FAFAFA',
   },
-  hospitalInputFocused: { borderColor: COLORS.primary },
-  hospitalInput:  { flex: 1, fontSize: 15, color: '#111827' },
-
-  dropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0, right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 8,
-    maxHeight: 280,
-    overflow: 'hidden',
-    zIndex: 999,
+  hospitalInputText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111827',
   },
-  dropdownItem: {
+
+  // ── Modal sheet ─────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  modalSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '78%',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  dropdownDivider: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  dropdownName: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  dropdownCity: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#111827',
+  },
+
+  // ── List items ──────────────────────────────────────────
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+  },
+  listItemName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  listItemCity: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginLeft: 20,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginTop: 32,
+  },
 
   typePill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 20,
-    marginLeft: 8,
   },
-  typePillText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
+  typePillText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
 
+  // ── Custom hospital entry ───────────────────────────────
   customBox: {
-    marginTop: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 14,
@@ -533,6 +674,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     fontSize: 14,
     color: '#111827',
+    backgroundColor: '#fff',
   },
   customConfirmBtn: {
     backgroundColor: COLORS.primary,
@@ -553,15 +695,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FAFAFA',
   },
-  passInput:   { flex: 1, fontSize: 15, color: '#111827' },
-  barRow:      { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
-  bar:         { flex: 1, height: 5, borderRadius: 3 },
-  strengthLabel: { fontSize: 12, fontWeight: '600', marginLeft: 6, minWidth: 68 },
-
-  checkList:   { marginTop: 8, gap: 3 },
-  check:       { fontSize: 12, marginLeft: 2 },
-  checkPass:   { color: '#10B981' },
-  checkFail:   { color: '#9CA3AF' },
+  passInput:      { flex: 1, fontSize: 15, color: '#111827' },
+  barRow:         { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
+  bar:            { flex: 1, height: 5, borderRadius: 3 },
+  strengthLabel:  { fontSize: 12, fontWeight: '600', marginLeft: 6, minWidth: 68 },
+  checkList:      { marginTop: 8, gap: 3 },
+  check:          { fontSize: 12, marginLeft: 2 },
+  checkPass:      { color: '#10B981' },
+  checkFail:      { color: '#9CA3AF' },
 
   // ── Submit ──────────────────────────────────────────────
   btn: {
@@ -574,9 +715,9 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.45 },
   btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
 
-  signinRow:   { marginTop: 20, alignItems: 'center' },
-  signinText:  { fontSize: 14, color: '#6B7280' },
-  signinLink:  { color: COLORS.primary, fontWeight: '600' },
+  signinRow:  { marginTop: 20, alignItems: 'center' },
+  signinText: { fontSize: 14, color: '#6B7280' },
+  signinLink: { color: COLORS.primary, fontWeight: '600' },
 
   err:       { color: '#EF4444', fontSize: 12, marginTop: 3 },
   errorBox:  { backgroundColor: '#FEF2F2', padding: 12, borderRadius: 10, marginBottom: 12 },
