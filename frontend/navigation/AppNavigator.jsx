@@ -8,6 +8,7 @@ import AuthNavigator from './AuthNavigator';
 import MainAppNavigator from './MainAppNavigator';
 import ConsentScreen from '../screens/ConsentScreen';
 import SplashScreen from '../screens/SplashScreen';
+import ForgotPassword from '../auth/ForgotPassword';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,7 +33,10 @@ export default function AppNavigator() {
         )}
 
         {authState === 'APP' && (
+          <>
           <Stack.Screen name="Main" component={MainAppNavigator} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          </>
         )}
 
       </Stack.Navigator>
