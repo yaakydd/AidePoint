@@ -33,19 +33,16 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../assets/theme';
 
-// ─────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────
 
 const CORNER_SIZE  = 26;
 const CORNER_THICK = 3;
 const GUIDE_SIZE   = 244;
 
-// ─────────────────────────────────────────────────────────────
+
 // COMPONENT
 // Named CameraScreen to avoid collision with expo-camera's
 // CameraView export in the same file scope.
-// ─────────────────────────────────────────────────────────────
+
 
 const CameraScreen = ({ navigation }) => {
 
@@ -56,7 +53,7 @@ const CameraScreen = ({ navigation }) => {
 
   const cameraRef = useRef(null);
 
-  // ── Permission: still loading ──────────────────────────────
+  //  Permission: still loading 
 
   if (!permission) {
     return (
@@ -66,7 +63,7 @@ const CameraScreen = ({ navigation }) => {
     );
   }
 
-  // ── Permission: denied ────────────────────────────────────
+  //  Permission: denied 
 
   if (!permission.granted) {
     return (
@@ -99,7 +96,7 @@ const CameraScreen = ({ navigation }) => {
     );
   }
 
-  // ── Capture ───────────────────────────────────────────────
+  //  Capture 
 
   async function takePicture() {
     if (!cameraRef.current || isCapturing) return;
@@ -121,22 +118,12 @@ const CameraScreen = ({ navigation }) => {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────
-  //
-  // Structure:
-  //   <View>                     ← root container (flex: 1)
-  //     <CameraView />           ← fills screen via absoluteFill, NO CHILDREN
-  //     <View overlay />         ← sibling, floats on top via absoluteFill + zIndex
-  //       top bar
-  //       guide frame
-  //       bottom controls
-  //     </View>
-  //   </View>
+
 
   return (
     <View style={styles.container}>
 
-      {/* ── Camera feed — NO children inside this component ── */}
+      {/*  Camera feed — NO children inside this component  */}
       <CameraView
         style={StyleSheet.absoluteFill}
         ref={cameraRef}
@@ -144,7 +131,7 @@ const CameraScreen = ({ navigation }) => {
         flash={flashMode}
       />
 
-      {/* ── All controls: sibling to CameraView, NOT inside it ── */}
+      {/*  All controls: sibling to CameraView, NOT inside it  */}
       <View style={[StyleSheet.absoluteFill, styles.overlay]}>
 
         {/* Top bar */}
@@ -237,9 +224,9 @@ const CameraScreen = ({ navigation }) => {
 
 export default CameraScreen;
 
-// ─────────────────────────────────────────────────────────────
+// ─
 // STYLES
-// ─────────────────────────────────────────────────────────────
+// ─
 
 const styles = StyleSheet.create({
 
@@ -255,13 +242,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
 
-  // ── Overlay ────────────────────────────────────────────────
+  //  Overlay 
   overlay: {
     justifyContent: 'space-between',
     zIndex: 10,
   },
 
-  // ── Top bar ───────────────────────────────────────────────
+  //  Top bar 
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -285,7 +272,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Guide frame ───────────────────────────────────────────
+  //  Guide frame ─
   guideCentreWrapper: {
     alignItems: 'center',
   },
@@ -331,7 +318,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
 
-  // ── Bottom controls ───────────────────────────────────────
+  //  Bottom controls ─
   bottomBar: {
     flexDirection:    'row',
     alignItems:       'center',
@@ -376,7 +363,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  // ── Permission screen ─────────────────────────────────────
+  //  Permission screen ─
   permissionScreen: {
     flex:              1,
     justifyContent:    'center',
