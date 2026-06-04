@@ -1,7 +1,3 @@
-// First-launch detection:
-//   AsyncStorage key 'aidepoint_has_launched' is set after Onboarding is seen.
-//   On subsequent launches (including after logout), skips straight to SignIn.
-
 import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
