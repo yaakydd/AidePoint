@@ -19,12 +19,12 @@ import { useAuth }  from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { COLORS }   from '../assets/theme';
 
-// ─── PASSWORD STRENGTH ──────────────────────────────────────
+// PASSWORD STRENGTH
 
 const PASSWORD_CHECKS = [
-  { key: 'length',  label: 'At least 8 characters',         test: p => p.length >= 8 },
-  { key: 'upper',   label: 'At least one uppercase letter',  test: p => /[A-Z]/.test(p) },
-  { key: 'number',  label: 'At least one number',            test: p => /[0-9]/.test(p) },
+  { key: 'length', label: 'At least 8 characters', test: p => p.length >= 8 },
+  { key: 'upper', label: 'At least one uppercase letter',  test: p => /[A-Z]/.test(p) },
+  { key: 'number', label: 'At least one number', test: p => /[0-9]/.test(p) },
   { key: 'special', label: 'At least one special character', test: p => /[@#!$%^&*()\-_=+]/.test(p) },
 ];
 
@@ -36,38 +36,36 @@ function getStrength(pwd) {
   return              { label: 'Very Strong',      color: '#10B981', score: 4 };
 }
 
-// ─── COMPONENT ──────────────────────────────────────────────
 
-export default function SignUp() {
+const SignUp = () => {
   const navigation = useNavigation();
   const { register, authError, clearError } = useAuth();
 
-  // ── Form fields ──────────────────────────────────────────
-  const [name,            setName]            = useState('');
-  const [email,           setEmail]           = useState('');
-  const [password,        setPassword]        = useState('');
+  // Form fields
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // ── Hospital picker state ────────────────────────────────
-  const [hospitalQuery,    setHospitalQuery]    = useState('');   // text shown in the field
+  //  Hospital picker state
+  const [hospitalQuery, setHospitalQuery] = useState('');   // text shown in the field
   const [hospitalSelected, setHospitalSelected] = useState('');   // confirmed value
-  const [hospitalList,     setHospitalList]     = useState([]);   // full DB list
-  const [filteredList,     setFilteredList]     = useState([]);   // live-filtered
-  const [modalVisible,     setModalVisible]     = useState(false);
-  const [showCustomInput,  setShowCustomInput]  = useState(false);
-  const [customHospital,   setCustomHospital]   = useState('');
+  const [hospitalList, setHospitalList] = useState([]);   // full DB list
+  const [filteredList, setFilteredList] = useState([]);   // live-filtered
+  const [modalVisible, setModalVisible] = useState(false);
+  const [showCustomInput, setShowCustomInput]  = useState(false);
+  const [customHospital,setCustomHospital] = useState('');
   const [hospitalsLoading, setHospitalsLoading] = useState(true);
 
-  // ── UI state ─────────────────────────────────────────────
-  const [showPass,    setShowPass]    = useState(false);
+  const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [errors,      setErrors]      = useState({});
-  const [loading,     setLoading]     = useState(false);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const strength  = getStrength(password);
   const canSubmit = strength.score >= 3 && !loading;
 
-  // ── Load hospital list once ──────────────────────────────
+  // Load hospital list once from supabase DB
 useEffect(() => {
   let mounted = true;
 
@@ -103,7 +101,7 @@ useEffect(() => {
   };
 }, []);
 
-  // ── Live filter as user types inside the modal ───────────
+  // Live filter as user types inside the modal
   useEffect(() => {
   const timeout = setTimeout(() => {
     const q = hospitalQuery.trim().toLowerCase();
@@ -124,7 +122,7 @@ useEffect(() => {
 
   return () => clearTimeout(timeout);
 }, [hospitalQuery, hospitalList]);
-  // ── Open / close modal ───────────────────────────────────
+
 function openModal() {
   Keyboard.dismiss();
 
@@ -141,7 +139,7 @@ function openModal() {
     setHospitalQuery(hospitalSelected); // reset search text to confirmed value
   }
 
-  // ── Select a hospital from the list ─────────────────────
+  //  Select a hospital from the list 
   function handleSelectHospital(hospital) {
     if (hospital.name === 'Other') {
       setShowCustomInput(true);
@@ -167,18 +165,18 @@ function openModal() {
   // The effective hospital value for submission
   const effectiveHospital = hospitalSelected;
 
-  // ── Validation ───────────────────────────────────────────
+  // Validation 
   function validate() {
     const e = {};
-    if (!name.trim())              e.name = 'Name is required';
-    if (!email.trim())             e.email = 'Email is required';
+    if (!name.trim()) e.name = 'Name is required';
+    if (!email.trim())  e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
                                    e.email = 'Invalid email address';
-    if (!password)                 e.password = 'Password is required';
+    if (!password) e.password = 'Password is required';
     else if (strength.score < 3)   e.password = 'Password is too weak';
     if (password !== confirmPassword)
                                    e.confirmPassword = 'Passwords do not match';
-    if (!effectiveHospital)        e.hospital = 'Hospital / Lab is required';
+    if (!effectiveHospital) e.hospital = 'Hospital / Lab is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -188,7 +186,7 @@ function openModal() {
     clearError?.();
   }
 
-  // ── Submit ───────────────────────────────────────────────
+  // Submit
   async function handleSignup() {
     if (!validate() || loading) return;
     setLoading(true);
@@ -212,7 +210,7 @@ function openModal() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
@@ -260,7 +258,7 @@ function openModal() {
         />
         {errors.email && <Text style={styles.err}>{errors.email}</Text>}
 
-        {/* ── Hospital / Lab Picker ── */}
+        {/* Hospital / Lab Picker */}
         <Text style={styles.label}>Hospital / Lab</Text>
 
         {/* Tappable field that opens the modal */}
@@ -296,7 +294,7 @@ function openModal() {
           <Text style={[styles.err, { marginTop: 4 }]}>{errors.hospital}</Text>
         )}
 
-        {/* ── Hospital picker Modal ── */}
+        {/* Hospital picker Modal */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -511,21 +509,22 @@ function openModal() {
   );
 }
 
-// ─── HELPERS ────────────────────────────────────────────────
+
 
 function getTypePillStyle(type) {
   const map = {
-    teaching:   { backgroundColor: '#EFF6FF', color: '#1D4ED8' },
-    regional:   { backgroundColor: '#F0FDF4', color: '#166534' },
-    district:   { backgroundColor: '#FFF7ED', color: '#9A3412' },
+    teaching: { backgroundColor: '#EFF6FF', color: '#1D4ED8' },
+    regional: { backgroundColor: '#F0FDF4', color: '#166534' },
+    district: { backgroundColor: '#FFF7ED', color: '#9A3412' },
     polyclinic: { backgroundColor: '#F5F3FF', color: '#6D28D9' },
-    private:    { backgroundColor: '#FFF1F2', color: '#9F1239' },
-    lab:        { backgroundColor: '#F0FDFA', color: '#0F766E' },
+    private: { backgroundColor: '#FFF1F2', color: '#9F1239' },
+    lab: { backgroundColor: '#F0FDFA', color: '#0F766E' },
   };
   return map[type] ?? { backgroundColor: '#F1F5F9', color: '#475569' };
 }
+export default SignUp;
 
-// ─── STYLES ─────────────────────────────────────────────────
+
 
 const styles = StyleSheet.create({
   safe:      { flex: 1, backgroundColor: '#fff' },
