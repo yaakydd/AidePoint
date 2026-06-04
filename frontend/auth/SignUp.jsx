@@ -508,7 +508,7 @@ function openModal() {
     </SafeAreaView>
   );
 }
-
+export default SignUp;
 
 
 function getTypePillStyle(type) {
@@ -522,7 +522,7 @@ function getTypePillStyle(type) {
   };
   return map[type] ?? { backgroundColor: '#F1F5F9', color: '#475569' };
 }
-export default SignUp;
+
 
 
 
