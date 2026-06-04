@@ -1,11 +1,3 @@
-// navigation/MainAppNavigator.js
-//
-// A Bottom Tab Navigator shows all screens simultaneously.
-// Switching tabs does NOT unmount/remount screens (unlike a Stack).
-// Each screen keeps its state — if you type something on the Scan
-// screen and switch to Home, your typing is still there when you
-// switch back. That's intentional behaviour for a medical app.
-
 import React, { useRef } from "react";
 import {
   View,
@@ -110,11 +102,11 @@ function MainAppNavigator() {
             let iconName;
 
             switch (route.name) {
-              case "Home": iconName = focused ? "home"                  : "home-outline";                break;
-              case "Scan": iconName = focused ? "scan"                  : "scan-outline";                break;
-              case "Report":  iconName = focused ? "document-text"         : "document-text-outline";       break;
+              case "Home": iconName = focused ? "home" : "home-outline"; break;
+              case "Scan": iconName = focused ? "scan" : "scan-outline"; break;
+              case "Report":  iconName = focused ? "document-text" : "document-text-outline"; break;
               case "Chatbot": iconName = focused ? "chatbubble-ellipses"   : "chatbubble-ellipses-outline"; break;
-              case "Profile": iconName = focused ? "person"                : "person-outline";              break;
+              case "Profile": iconName = focused ? "person" : "person-outline"; break;
               default: iconName = "ellipse";
             }
 
