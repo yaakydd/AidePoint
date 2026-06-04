@@ -1,6 +1,6 @@
 // First-launch detection:
 //   AsyncStorage key 'aidepoint_has_launched' is set after Onboarding is seen.
-//   On subsequent launches (including after logout), we skip straight to SignIn.
+//   On subsequent launches (including after logout), skips straight to SignIn.
 
 import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,7 +24,7 @@ export default function AuthNavigator() {
       try {
         const val = await AsyncStorage.getItem(LAUNCHED_KEY);
         if (val === null) {
-          // First ever launch — show onboarding then mark as seen
+          // First ever launch, show onboarding then mark as seen
           await AsyncStorage.setItem(LAUNCHED_KEY, 'true');
           setIsFirstLaunch(true);
         } else {
@@ -46,18 +46,18 @@ export default function AuthNavigator() {
       screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
       initialRouteName={isFirstLaunch ? 'Onboarding' : 'SignIn'}
     >
-      <Stack.Screen name="Onboarding"      component={OnboardingScreen} />
-      <Stack.Screen name="SignIn"          component={SignIn} />
-      <Stack.Screen name="SignUp"          component={SignUp} />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="SignIn" component={SignIn} />
+      <Stack.Screen name="SignUp" component={SignUp} />
 
       {/*
         VerifyEmail sits inside the Auth stack so it's reachable right after
         SignUp, before the user has a session. Once verifyOtp() succeeds,
-        onAuthStateChange fires → authState moves to CONSENT or APP →
+        onAuthStateChange then authState moves to CONSENT or APP after
         RootRouter in App.js swaps the entire navigator automatically.
       */}
-      <Stack.Screen name="VerifyEmail"     component={VerifyEmail} />
-      <Stack.Screen name="ForgotPassword"  component={ForgotPassword} />
+      <Stack.Screen name="VerifyEmail" component={VerifyEmail} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
     </Stack.Navigator>
   );
 }
