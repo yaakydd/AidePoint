@@ -1,9 +1,3 @@
-// screens/auth/SignIn.js
-//
-// Standard email + password sign-in.
-// "Forgot password?" → navigates to ForgotPassword screen.
-// On success: onAuthStateChange fires → AuthContext → RootRouter swaps to APP/CONSENT.
-
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -50,7 +44,7 @@ export default function SignIn() {
         // Show error under email field for clean UX
         setErrors({ email: result?.error ?? 'Invalid email or password.' });
       }
-      // On success: AuthContext moves authState → APP or CONSENT automatically
+      // On success: AuthContext moves authState to APP or CONSENT automatically
     } finally {
       setLoading(false);
     }
