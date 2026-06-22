@@ -27,19 +27,12 @@ import { useAuth }    from '../context/AuthContext';
 import { supabase }   from '../utils/supabase';
 import { buildReport, saveReport } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
+import { analyzeBloodSmear } from '../utils/api';
 import { COLORS }     from '../assets/theme';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 const GENDERS = ['Male', 'Female'];
 
-async function runAIAnalysis(_imageUri) {
-  return new Promise(resolve => {
-    const pool       = ['sickle_cell', 'malaria', 'iron_deficiency', 'normal'];
-    const condition  = pool[Math.floor(Math.random() * pool.length)];
-    const confidence = parseFloat((85 + Math.random() * 14).toFixed(1));
-    setTimeout(() => resolve({ condition, confidence }), 2800);
-  });
-}
 
 function generateScanId() {
   return `AP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -139,101 +132,132 @@ const Scan = ({ navigation, route }) => {
     ]);
   }
 
-  async function handleStartAnalysis() {
-    if (!isFormValid || isAnalysing) return;
-    setIsAnalysing(true);
 
-    try {
-      const { data: patientRow, error: patientErr } = await supabase
-        .from('patients')
-        .insert({
-          created_by: user.id,
-          name:       patientName.trim(),
-          age:        patientAge ? parseInt(patientAge, 10) : null,
-          gender:     patientGender.toLowerCase(),
-        })
-        .select('id')
-        .single();
+// REPLACE handleStartAnalysis with this:
+async function handleStartAnalysis() {
+  // Non-functional: button is already disabled via isAnalysing state
+  // This guard is a second safety net
+  if (!isFormValid || isAnalysing) return;
+  setIsAnalysing(true);   // disables button immediately — prevents double-tap
 
-      if (patientErr) throw patientErr;
+  try {
+    // 1. Create patient record in Supabase
+    const { data: patientRow, error: patientErr } = await supabase
+      .from('patients')
+      .insert({
+        created_by: user.id,
+        name:       patientName.trim(),
+        age:        patientAge ? parseInt(patientAge, 10) : null,
+        gender:     patientGender.toLowerCase(),
+      })
+      .select('id')
+      .single();
 
-      let imageUrl = null;
-      if (user?.storeImages && image) {
-        const ext      = image.split('.').pop();
-        const filePath = `${user.id}/${patientRow.id}_${Date.now()}.${ext}`;
-        const response = await fetch(image);
-        const blob     = await response.blob();
-        const { error: uploadErr } = await supabase.storage
-          .from('scan-images')
-          .upload(filePath, blob, { contentType: `image/${ext}` });
-        if (uploadErr) throw uploadErr;
-        const { data: urlData } = supabase.storage
-          .from('scan-images')
-          .getPublicUrl(filePath);
-        imageUrl = urlData?.publicUrl ?? null;
-      }
+    if (patientErr) throw patientErr;
 
-      const prediction = await runAIAnalysis(image);
+    // 2. Upload image to Supabase Storage (only if storeImages is enabled)
+    let imageUrl = null;
+    if (image) {
+      const ext      = image.split('.').pop().toLowerCase();
+      const filePath = `${user.id}/${patientRow.id}_${Date.now()}.${ext}`;
+      const response = await fetch(image);
+      const blob     = await response.blob();
 
-      const report = buildReport({
-        patientName:   patientName.trim(),
-        patientId:     patientRow.id,
-        condition:     prediction.condition,
-        confidence:    prediction.confidence,
-        labTechName,
-        imageUri:      user?.storeImages ? imageUrl : null,
-        temperature:   temperature.trim(),
-        bloodPressure: bloodPressure.trim(),
-      });
+      const { error: uploadErr } = await supabase.storage
+        .from('scan-images')
+        .upload(filePath, blob, { contentType: `image/${ext}` });
 
-      const { data: scanRow, error: scanErr } = await supabase
-        .from('scans')
-        .insert({
-          patient_id: patientRow.id,
-          created_by: user.id,
-          image_url:  imageUrl,
-          status:     'done',
-          results: {
-            condition:     report.condition,
-            confidence:    report.confidence,
-            temperature:   report.temperature,
-            bloodPressure: report.bloodPressure,
-            labTechName:   report.labTechName,
-            patientAge:    patientAge.trim(),
-            patientGender: patientGender.toLowerCase(),
-            scanId,
-            analyzedAt:    report.createdAt,
-          },
-        })
-        .select('id')
-        .single();
+      if (uploadErr) throw uploadErr;
 
-      if (scanErr) throw scanErr;
+      const { data: urlData } = supabase.storage
+        .from('scan-images')
+        .getPublicUrl(filePath);
 
-      await saveReport({ ...report, id: scanRow.id });
-
-      navigation.navigate('ReportScreen', {
-        newScanId:   scanRow.id,
-        patientName: patientName.trim(),
-      });
-
-      setPatientName('');
-      setPatientAge('');
-      setPatientGender('');
-      setTemperature('');
-      setBloodPressure('');
-      setImage(null);
-      setImageSourceType(null);
-      setScanId(generateScanId());
-
-    } catch (err) {
-      console.error('Scan handleStartAnalysis:', err.message);
-      Alert.alert('Analysis Failed', 'Something went wrong. Please try again.');
-    } finally {
-      setIsAnalysing(false);
+      imageUrl = urlData?.publicUrl ?? null;
     }
-  }
 
+    // 3. Send image to Railway backend for real AI inference
+    //    analyzeBloodSmear handles auth token, timeout, and retry automatically
+    const prediction = await analyzeBloodSmear(image);
+
+    // 4. Build the report object (same shape as before)
+    const report = buildReport({
+      patientName:   patientName.trim(),
+      patientId:     patientRow.id,
+      condition:     prediction.condition,
+      confidence:    prediction.confidence,
+      labTechName,
+      imageUri:      imageUrl,
+      temperature:   temperature.trim(),
+      bloodPressure: bloodPressure.trim(),
+    });
+
+    // 5. Save scan record to Supabase with full AI result
+    const { data: scanRow, error: scanErr } = await supabase
+      .from('scans')
+      .insert({
+        patient_id: patientRow.id,
+        created_by: user.id,
+        image_url:  imageUrl,
+        status:     'done',
+        results: {
+          condition:          prediction.condition,
+          confidence:         prediction.confidence,
+          urgency:            prediction.urgency,
+          morphology_note:    prediction.morphology_note,
+          cbc:                prediction.cbc,
+          cbc_flags:          prediction.cbc_flags,
+          morphology_probs:   prediction.morphology_probs,
+          anemia_probability: prediction.anemia_probability,
+          temperature:        temperature.trim(),
+          bloodPressure:      bloodPressure.trim(),
+          labTechName,
+          patientAge:         patientAge.trim(),
+          patientGender:      patientGender.toLowerCase(),
+          scanId,
+          analyzedAt:         new Date().toISOString(),
+          inference_ms:       prediction.inference_ms,
+        },
+      })
+      .select('id')
+      .single();
+
+    if (scanErr) throw scanErr;
+
+    // 6. Save to local AsyncStorage for offline access in ReportScreen
+    await saveReport({ ...report, id: scanRow.id });
+
+    // 7. Navigate to report — button re-enables after navigation
+    navigation.navigate('ReportScreen', {
+      newScanId:   scanRow.id,
+      patientName: patientName.trim(),
+    });
+
+    // 8. Reset form for next patient
+    setPatientName('');
+    setPatientAge('');
+    setPatientGender('');
+    setTemperature('');
+    setBloodPressure('');
+    setImage(null);
+    setImageSourceType(null);
+    setScanId(generateScanId());
+
+  } catch (err) {
+    console.error('Scan handleStartAnalysis:', err.message);
+
+    // Show specific error message — never a raw exception
+    Alert.alert(
+      'Analysis Failed',
+      err.message ?? 'Something went wrong. Please try again.',
+      [{ text: 'OK' }],
+    );
+  } finally {
+    // Always re-enable button — even if something failed
+    setIsAnalysing(false);
+  }
+}
+  
   function getValidationHint() {
     if (!patientName.trim())   return 'Enter patient name';
     if (!patientAge.trim())    return 'Enter patient age';
