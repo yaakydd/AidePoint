@@ -13,7 +13,7 @@ function RootRouter() {
   // Both conditions have to clear before moving on to the next.
   const [timerDone, setTimerDone] = React.useState(false);
 
-useEffect(() => {
+React.useEffect(() => {
     const t = setTimeout(() => setTimerDone(true), 2000);
     return () => clearTimeout(t);
   }, []);

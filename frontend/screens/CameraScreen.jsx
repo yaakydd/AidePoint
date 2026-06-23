@@ -1,23 +1,3 @@
-// screens/CameraView.js
-//
-// Blood smear camera capture screen.
-//
-// CRITICAL (expo-camera v15 / Expo SDK 54):
-//   CameraView does NOT support children. All overlay controls
-//   must be siblings inside a parent <View>, never nested inside <CameraView>.
-//
-// Naming note:
-//   This file imports { CameraView } from 'expo-camera'.
-//   The component exported from this file is named CameraScreen
-//   to avoid any variable collision. The Stack.Screen name="CameraView"
-//   string is unaffected — navigation.navigate('CameraView') still works.
-//
-// Flow:
-//   Scan.js → navigate('CameraView', { existingData })
-//   → user captures photo
-//   → navigate('ScanHome', { capturedPhoto: uri })
-//   → Scan.js focus-listener picks up the URI
-
 import React, { useRef, useState } from 'react';
 import {
   View,
@@ -223,10 +203,6 @@ const CameraScreen = ({ navigation }) => {
 };
 
 export default CameraScreen;
-
-// ─
-// STYLES
-// ─
 
 const styles = StyleSheet.create({
 

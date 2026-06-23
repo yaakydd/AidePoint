@@ -76,7 +76,7 @@ const Scan = ({ navigation, route }) => {
     image !== null;
 
   function openCamera() {
-    navigation.navigate('CameraView', {
+    navigation.navigate('CameraScreen', {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
     });
   }
@@ -84,7 +84,7 @@ const Scan = ({ navigation, route }) => {
   function retakePhoto() {
     setImage(null);
     setImageSourceType(null);
-    navigation.navigate('CameraView', {
+    navigation.navigate('CameraScreen', {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
     });
   }
