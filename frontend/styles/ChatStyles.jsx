@@ -72,7 +72,7 @@ export const ChatStyles = StyleSheet.create({
         width: '100%',
         backgroundColor: 'transparent',
         paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.xs,
+        paddingTop: SPACING.sm,
         paddingBottom: SPACING.xs,
     },
     inputContainer: {

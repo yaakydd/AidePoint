@@ -365,9 +365,7 @@ const Chatbot = () => {
                     <View style={styles.disclaimerRow}>
                         <MaterialIcons name="info-outline" size={13} color={COLORS.textSecondary} />
                         <Text style={styles.disclaimerText}>
-                            AideBot can make mistakes. It does not replace clinical judgement —
-                            please verify diagnoses, CBC estimates, and treatment guidance with a
-                            qualified physician before acting on them.
+                            AideBot can make mistakes. Please double-check responses.
                         </Text>
                     </View>
                 </View>
@@ -451,7 +449,9 @@ const Chatbot = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>About AideBot AI</Text>
-                        <Text style={styles.modalDescription}>AideBot is an AI assistant designed to help interpret lab results.</Text>
+                        <Text style={styles.modalDescription}>AideBot is an AI assistant designed to help interpret lab results. It does not replace clinical judgement —
+                            please verify diagnoses, CBC estimates, and treatment guidance with a
+                            qualified physician before acting on them.</Text>
                         <TouchableOpacity style={styles.closeButton} onPress={() => setIsInfoVisible(false)}>
                             <Text style={styles.closeButtonText}>Got it</Text>
                         </TouchableOpacity>
