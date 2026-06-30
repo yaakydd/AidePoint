@@ -25,7 +25,7 @@ export const ChatStyles = StyleSheet.create({
     },
     todayText: {
         textAlign: 'center',
-        color: COLORS.textMuted,
+        color: COLORS.textSecondary,
         fontSize: FONTS.xs,
         fontWeight: FONTS.bold,
         marginVertical: SPACING.xl,
@@ -33,13 +33,14 @@ export const ChatStyles = StyleSheet.create({
     },
     flatListContent: {
         paddingHorizontal: SPACING.lg,
-        paddingBottom: layout.tabBarHeight + SPACING.md,
+        paddingBottom: SPACING.md,
     },
 
-    // ── Interaction Deck (Floats neatly above TabBar) ───────────────────────
+    // ── Interaction Deck (floats above the tab bar, never hidden behind it) ──
     bottomControlsDeck: {
         width: '100%',
         backgroundColor: 'transparent',
+        paddingBottom: layout.tabBarHeight,
     },
 
     // ── Suggestion Chips Layout ──────────────────────────────────────────────
@@ -66,13 +67,13 @@ export const ChatStyles = StyleSheet.create({
         fontWeight: FONTS.semibold,
     },
 
-    // ── Input Bar Capsule (Exact Screenshot Match) ───────────────────────────
+    // ── Input Bar Capsule ─────────────────────────────────────────────────────
     inputLayout: {
         width: '100%',
         backgroundColor: 'transparent',
         paddingHorizontal: SPACING.lg,
         paddingTop: SPACING.xs,
-        paddingBottom: Platform.OS === 'ios' ? SPACING.xs : SPACING.sm,
+        paddingBottom: SPACING.xs,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -108,6 +109,144 @@ export const ChatStyles = StyleSheet.create({
         alignItems: 'center',
         marginLeft: SPACING.xs,
     },
+    sendButtonDisabled: {
+        opacity: 0.5,
+    },
+
+    // ── History Sidebar ───────────────────────────────────────────────────────
+    sidebarOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: COLORS.overlay,
+        flexDirection: 'row',
+        zIndex: 200,
+    },
+    sidebarPanel: {
+        width: '80%',
+        maxWidth: scale(320),
+        height: '100%',
+        backgroundColor: COLORS.surface,
+        paddingTop: layout.statusBarHeight + SPACING.lg,
+        ...SHADOWS.lg,
+    },
+    sidebarDismissArea: {
+        flex: 1,
+    },
+    sidebarHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: SPACING.lg,
+        marginBottom: SPACING.md,
+    },
+    sidebarTitle: {
+        fontSize: FONTS.lg,
+        fontWeight: FONTS.bold,
+        color: COLORS.textPrimary,
+    },
+    newChatButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: SPACING.sm,
+        marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.lg,
+        paddingVertical: SPACING.sm,
+        borderRadius: RADIUS.md,
+        backgroundColor: COLORS.primaryLight,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+    },
+    newChatButtonText: {
+        color: COLORS.primaryDark,
+        fontSize: FONTS.sm,
+        fontWeight: FONTS.bold,
+    },
+    usageBanner: {
+        marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.lg,
+        padding: SPACING.md,
+        borderRadius: RADIUS.md,
+        backgroundColor: COLORS.surfaceAlt,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    usageBannerLabel: {
+        fontSize: FONTS.xs,
+        fontWeight: FONTS.bold,
+        color: COLORS.textSecondary,
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+    usageBannerValue: {
+        fontSize: FONTS.sm,
+        fontWeight: FONTS.semibold,
+        color: COLORS.textPrimary,
+    },
+    usageBannerValueWarning: {
+        color: COLORS.warning,
+    },
+    sidebarSectionLabel: {
+        fontSize: FONTS.xs,
+        fontWeight: FONTS.bold,
+        color: COLORS.textMuted,
+        letterSpacing: 1,
+        paddingHorizontal: SPACING.lg,
+        marginBottom: SPACING.sm,
+    },
+    sessionList: {
+        flexGrow: 0,
+    },
+    sessionItem: {
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.md,
+    },
+    sessionItemActive: {
+        backgroundColor: COLORS.primaryLight,
+    },
+    sessionItemTitle: {
+        fontSize: FONTS.sm,
+        fontWeight: FONTS.semibold,
+        color: COLORS.textPrimary,
+    },
+    sessionItemDate: {
+        fontSize: FONTS.xs,
+        color: COLORS.textSecondary,
+        marginTop: 2,
+    },
+    sidebarFooter: {
+        marginTop: 'auto',
+        borderTopWidth: 1,
+        borderTopColor: COLORS.divider,
+        paddingTop: SPACING.sm,
+        paddingBottom: SPACING.xl,
+    },
+    sidebarFooterItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.md,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.lg,
+    },
+    sidebarFooterText: {
+        fontSize: FONTS.sm,
+        fontWeight: FONTS.semibold,
+        color: COLORS.textPrimary,
+    },
+
+    // ── Disclaimer ────────────────────────────────────────────────────────────
+    disclaimerRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingHorizontal: SPACING.lg + SPACING.xs,
+        paddingTop: SPACING.xs,
+        gap: SPACING.xs,
+    },
+    disclaimerText: {
+        flex: 1,
+        fontSize: FONTS.xs,
+        color: COLORS.textSecondary,
+        lineHeight: FONTS.xs * FONTS.normal,
+    },
 
     // ── Base Chat Window Styling ─────────────────────────────────────────────
     leftHeader: {
@@ -133,7 +272,7 @@ export const ChatStyles = StyleSheet.create({
         color: COLORS.textPrimary,
     },
     subTitle: {
-        color: COLORS.primary,
+        color: COLORS.primaryDark,
         fontSize: FONTS.sm,
         fontWeight: FONTS.regular,
     },
@@ -143,29 +282,7 @@ export const ChatStyles = StyleSheet.create({
     headerIconsRight: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    dropdownMenu: {
-        position: 'absolute',
-        top: vScale(75),
-        right: SPACING.lg,
-        backgroundColor: COLORS.surface,
-        borderRadius: RADIUS.md,
-        padding: SPACING.sm,
-        width: scale(180),
-        ...SHADOWS.lg,
-        zIndex: 100,
-    },
-    menuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: SPACING.md,
-        paddingHorizontal: SPACING.lg,
         gap: SPACING.md,
-    },
-    menuText: {
-        fontSize: FONTS.sm,
-        color: COLORS.textPrimary,
-        fontWeight: FONTS.semibold,
     },
     botWrapper: {
         flexDirection: 'row',

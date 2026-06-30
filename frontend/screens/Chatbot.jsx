@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useContext, useCallback } from "react";
 import {
     View,
     Text,
@@ -10,35 +10,105 @@ import {
     Linking,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from '@react-navigation/native';
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 import { COLORS } from "../assets/theme";
+import { AuthContext } from "../context/AuthContext";
+import { sendToGemini } from "../utils/gemini";
+import {
+    loadSessions,
+    saveSessions,
+    clearAllSessions,
+    deriveSessionTitle,
+    getTodayUsageCount,
+    incrementTodayUsage,
+} from "../utils/chatstorage";
+import { getPlan } from "../constants/SubscriptionPlans";
+
+const welcomeMessage = {
+    id: 'welcome',
+    type: 'bot',
+    text: "Hello! I'm AideBot. I can help you interpret blood smear results or provide info on malaria, sickle cell, and anemia. How can I assist you today?",
+};
+
+function newSession() {
+    return {
+        id: Date.now().toString(),
+        title: 'New Chat',
+        messages: [welcomeMessage],
+        updatedAt: new Date().toISOString(),
+    };
+}
+
+function formatSessionDate(iso) {
+    return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
 
 const Chatbot = () => {
     const navigation = useNavigation();
     const flatListRef = useRef(null);
+    const { user } = useContext(AuthContext);
+    const plan = getPlan(user?.subscriptionTier);
+    const displayName = user?.name?.trim() || 'You';
 
-    // State Management
-    const [showMenu, setShowMenu] = useState(false);
+    // Sidebar / history
+    const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [sessions, setSessions] = useState([]);
+    const [activeSession, setActiveSession] = useState(newSession());
+
+    // Usage / limits
+    const [usageCount, setUsageCount] = useState(0);
+
+    // Modals & input
     const [isInfoVisible, setIsInfoVisible] = useState(false);
     const [isBugModalVisible, setIsBugModalVisible] = useState(false);
     const [bugReport, setBugReport] = useState("");
     const [inputText, setInputText] = useState("");
+    const [isSending, setIsSending] = useState(false);
 
-    const welcomeMessage = {
-        id: '1',
-        type: 'bot',
-        text: "Hello! I'm AideBot. I can help you interpret blood smear results or provide info on malaria, sickle cell, and anemia. How can I assist you today?",
-    };
+    const messages = activeSession.messages;
+    const limitReached = usageCount >= plan.dailyChatLimit;
 
-    const [messages, setMessages] = useState([welcomeMessage]);
+    // ── Load persisted history + today's usage on mount ─────────────────────
+    useEffect(() => {
+        (async () => {
+            const stored = await loadSessions(user?.id);
+            setSessions(stored);
+            if (stored.length > 0) {
+                setActiveSession(stored[0]);
+            }
+            const count = await getTodayUsageCount(user?.id);
+            setUsageCount(count);
+        })();
+    }, [user?.id]);
 
-    const handleSend = (textToSend = inputText) => {
+    const persistSession = useCallback(async (session) => {
+        setSessions(prev => {
+            const others = prev.filter(s => s.id !== session.id);
+            const next = [session, ...others];
+            saveSessions(user?.id, next);
+            return next;
+        });
+    }, [user?.id]);
+
+    // ── Sending a message ────────────────────────────────────────────────────
+
+    const handleSend = async (textToSend = inputText) => {
         const messageText = typeof textToSend === 'string' ? textToSend : inputText;
-        if (messageText.trim().length === 0) return;
+        if (messageText.trim().length === 0 || isSending) return;
+
+        if (limitReached) {
+            Alert.alert(
+                'Daily chat limit reached',
+                `You've used all ${plan.dailyChatLimit} AideBot messages included in your ${plan.label} plan today. Upgrade your plan for a higher daily limit.`,
+                [{ text: 'OK' }]
+            );
+            return;
+        }
 
         const newUserMessage = {
             id: Date.now().toString(),
@@ -46,34 +116,102 @@ const Chatbot = () => {
             text: messageText.trim(),
         };
 
-        setMessages((prev) => [...prev, newUserMessage]);
+        const updatedMessages = [...messages, newUserMessage];
+        const updatedSession = {
+            ...activeSession,
+            title: activeSession.title === 'New Chat'
+                ? deriveSessionTitle(updatedMessages)
+                : activeSession.title,
+            messages: updatedMessages,
+            updatedAt: new Date().toISOString(),
+        };
+        setActiveSession(updatedSession);
         setInputText("");
+        setIsSending(true);
 
-        setTimeout(() => {
+        try {
+            const replyText = await sendToGemini(updatedMessages);
+
             const botResponse = {
                 id: (Date.now() + 1).toString(),
                 type: 'bot',
-                text: "...",
+                text: replyText,
             };
-            setMessages((prev) => [...prev, botResponse]);
-        }, 1000);
+
+            const finalMessages = [...updatedMessages, botResponse];
+            const finalSession = {
+                ...updatedSession,
+                messages: finalMessages,
+                updatedAt: new Date().toISOString(),
+            };
+            setActiveSession(finalSession);
+            await persistSession(finalSession);
+
+            const newCount = await incrementTodayUsage(user?.id);
+            setUsageCount(newCount);
+
+        } catch (err) {
+            console.error('Chatbot handleSend (Gemini):', err.message);
+            const errorResponse = {
+                id: (Date.now() + 1).toString(),
+                type: 'bot',
+                text: "Sorry, I couldn't reach AideBot's AI service just now. Please check your connection and try again.",
+            };
+            const finalMessages = [...updatedMessages, errorResponse];
+            const finalSession = { ...updatedSession, messages: finalMessages };
+            setActiveSession(finalSession);
+            await persistSession(finalSession);
+        } finally {
+            setIsSending(false);
+        }
     };
 
-    const handleClearChat = () => {
-        Alert.alert("Clear Chat", "Reset the conversation?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Clear",
-                onPress: () => {
-                    setMessages([welcomeMessage]);
-                    setShowMenu(false);
+    // ── Sidebar actions ───────────────────────────────────────────────────────
+
+    const handleStartNewChat = () => {
+        setActiveSession(newSession());
+        setSidebarVisible(false);
+    };
+
+    const handleSelectSession = (session) => {
+        setActiveSession(session);
+        setSidebarVisible(false);
+    };
+
+    const handleClearAllChats = () => {
+        Alert.alert(
+            "Clear All Chats",
+            "This permanently deletes every saved AideBot conversation on this device. This can't be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Clear All",
+                    style: "destructive",
+                    onPress: async () => {
+                        await clearAllSessions(user?.id);
+                        setSessions([]);
+                        setActiveSession(newSession());
+                        setSidebarVisible(false);
+                    },
                 },
-            },
-        ]);
+            ]
+        );
+    };
+
+    const handleOpenBugReport = () => {
+        setSidebarVisible(false);
+        setIsBugModalVisible(true);
     };
 
     const sendEmail = () => {
-        const url = `mailto:support@aidebot.com?subject=Bug Report&body=${encodeURIComponent(bugReport)}`;
+        const transcript = messages
+            .map(m => `${m.type === 'bot' ? 'AideBot' : 'User'}: ${m.text}`)
+            .join('\n');
+
+        const body =
+            `Issue description:\n${bugReport}\n\n---\nChat history (${activeSession.title}):\n${transcript}`;
+
+        const url = `mailto:support@aidebot.com?subject=Bug Report&body=${encodeURIComponent(body)}`;
         Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open email app."));
         setIsBugModalVisible(false);
         setBugReport("");
@@ -84,10 +222,12 @@ const Chatbot = () => {
         { id: "2", text: "Treatment guidelines" }
     ];
 
+    const canSend = inputText.trim().length > 0 && !isSending && !limitReached;
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
 
-            {/* ── Fixed Header (Stays Outside the Keyboard View so it NEVER Moves) ── */}
+            {/* ── Fixed Header ── */}
             <View style={styles.leftHeader}>
                 <View style={styles.leftContent}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -102,39 +242,18 @@ const Chatbot = () => {
                     <TouchableOpacity onPress={() => setIsInfoVisible(true)}>
                         <MaterialIcons name="info-outline" size={24} color={COLORS.textSecondary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowMenu(!showMenu)}>
-                        <MaterialIcons
-                            name={showMenu ? "close" : "more-vert"}
-                            size={24}
-                            color={showMenu ? COLORS.primary : COLORS.textSecondary}
-                        />
+                    <TouchableOpacity onPress={() => setSidebarVisible(true)}>
+                        <MaterialIcons name="menu" size={24} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* ── Dropdown Menu ─────────────────────────────────────────────── */}
-            {showMenu && (
-                <View style={styles.dropdownMenu}>
-                    <TouchableOpacity style={styles.menuItem} onPress={handleClearChat}>
-                        <MaterialIcons name="delete-outline" size={20} color={COLORS.danger} />
-                        <Text style={[styles.menuText, { color: COLORS.danger }]}>Clear Chat</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => { setIsBugModalVisible(true); setShowMenu(false); }}
-                    >
-                        <MaterialIcons name="bug-report" size={20} color={COLORS.textSecondary} />
-                        <Text style={styles.menuText}>Report Bug</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
             {/* ── Outer Layout System ──────────────────────────────────────── */}
-<KeyboardAvoidingView
-    style={styles.mainLayoutBody}
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}  // 'height' on Android, not null
-    keyboardVerticalOffset={0}   // Header is outside KAV so no offset needed
->
+            <KeyboardAvoidingView
+                style={styles.mainLayoutBody}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={0}
+            >
                 {/* Chat Messages */}
                 <FlatList
                     ref={flatListRef}
@@ -156,7 +275,7 @@ const Chatbot = () => {
                                 )}
                                 <View style={styles.messageGroup}>
                                     <Text style={isBot ? styles.botName : styles.userName}>
-                                        {isBot ? 'AideBot' : 'Lab Technician'}
+                                        {isBot ? 'AideBot' : displayName}
                                     </Text>
                                     <View style={isBot ? styles.botBubble : styles.userBubble}>
                                         <Text style={isBot ? styles.botText : styles.userText}>
@@ -172,11 +291,24 @@ const Chatbot = () => {
                             </View>
                         );
                     }}
+                    ListFooterComponent={isSending ? (
+                        <View style={styles.botWrapper}>
+                            <View style={styles.avatarCircleBot}>
+                                <MaterialIcons name="person-outline" size={20} color={COLORS.white} />
+                            </View>
+                            <View style={styles.messageGroup}>
+                                <Text style={styles.botName}>AideBot</Text>
+                                <View style={styles.botBubble}>
+                                    <ActivityIndicator size="small" color={COLORS.primary} />
+                                </View>
+                            </View>
+                        </View>
+                    ) : null}
                     contentContainerStyle={styles.flatListContent}
                     style={styles.messageList}
                 />
 
-                {/* Inline Interaction Layer */}
+                {/* Inline Interaction Layer — lifted clear of the floating tab bar */}
                 <View style={styles.bottomControlsDeck}>
                     {/* Horizontal Suggestion Chips */}
                     {messages.length === 1 && (
@@ -205,9 +337,9 @@ const Chatbot = () => {
                             <TouchableOpacity style={styles.iconButton}>
                                 <MaterialIcons name="attach-file" size={24} color={COLORS.textMuted} />
                             </TouchableOpacity>
-                            
+
                             <TextInput
-                                placeholder="Ask AideBot anything..."
+                                placeholder={limitReached ? "Daily message limit reached" : "Ask AideBot anything..."}
                                 placeholderTextColor={COLORS.textMuted}
                                 style={styles.input}
                                 value={inputText}
@@ -216,24 +348,105 @@ const Chatbot = () => {
                                 returnKeyType="send"
                                 multiline
                                 blurOnSubmit={false}
+                                editable={!limitReached}
                             />
 
                             <TouchableOpacity
-                                style={[
-                                    styles.sendButton,
-                                    { opacity: inputText.trim().length > 0 ? 1 : 0.5 },
-                                ]}
+                                style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
                                 onPress={() => handleSend()}
-                                disabled={inputText.trim().length === 0}
+                                disabled={!canSend}
                             >
                                 <MaterialIcons name="send" size={22} color={COLORS.white} />
                             </TouchableOpacity>
                         </View>
                     </View>
+
+                    {/* Disclaimer */}
+                    <View style={styles.disclaimerRow}>
+                        <MaterialIcons name="info-outline" size={13} color={COLORS.textSecondary} />
+                        <Text style={styles.disclaimerText}>
+                            AideBot can make mistakes. It does not replace clinical judgement —
+                            please verify diagnoses, CBC estimates, and treatment guidance with a
+                            qualified physician before acting on them.
+                        </Text>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
 
-            {/* ── Modals ────────────────────────────────────────────────────── */}
+            {/* ── History Sidebar ─────────────────────────────────────────────── */}
+            <Modal animationType="fade" transparent visible={sidebarVisible} onRequestClose={() => setSidebarVisible(false)}>
+                <View style={styles.sidebarOverlay}>
+                    <View style={styles.sidebarPanel}>
+                        <View style={styles.sidebarHeader}>
+                            <Text style={styles.sidebarTitle}>Chats</Text>
+                            <TouchableOpacity onPress={() => setSidebarVisible(false)}>
+                                <MaterialIcons name="close" size={22} color={COLORS.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity style={styles.newChatButton} onPress={handleStartNewChat}>
+                            <MaterialIcons name="add" size={18} color={COLORS.primaryDark} />
+                            <Text style={styles.newChatButtonText}>New Chat</Text>
+                        </TouchableOpacity>
+
+                        <View style={styles.usageBanner}>
+                            <Text style={styles.usageBannerLabel}>{plan.label.toUpperCase()} PLAN</Text>
+                            <Text style={[styles.usageBannerValue, limitReached && styles.usageBannerValueWarning]}>
+                                {usageCount} / {plan.dailyChatLimit} messages used today
+                            </Text>
+                        </View>
+
+                        <Text style={styles.sidebarSectionLabel}>HISTORY</Text>
+                        <FlatList
+                            style={styles.sessionList}
+                            data={sessions}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.sessionItem,
+                                        item.id === activeSession.id && styles.sessionItemActive,
+                                    ]}
+                                    onPress={() => handleSelectSession(item)}
+                                >
+                                    <Text style={styles.sessionItemTitle} numberOfLines={1}>
+                                        {item.title}
+                                    </Text>
+                                    <Text style={styles.sessionItemDate}>
+                                        {formatSessionDate(item.updatedAt)}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={() => (
+                                <Text style={[styles.sessionItemDate, { paddingHorizontal: 16 }]}>
+                                    No saved chats yet.
+                                </Text>
+                            )}
+                        />
+
+                        <View style={styles.sidebarFooter}>
+                            <TouchableOpacity style={styles.sidebarFooterItem} onPress={handleOpenBugReport}>
+                                <MaterialIcons name="bug-report" size={20} color={COLORS.textSecondary} />
+                                <Text style={styles.sidebarFooterText}>Report Bug</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.sidebarFooterItem} onPress={handleClearAllChats}>
+                                <MaterialIcons name="delete-outline" size={20} color={COLORS.danger} />
+                                <Text style={[styles.sidebarFooterText, { color: COLORS.danger }]}>
+                                    Clear All Chats
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.sidebarDismissArea}
+                        activeOpacity={1}
+                        onPress={() => setSidebarVisible(false)}
+                    />
+                </View>
+            </Modal>
+
+            {/* ── Info Modal ────────────────────────────────────────────────── */}
             <Modal animationType="fade" transparent visible={isInfoVisible} onRequestClose={() => setIsInfoVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -246,10 +459,15 @@ const Chatbot = () => {
                 </View>
             </Modal>
 
+            {/* ── Bug Report Modal (now includes chat history as context) ──────── */}
             <Modal animationType="slide" transparent visible={isBugModalVisible} onRequestClose={() => setIsBugModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.bugModalContent}>
                         <Text style={styles.modalTitle}>Report a Bug</Text>
+                        <Text style={styles.modalDescription}>
+                            The current chat ("{activeSession.title}") will be attached automatically
+                            so our team has full context.
+                        </Text>
                         <TextInput style={styles.bugInput} placeholder="Describe the issue..." placeholderTextColor={COLORS.textMuted} multiline value={bugReport} onChangeText={setBugReport} />
                         <View style={styles.bugButtonContainer}>
                             <TouchableOpacity style={[styles.bugButton, { backgroundColor: COLORS.textMuted }]} onPress={() => setIsBugModalVisible(false)}>
