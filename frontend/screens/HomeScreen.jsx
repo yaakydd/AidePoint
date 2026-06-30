@@ -13,6 +13,7 @@ import { AuthContext } from '../context/AuthContext';
 import OfflineBanner from '../components/OfflineBanner';
 import { supabase } from '../utils/supabase';
 import { homeStyles as styles } from '../styles/HomeStyles';
+import { COLORS } from '../assets/theme';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
@@ -32,20 +33,19 @@ const HIGH_SEVERITY_SET = new Set([
   'sickle_cell', 'malaria', 'thalassemia', 'hemolytic', 'aplastic',
 ]);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
 }
 
-function getInitials(name) {
+function getInitial(name) {
   if (!name?.trim()) return '?';
-  const parts = name.trim().split(' ').filter(Boolean);
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.trim()[0].toUpperCase();
 }
 
 function getSeverityStyle(severity) {
@@ -66,20 +66,30 @@ function getRelativeTime(iso) {
   return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-// ── Weekly Bar Chart ──────────────────────────────────────────────────────────
+function formatDetailDate(iso) {
+  return new Date(iso).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+}
 
-const WeeklyBarChart = ({ data }) => {
+// ── Weekly Bar Chart (tap a bar to reveal its detail) ──────────────────────────
+
+const WeeklyBarChart = ({ data, selectedIndex, onSelect }) => {
   const maxCount   = Math.max(...data.map(d => d.count), 1);
   const BAR_MAX    = 72;
   const todayIndex = new Date().getDay();
 
   return (
     <View style={styles.barsRow}>
-      {data.map(item => {
+      {data.map((item, i) => {
         const isToday   = item.dayIndex === todayIndex;
+        const isSelected = i === selectedIndex;
         const barHeight = Math.max((item.count / maxCount) * BAR_MAX, 3);
         return (
-          <View key={item.day} style={styles.barColumn}>
+          <TouchableOpacity
+            key={item.day}
+            style={styles.barColumn}
+            activeOpacity={0.7}
+            onPress={() => onSelect(i)}
+          >
             {item.count > 0 && (
               <Text style={[styles.barCount, isToday && styles.barCountToday]}>
                 {item.count}
@@ -89,7 +99,9 @@ const WeeklyBarChart = ({ data }) => {
               <View
                 style={[styles.barFill, {
                   height:          barHeight,
-                  backgroundColor: isToday ? '#6200EE' : '#DDD6FE',
+                  backgroundColor: isSelected
+                    ? COLORS.primaryDark
+                    : isToday ? COLORS.primary : COLORS.primaryLight,
                   borderRadius:    barHeight > 8 ? 6 : 3,
                 }]}
               />
@@ -97,14 +109,14 @@ const WeeklyBarChart = ({ data }) => {
             <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
               {item.day}
             </Text>
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>
   );
 };
 
-// ── Scan Card ─────────────────────────────────────────────────────────────────
+// Scan Card 
 
 const ScanCard = ({ scan, onPress }) => {
   const { bg, color, icon } = getSeverityStyle(scan.severity);
@@ -134,24 +146,22 @@ const ScanCard = ({ scan, onPress }) => {
   );
 };
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+// Main Screen 
 
 const HomeScreen = () => {
   const { user }   = useContext(AuthContext);
   const navigation = useNavigation();
 
-  const [loading,     setLoading]     = useState(true);
-  const [refreshing,  setRefreshing]  = useState(false);
-  const [stats,       setStats]       = useState(null);
-  const [recentScans, setRecentScans] = useState([]);
-  const [fetchError,  setFetchError]  = useState(null);
+  const [loading,        setLoading]        = useState(true);
+  const [refreshing,     setRefreshing]     = useState(false);
+  const [stats,          setStats]          = useState(null);
+  const [recentScans,    setRecentScans]    = useState([]);
+  const [fetchError,     setFetchError]     = useState(null);
+  const [selectedDayIdx, setSelectedDayIdx] = useState(null);
 
   const displayName = user?.name ?? 'Lab Technician';
 
-  // ── Fetch ────────────────────────────────────────────────────────────────
-
   const fetchDashboardData = useCallback(async () => {
-    // FIX: release loading state immediately if no user, not stuck forever
     if (!user?.id) {
       setLoading(false);
       return;
@@ -165,33 +175,24 @@ const HomeScreen = () => {
         now.getFullYear(), now.getMonth(), now.getDate()
       ).toISOString();
 
-      // FIX: was 6 * 24h (6 days back). Now a true 7-day window.
       const sevenDaysAgo = new Date(
         now.getTime() - 7 * 24 * 60 * 60 * 1000
       ).toISOString();
 
       const [todayRes, weekRes, recentRes] = await Promise.all([
-
-        // Today's count — head:true returns only the count, no row data
         supabase
           .from('scans')
           .select('*', { count: 'exact', head: true })
-          // FIX: column is created_by, not lab_tech_id
           .eq('created_by', user.id)
           .gte('created_at', startOfToday),
 
-        // This week's scans for the chart
         supabase
           .from('scans')
           .select('created_at, status, results')
-          // FIX: created_by
           .eq('created_by', user.id)
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false }),
 
-        // 4 most recent scans for the list
-        // FIX: patient_name doesn't exist on scans — join patients table.
-        // FIX: condition doesn't exist on scans — it lives inside results JSONB.
         supabase
           .from('scans')
           .select('id, status, created_at, results, patients(name)')
@@ -207,16 +208,27 @@ const HomeScreen = () => {
       const weekScans = weekRes.data  ?? [];
       const recentRaw = recentRes.data ?? [];
 
-      // Build weekly chart data (Sun=0 … Sat=6)
-      const DAY_NAMES  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      // Build weekly chart data (Sun=0 … Sat=6), each day tagged with its
+      // actual calendar date within the current week so the tap-detail can
+      // show "Tuesday, 24 Jun" rather than just "Tue".
       const countByDay = {};
       weekScans.forEach(s => {
         const idx = new Date(s.created_at).getDay();
         countByDay[idx] = (countByDay[idx] || 0) + 1;
       });
-      const weeklyData = DAY_NAMES.map((day, dayIndex) => ({
-        day, dayIndex, count: countByDay[dayIndex] ?? 0,
-      }));
+
+      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weeklyData = DAY_NAMES.map((day, dayIndex) => {
+        const diff = (todayDate.getDay() - dayIndex + 7) % 7;
+        const date = new Date(todayDate);
+        date.setDate(date.getDate() - diff);
+        return {
+          day,
+          dayIndex,
+          count: countByDay[dayIndex] ?? 0,
+          date: date.toISOString(),
+        };
+      });
 
       setStats({
         todayCount: todayRes.count ?? 0,
@@ -224,12 +236,8 @@ const HomeScreen = () => {
         weeklyData,
       });
 
-      // Map raw rows to UI shape
       setRecentScans(recentRaw.map(s => {
-        // FIX: name comes from the joined patients row
         const patientName = s.patients?.name ?? 'Unknown Patient';
-
-        // FIX: condition lives inside the results JSONB, not a top-level column
         const rawCondition = s.results?.condition ?? null;
 
         const isPending =
@@ -273,17 +281,22 @@ const HomeScreen = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // FIX: divide by 7 (true weekly average), not by days-with-scans (inflated)
   const avgPerDay = stats
     ? Math.round(stats.thisWeek / 7)
     : 0;
 
-  // FIX: pass scanId so Reports screen can navigate to the specific record
   function handleScanPress(scan) {
     navigation.navigate('Reports', { scanId: scan.id });
   }
 
-  // ── UI ───────────────────────────────────────────────────────────────────
+  // "View All" next to Recent Scans sends the user to start a new scan
+  function handleViewAllPress() {
+    navigation.navigate('Scan');
+  }
+
+  const selectedDay = selectedDayIdx != null ? stats?.weeklyData[selectedDayIdx] : null;
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -292,19 +305,26 @@ const HomeScreen = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.profileRow}>
-          <View style={[styles.avatar, styles.avatarCircle]}>
-            <Text style={styles.avatarInitials}>{getInitials(displayName)}</Text>
-          </View>
-          <View>
-            <Text style={styles.greeting}>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+            <View style={[styles.avatar, styles.avatarCircle]}>
+              <Text style={styles.avatarInitials}>{getInitial(displayName)}</Text>
+            </View>
+          </TouchableOpacity>
+          <View style={styles.greetingBlock}>
+            <Text style={styles.greeting} numberOfLines={1}>
               {getGreeting()}, {displayName.split(' ')[0]}
             </Text>
-            <Text style={styles.subGreeting}>Lab Technician</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Ionicons name="notifications-outline" size={24} color="#1E293B" />
-        </TouchableOpacity>
+
+        <View style={styles.headerRightRow}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <Ionicons name="notifications-outline" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Scrollable Content ── */}
@@ -318,8 +338,8 @@ const HomeScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#00BCD4"
-            colors={['#00BCD4']}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
           />
         }
       >
@@ -334,10 +354,10 @@ const HomeScreen = () => {
         <Text style={styles.sectionTitle}>Today's Overview</Text>
         <View style={styles.statsRow}>
 
-          <View style={[styles.statCard, styles.statCardPrimary, { width: '48%' }]}>
+          <View style={[styles.statCard, styles.statCardPrimary, styles.statCardHalf]}>
             <MaterialCommunityIcons
-              name="microscope" size={20} color="#6200EE"
-              style={{ marginBottom: 6 }}
+              name="microscope" size={20} color={COLORS.primaryDark}
+              style={styles.statIcon}
             />
             <Text style={styles.statLabel}>TODAY</Text>
             <Text style={styles.statValue}>
@@ -346,10 +366,10 @@ const HomeScreen = () => {
             <Text style={styles.statSub}>scans done</Text>
           </View>
 
-          <View style={[styles.statCard, { width: '48%' }]}>
+          <View style={[styles.statCard, styles.statCardHalf]}>
             <MaterialCommunityIcons
-              name="calendar-week" size={20} color="#10B981"
-              style={{ marginBottom: 6 }}
+              name="calendar-week" size={20} color={COLORS.success}
+              style={styles.statIcon}
             />
             <Text style={styles.statLabel}>THIS WEEK</Text>
             <Text style={styles.statValue}>
@@ -376,7 +396,23 @@ const HomeScreen = () => {
           {loading ? (
             <View style={styles.chartSkeleton} />
           ) : stats ? (
-            <WeeklyBarChart data={stats.weeklyData} />
+            <>
+              <WeeklyBarChart
+                data={stats.weeklyData}
+                selectedIndex={selectedDayIdx}
+                onSelect={(i) => setSelectedDayIdx(i === selectedDayIdx ? null : i)}
+              />
+              {selectedDay && (
+                <View style={styles.chartDetailBox}>
+                  <Text style={styles.chartDetailText}>
+                    {formatDetailDate(selectedDay.date)}
+                  </Text>
+                  <Text style={styles.chartDetailCount}>
+                    {selectedDay.count} {selectedDay.count === 1 ? 'scan' : 'scans'}
+                  </Text>
+                </View>
+              )}
+            </>
           ) : null}
         </View>
 
@@ -388,18 +424,18 @@ const HomeScreen = () => {
         >
           <View style={styles.quickActionLeft}>
             <MaterialCommunityIcons
-              name="plus-circle-outline" size={22} color="#FFFFFF"
+              name="plus-circle-outline" size={22} color={COLORS.white}
             />
             <Text style={styles.quickActionText}>Start a New Scan</Text>
           </View>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
         </TouchableOpacity>
 
         {/* ── Recent Scans ── */}
         <View style={styles.listHeader}>
           <Text style={styles.sectionTitle}>Recent Scans</Text>
           {recentScans.length > 0 && (
-            <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
+            <TouchableOpacity onPress={handleViewAllPress}>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           )}

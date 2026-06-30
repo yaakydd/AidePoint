@@ -1,5 +1,3 @@
-// styles/HomeStyles.js
-
 import { StyleSheet } from "react-native";
 
 import {
@@ -24,9 +22,6 @@ export const homeStyles = StyleSheet.create({
     paddingTop: SPACING.sm,
   },
 
-
-  // HEADER
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -43,23 +38,10 @@ export const homeStyles = StyleSheet.create({
     flex: 1,
   },
 
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SPACING.md,
-  },
-
-  avatarCircle: {
-    backgroundColor: COLORS.primary,
-  },
-
-  avatarInitials: {
-    color: COLORS.white,
-    fontSize: FONTS.lg,
-    fontWeight: FONTS.bold,
+  greetingBlock: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+    paddingRight: SPACING.xl, // Prevent text from overlapping the notification icon
   },
 
   greeting: {
@@ -74,34 +56,38 @@ export const homeStyles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 
+  // Right side: notification icon only, kept clear of the avatar
+  headerRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: SPACING.lg,
+  },
+
   notificationButton: {
-    width: 46,
-    height: 46,
-    borderRadius: RADIUS.full,
-
-    backgroundColor: COLORS.surface,
-
+    width: 44,
+    height: 44,
     justifyContent: "center",
     alignItems: "center",
-
-    ...SHADOWS.sm,
+    // no background / shadow — icon only
   },
 
-  notifDot: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-
-    width: 10,
-    height: 10,
-    borderRadius: RADIUS.full,
-
-    backgroundColor: COLORS.danger,
-    borderWidth: 2,
-    borderColor: COLORS.white,
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
+  avatarCircle: {
+    backgroundColor: COLORS.primary,
+  },
 
+  avatarInitials: {
+    color: COLORS.white,
+    fontSize: FONTS["2xl"],
+    fontWeight: FONTS.bold,
+  },
   // TITLES
 
   sectionTitle: {
@@ -114,42 +100,41 @@ export const homeStyles = StyleSheet.create({
 
   // STATS CARDS
 
-statsRow: {
-  flexDirection: "row",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-  marginBottom: SPACING.xl,
-  gap: SPACING.md,
-},
+  statsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: SPACING.xl,
+    gap: SPACING.md,
+  },
 
-statCard: {
-  width: layout.isSmallScreen ? "48%" : "31%",
+  statCard: {
+    width: layout.isSmallScreen ? "48%" : "31%",
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    ...SHADOWS.sm,
+  },
 
-  backgroundColor: COLORS.surface,
+  statCardHalf: {
+    width: "48%",
+  },
 
-  borderRadius: RADIUS.xl,
-
-  paddingVertical: SPACING.lg,
-  paddingHorizontal: SPACING.md,
-
-  ...SHADOWS.sm,
-},
   statCardPrimary: {
     borderWidth: 1,
     borderColor: COLORS.primaryLight,
   },
 
-  statCardWarning: {
-    borderWidth: 1,
-    borderColor: COLORS.warning,
+  statIcon: {
+    marginBottom: SPACING.sm,
   },
 
   statLabel: {
     fontSize: FONTS.xs,
     fontWeight: FONTS.bold,
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
     letterSpacing: 1,
-
     marginBottom: SPACING.sm,
   },
 
@@ -161,7 +146,6 @@ statCard: {
 
   statSub: {
     marginTop: 4,
-
     fontSize: FONTS.sm,
     color: COLORS.textSecondary,
   },
@@ -169,30 +153,30 @@ statCard: {
 
   // CHART
 
-    barsRow: {
+  barsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",     // bars grow upward from the same bottom line
+    alignItems: "flex-end",
     paddingTop: 12,
     paddingHorizontal: 4,
   },
   barColumn: {
     alignItems: "center",
-    flex: 1,                    // each column takes equal width automatically
+    flex: 1,
     gap: 4,
   },
   barCount: {
     fontSize: 10,
-    color: "#94A3B8",
+    color: COLORS.textSecondary,
     fontWeight: "500",
   },
   barCountToday: {
-    color: "#6200EE",
+    color: COLORS.primaryDark,
     fontWeight: "700",
   },
   barTrack: {
-    width: "60%",               // bar is 60% of the column width
-    justifyContent: "flex-end", // bar grows from the BOTTOM of the track
+    width: "60%",
+    justifyContent: "flex-end",
     alignItems: "center",
   },
   barFill: {
@@ -200,24 +184,20 @@ statCard: {
   },
   dayLabel: {
     fontSize: 11,
-    color: "#94A3B8",
+    color: COLORS.textSecondary,
     fontWeight: "400",
     marginTop: 2,
   },
   dayLabelToday: {
-    color: "#6200EE",
+    color: COLORS.primaryDark,
     fontWeight: "700",
   },
 
   chartCard: {
     backgroundColor: COLORS.surface,
-
     borderRadius: RADIUS["2xl"],
-
     padding: SPACING.lg,
-
     marginBottom: SPACING.xl,
-
     ...SHADOWS.md,
   },
 
@@ -225,7 +205,6 @@ statCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-
     marginBottom: SPACING.sm,
   },
 
@@ -237,7 +216,6 @@ statCard: {
 
   chartSub: {
     marginTop: 4,
-
     fontSize: FONTS.sm,
     color: COLORS.textSecondary,
   },
@@ -251,9 +229,7 @@ statCard: {
     width: 10,
     height: 10,
     borderRadius: RADIUS.full,
-
     backgroundColor: COLORS.primary,
-
     marginRight: 6,
   },
 
@@ -266,10 +242,30 @@ statCard: {
   chartSkeleton: {
     height: 120,
     borderRadius: RADIUS.lg,
-
     backgroundColor: COLORS.divider,
-
     marginTop: SPACING.md,
+  },
+
+  // Tap-to-reveal detail line under the chart
+  chartDetailBox: {
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: RADIUS.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  chartDetailText: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    color: COLORS.primaryDark,
+  },
+  chartDetailCount: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.bold,
+    color: COLORS.primaryDark,
   },
 
 
@@ -277,18 +273,13 @@ statCard: {
 
   quickActionBtn: {
     backgroundColor: COLORS.primary,
-
     borderRadius: RADIUS.xl,
-
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.lg,
-
     marginBottom: SPACING["2xl"],
-
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-
     ...SHADOWS.lg,
   },
 
@@ -299,10 +290,8 @@ statCard: {
 
   quickActionText: {
     color: COLORS.white,
-
     fontSize: FONTS.md,
     fontWeight: FONTS.bold,
-
     marginLeft: SPACING.sm,
   },
 
@@ -313,7 +302,6 @@ statCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-
     marginBottom: SPACING.md,
   },
 
@@ -328,25 +316,19 @@ statCard: {
 
   patientCard: {
     backgroundColor: COLORS.surface,
-
     borderRadius: RADIUS.xl,
-
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.md,
-
     marginBottom: SPACING.md,
-
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-
     ...SHADOWS.sm,
   },
 
   patientInfo: {
     flexDirection: "row",
     alignItems: "center",
-
     flex: 1,
     marginRight: SPACING.sm,
   },
@@ -355,10 +337,8 @@ statCard: {
     width: 50,
     height: 50,
     borderRadius: RADIUS.full,
-
     justifyContent: "center",
     alignItems: "center",
-
     marginRight: SPACING.md,
   },
 
@@ -370,7 +350,6 @@ statCard: {
     fontSize: FONTS.md,
     fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
-
     marginBottom: 2,
   },
 
@@ -382,9 +361,7 @@ statCard: {
   statusBadge: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-
     borderRadius: RADIUS.full,
-
     maxWidth: SCREEN.WIDTH * 0.34,
   },
 
@@ -399,33 +376,42 @@ statCard: {
 
   emptyContainer: {
     backgroundColor: COLORS.surface,
-
     borderRadius: RADIUS.xl,
-
     paddingVertical: SPACING["4xl"],
     paddingHorizontal: SPACING.xl,
-
     alignItems: "center",
     justifyContent: "center",
   },
 
   emptyText: {
     marginTop: SPACING.lg,
-
     fontSize: FONTS.md,
     fontWeight: FONTS.bold,
-
     color: COLORS.textPrimary,
   },
 
   emptySubText: {
     marginTop: SPACING.sm,
-
     fontSize: FONTS.sm,
     color: COLORS.textSecondary,
-
     textAlign: "center",
     lineHeight: 20,
+  },
+
+
+  // ERROR BANNER
+
+  errorBanner: {
+    backgroundColor: COLORS.dangerBg,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+
+  errorBannerText: {
+    color: COLORS.danger,
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.medium,
   },
 
 
