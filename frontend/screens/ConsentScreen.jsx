@@ -1,16 +1,24 @@
+// auth/ConsentScreen.js
+//
+// Reviewed against your current AuthContext: this screen only needs to
+// capture the IMAGE STORAGE preference — completeConsent(storeImages) is
+// the only thing AuthContext expects, and there's no separate "clinical
+// notes consent" field anywhere in AuthContext, so that concept from the
+// old scope doc has effectively been folded into this single toggle.
+// Nothing needed to be added; the only change here is pulling styles
+// into styles/ConsentStyles.js and tightening a couple of copy lines.
+
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Switch,
-  StyleSheet, StatusBar, ScrollView, ActivityIndicator,Alert,
+  StatusBar, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 
 import { useAuth } from '../context/AuthContext';
-import {
-  COLORS, FONTS, SPACING, RADIUS, SHADOWS,
-  layout, scale, mScale
-} from '../assets/theme';
+import { COLORS, scale } from '../assets/theme';
+import { styles } from '../styles/ConsentStyles';
 
 const INFO_ITEMS = [
   {
@@ -18,21 +26,21 @@ const INFO_ITEMS = [
     color: '#10B981',
     bg: '#ECFDF5',
     title: 'If you allow storage',
-    body: 'Blood smear images are uploaded to secure cloud storage and linked to the scan report. Doctors can view them alongside the clinical results.',
+    body: 'Blood smear images are uploaded to secure cloud storage and linked to the scan report, so doctors can review them alongside the results.',
   },
   {
     icon: 'eye-off-outline',
     color: '#6366F1',
     bg: '#EEF2FF',
     title: 'If you decline',
-    body: 'Images are used only for AI analysis and immediately discarded. Reports are still generated — only the image itself is not kept.',
+    body: 'Images are used only for AI analysis and discarded right after. Reports are still generated — only the image itself is not kept.',
   },
   {
     icon: 'pencil-outline',
     color: '#F59E0B',
     bg: '#FFFBEB',
     title: 'You can change this later',
-    body: 'This preference can be updated at any time from your Profile screen. Your choice here is just the default.',
+    body: 'Update this anytime from Profile → Data & Privacy, even while offline — it will sync once you\'re back online.',
   },
 ];
 
@@ -42,31 +50,29 @@ export default function ConsentScreen() {
 
   const { completeConsent } = useAuth();
 
-// Replace just this function in your ConsentScreen
-async function handleContinue() {
-  if (isSaving) return;
+  async function handleContinue() {
+    if (isSaving) return;
 
-  setIsSaving(true);
-  try {
-    const result = await completeConsent(storeImages);
+    setIsSaving(true);
+    try {
+      const result = await completeConsent(storeImages);
 
-    if (!result.success) {
-      Alert.alert(
-        'Something went wrong',
-        result.error || 'Could not save your preference. Please try again.',
-        [{ text: 'OK' }]
-      );
+      if (!result.success) {
+        Alert.alert(
+          'Something went wrong',
+          result.error || 'Could not save your preference. Please try again.',
+          [{ text: 'OK' }],
+        );
+      }
+      // On success, authState flips to 'APP' inside AuthContext and
+      // App.js swaps navigators automatically — no navigate() needed.
+    } catch (err) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      console.error('Consent save failed:', err);
+    } finally {
+      setIsSaving(false);
     }
-    // On success: authState changes to 'APP' automatically in AuthContext.
-    // App.js sees the change and switches to MainAppNavigator. No navigate() needed.
-
-  } catch (err) {
-    Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-    console.error('Consent save failed:', err);
-  } finally {
-    setIsSaving(false);
   }
-}
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -76,7 +82,6 @@ async function handleContinue() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconWrap}>
             <MaterialCommunityIcons
@@ -88,11 +93,10 @@ async function handleContinue() {
 
           <Text style={styles.title}>Image Storage</Text>
           <Text style={styles.subtitle}>
-            Before you start, tell us how you'd like blood smear images handled.
+            Before you start scanning, tell us how blood smear images should be handled.
           </Text>
         </View>
 
-        {/* Info cards */}
         {INFO_ITEMS.map(item => (
           <View key={item.title} style={styles.infoCard}>
             <View style={[styles.infoIconWrap, { backgroundColor: item.bg }]}>
@@ -105,7 +109,6 @@ async function handleContinue() {
           </View>
         ))}
 
-        {/* Toggle */}
         <View style={styles.toggleCard}>
           <View style={styles.toggleLeft}>
             <MaterialCommunityIcons
@@ -113,7 +116,6 @@ async function handleContinue() {
               size={24}
               color={storeImages ? '#10B981' : COLORS.textMuted}
             />
-
             <View>
               <Text style={styles.toggleLabel}>
                 {storeImages ? 'Storage allowed' : 'Do not store images'}
@@ -134,14 +136,12 @@ async function handleContinue() {
           />
         </View>
 
-        {/* Disclaimer */}
         <Text style={styles.disclaimer}>
           AidePoint stores images in a private, encrypted bucket. Images are never shared
           with third parties.
         </Text>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.btn, isSaving && styles.btnDisabled]}
@@ -161,141 +161,3 @@ async function handleContinue() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
-  container: { paddingHorizontal: SPACING.pagePad, paddingBottom: 120 },
-
-  header: {
-    alignItems: 'center',
-    paddingTop: scale(40),
-    paddingBottom: SPACING['2xl'],
-  },
-
-  iconWrap: {
-    width: scale(88),
-    height: scale(88),
-    borderRadius: RADIUS.full,
-    backgroundColor: '#E0F7FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.lg,
-  },
-
-  title: {
-    fontSize: FONTS['2xl'],
-    fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-
-  subtitle: {
-    fontSize: FONTS.md,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: mScale(22),
-  },
-
-  infoCard: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-
-  infoIconWrap: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  infoBody: { flex: 1 },
-  infoTitle: {
-    fontSize: FONTS.sm,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  infoText: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-    lineHeight: mScale(19),
-  },
-
-  toggleCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    ...SHADOWS.sm,
-  },
-
-  toggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    flex: 1,
-  },
-
-  toggleLabel: {
-    fontSize: FONTS.md,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-
-  toggleSub: {
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-
-  disclaimer: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    lineHeight: mScale(18),
-    textAlign: 'center',
-  },
-
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.pagePad,
-    paddingTop: SPACING.md,
-    paddingBottom: layout.bottomInset + SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-
-  btn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.lg,
-    gap: SPACING.sm,
-  },
-
-  btnDisabled: { opacity: 0.65 },
-
-  btnText: {
-    color: COLORS.white,
-    fontSize: FONTS.lg,
-    fontWeight: FONTS.semibold,
-  },
-});
