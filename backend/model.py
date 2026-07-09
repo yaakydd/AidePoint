@@ -1,10 +1,20 @@
 # model.py
 # Loads the ONNX model once at startup and exposes a single predict() call.
 # onnxruntime is used — it is the most stable ONNX inference runtime.
+#
+# CHANGED: model.py now also loads ood_stats.json (committed alongside this
+# file — see export_ood_stats_json.py) and runs the reliability gate from
+# quality_checks.py on every prediction. A result is only returned as a
+# confident ANEMIC/HEALTHY label if the image actually resembles what this
+# specific checkpoint was trained on; otherwise the app gets an
+# "is_unreliable" flag plus specific reasons instead of a wrong label.
 
+import os
+import json
 import numpy as np
 import onnxruntime as ort
-import os
+
+from quality_checks import run_reliability_gate
 
 # ── CBC metadata (must match training exactly) ──────────────────────────────
 CBC_KEYS = [
@@ -18,12 +28,6 @@ MORPH_KEYS = [
     'macrocytosis', 'poikilocytosis', 'target_cells', 'normal_morphology',
 ]
 
-TYPE_KEYS = [
-    'sickle_cell', 'iron_deficiency', 'malaria', 'thalassemia',
-    'pernicious', 'megaloblastic', 'aplastic', 'hemolytic', 'normal',
-]
-
-# ── CBC denormalization ranges (must match CBC_NORM in training) ─────────────
 CBC_NORM = {
     'WBC':          (0.0,   30.0),
     'RBC':          (0.0,   10.0),
@@ -41,7 +45,6 @@ CBC_NORM = {
     'EOSINOPHILS':  (0.0,   15.0),
 }
 
-# ── Pediatric reference ranges for flagging ──────────────────────────────────
 CBC_REFERENCE = {
     'WBC':          (5.0,   13.0),
     'RBC':          (4.0,    5.2),
@@ -59,39 +62,17 @@ CBC_REFERENCE = {
     'EOSINOPHILS':  (0.8,    5.8),
 }
 
-# ── Urgency messages shown in the app ───────────────────────────────────────
-URGENCY_MAP = {
-    'sickle_cell':     'High — urgent haematology referral required',
-    'iron_deficiency': 'Moderate — iron panel and dietary review recommended',
-    'malaria':         'High — commence anti-malarial treatment immediately',
-    'thalassemia':     'Moderate-High — genetic counselling and specialist review advised',
-    'pernicious':      'Moderate — vitamin B12 replacement therapy required',
-    'megaloblastic':   'Moderate — folate/B12 deficiency workup required',
-    'aplastic':        'Critical — immediate bone marrow evaluation required',
-    'hemolytic':       'High — Coombs test and haematology referral required',
-    'normal':          'None — routine follow-up recommended',
-}
+DECISION_THRESHOLD = float(os.getenv("ANEMIA_DECISION_THRESHOLD", "0.34"))
 
-MORPHOLOGY_MAP = {
-    'sickle_cell':     'Crescent/sickle-shaped erythrocytes visible on peripheral smear',
-    'iron_deficiency': 'Hypochromic microcytic cells with increased central pallor',
-    'malaria':         'Ring-form intraerythrocytic parasites identified',
-    'thalassemia':     'Target cells (codocytes) with microcytic hypochromic pattern',
-    'pernicious':      'Macro-ovalocytes and hypersegmented neutrophils present',
-    'megaloblastic':   'Giant erythroid precursors with multilobed neutrophil nuclei',
-    'aplastic':        'Severe pancytopenia; hypocellular marrow pattern indicated',
-    'hemolytic':       'Schistocytes and helmet cells consistent with haemolysis',
-    'normal':          'No pathological cell morphology detected',
-}
+# Path to the reliability-gate stats committed alongside this file.
+OOD_STATS_PATH = os.getenv(
+    "OOD_STATS_PATH",
+    os.path.join(os.path.dirname(__file__), "ood_stats.json"),
+)
 
 
-def _sigmoid(x: np.ndarray) -> np.ndarray:
+def _sigmoid(x) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
-
-
-def _softmax(x: np.ndarray) -> np.ndarray:
-    e = np.exp(x - x.max())
-    return e / e.sum()
 
 
 def _denormalize_cbc(normed: np.ndarray) -> dict:
@@ -126,8 +107,6 @@ class AidePointONNX:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"ONNX model not found: {model_path}")
 
-        # CPU provider is most stable and portable on Railway
-        # If Railway adds GPU support later, add 'CUDAExecutionProvider'
         sess_options = ort.SessionOptions()
         sess_options.graph_optimization_level = (
             ort.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -140,61 +119,74 @@ class AidePointONNX:
             providers=["CPUExecutionProvider"],
         )
         self.input_name = self.session.get_inputs()[0].name
-        print(f"[AidePoint] ONNX model loaded from {model_path}")
 
-    def predict(self, image_array: np.ndarray) -> dict:
+        output_names = [o.name for o in self.session.get_outputs()]
+        expected = ['binary', 'cbc', 'morphology', 'embedding']
+        if output_names != expected:
+            raise RuntimeError(
+                f"ONNX model at {model_path} has outputs {output_names}, "
+                f"expected {expected}. This model.py expects the 4-output "
+                f"v2 export (including the 'embedding' output used for the "
+                f"reliability gate) — re-export with the updated Cell 7 if "
+                f"this model predates that change."
+            )
+
+        if not os.path.exists(OOD_STATS_PATH):
+            raise FileNotFoundError(
+                f"ood_stats.json not found at {OOD_STATS_PATH}. This file "
+                f"must be committed alongside model.py — see "
+                f"export_ood_stats_json.py in the training notebook. "
+                f"Without it, the reliability gate cannot run and every "
+                f"result would silently skip the out-of-distribution check."
+            )
+        with open(OOD_STATS_PATH) as f:
+            self.ood_stats = json.load(f)
+
+        print(f"[AidePoint] ONNX model loaded from {model_path} "
+              f"(decision threshold: {DECISION_THRESHOLD}, "
+              f"reliability gate: active)")
+
+    def predict(self, model_input: np.ndarray, raw_resized_bgr: np.ndarray) -> dict:
         """
-        Runs inference on a preprocessed (1,3,260,260) float32 array.
-        Returns a fully structured result dict ready to send to the app.
+        model_input:     (1,3,260,260) float32 NCHW, from preprocess_image().
+        raw_resized_bgr: (260,260,3) uint8 BGR, also from preprocess_image() —
+                          needed for the pixel-level reliability checks.
+
+        Anemia TYPE classification is intentionally NOT done here: it's
+        derived client-side by cbcTypeEngine.js from these same CBC +
+        morphology values via Wintrobe classification, per the app's
+        architecture.
         """
-        outputs = self.session.run(None, {self.input_name: image_array})
+        outputs = self.session.run(None, {self.input_name: model_input})
 
-        # Outputs are in the order defined during export:
-        # 0=binary, 1=cbc, 2=morph, 3=type
-        binary_logit = outputs[0][0, 0]   # scalar
-        cbc_normed   = outputs[1][0]      # (14,)
-        morph_logits = outputs[2][0]      # (8,)
-        type_logits  = outputs[3][0]      # (9,)
+        binary_logit = outputs[0][0, 0]
+        cbc_normed   = outputs[1][0]      # already (0,1) — sigmoided in the model head
+        morph_logits = outputs[2][0]
+        embedding    = outputs[3][0]      # (256,) — used only for the reliability gate
 
-        # ── Binary ──────────────────────────────────────────────────────────
         anemia_prob = float(_sigmoid(binary_logit))
-        is_anemic   = anemia_prob >= 0.5
+        is_anemic   = anemia_prob >= DECISION_THRESHOLD
 
-        # ── CBC ─────────────────────────────────────────────────────────────
         cbc_values = _denormalize_cbc(cbc_normed)
         cbc_flags  = _flag_cbc(cbc_values)
 
-        # ── Morphology ───────────────────────────────────────────────────────
         morph_probs = _sigmoid(morph_logits)
         morphology  = {
             key: round(float(morph_probs[i]), 4)
             for i, key in enumerate(MORPH_KEYS)
         }
 
-        # ── Anemia type ──────────────────────────────────────────────────────
-        type_probs  = _softmax(type_logits)
-        type_idx    = int(type_probs.argmax())
-        condition   = TYPE_KEYS[type_idx]
-        confidence  = round(float(type_probs[type_idx]) * 100, 1)
-
-        # Override to normal if binary head says not anemic
-        # (type head can misfire on healthy patients)
-        if not is_anemic:
-            condition  = 'normal'
-            confidence = round((1.0 - anemia_prob) * 100, 1)
+        is_unreliable, reasons = run_reliability_gate(
+            embedding, raw_resized_bgr, self.ood_stats
+        )
 
         return {
             "anemia_probability": round(anemia_prob, 4),
             "is_anemic":          is_anemic,
-            "condition":          condition,
-            "confidence":         confidence,
-            "urgency":            URGENCY_MAP.get(condition, ''),
-            "morphology_note":    MORPHOLOGY_MAP.get(condition, ''),
+            "decision_threshold": DECISION_THRESHOLD,
             "cbc":                cbc_values,
             "cbc_flags":          cbc_flags,
             "morphology_probs":   morphology,
-            "type_probabilities": {
-                key: round(float(type_probs[i]), 4)
-                for i, key in enumerate(TYPE_KEYS)
-            },
+            "is_unreliable":      is_unreliable,
+            "unreliable_reasons": reasons,
         }
