@@ -164,8 +164,10 @@ async def predict(
         )
 
     # ── Preprocess ──────────────────────────────────────────────────────────
+    # CHANGED: preprocess_image() now returns two values — the model-ready
+    # tensor, and the raw resized image the reliability gate needs.
     try:
-        image_array = preprocess_image(image_bytes)
+        image_array, raw_resized_bgr = preprocess_image(image_bytes)
     except Exception as exc:
         log.warning("Preprocessing failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(
@@ -176,7 +178,7 @@ async def predict(
     # ── Inference ───────────────────────────────────────────────────────────
     t0 = time.perf_counter()
     try:
-        result = _model.predict(image_array)
+        result = _model.predict(image_array, raw_resized_bgr)
     except Exception as exc:
         log.error("Inference error for user %s: %s", user.get("id"), exc)
         raise HTTPException(
@@ -185,9 +187,13 @@ async def predict(
         )
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
 
+    # CHANGED: now also logs whether the reliability gate flagged this
+    # request, so unreliable-result rates are visible in Railway logs
+    # rather than only showing up as a silent field in the JSON response.
     log.info(
-        "predict  user=%s  condition=%s  confidence=%.1f%%  time=%sms",
-        user.get("id"), result["condition"], result["confidence"], elapsed_ms,
+        "predict  user=%s  is_anemic=%s  probability=%.3f  unreliable=%s  time=%sms",
+        user.get("id"), result["is_anemic"], result["anemia_probability"],
+        result["is_unreliable"], elapsed_ms,
     )
 
     return JSONResponse(content={
