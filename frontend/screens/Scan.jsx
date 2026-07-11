@@ -14,7 +14,7 @@ import { supabase }      from '../utils/supabase';
 import { buildReport, saveReport } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
-import { compressImage }           from '../utils/offlineQueue'; // TODO: this probably deserves to live in its own imageUtils.js now that the rest of offlineQueue.js isn't used
+import { compressImage }           from '../utils/Offlinequeue'; // TODO: this probably deserves to live in its own imageUtils.js now that the rest of offlineQueue.js isn't used
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
 import { getPlan }       from '../constants/subscriptionPlans';
 import { COLORS }        from '../assets/theme';
@@ -509,7 +509,7 @@ function ResultModal({ data, onClose, onViewReport }) {
             <View style={resultStyles.bonusBanner}>
               <MaterialCommunityIcons name="gift-outline" size={18} color={COLORS.primaryDark} />
               <Text style={resultStyles.bonusText}>
-                🎉 You've saved 5 images today! {bonusRemaining} bonus scan{bonusRemaining !== 1 ? 's' : ''} unlocked.
+                 You've saved 5 images today! {bonusRemaining} bonus scan{bonusRemaining !== 1 ? 's' : ''} unlocked.
               </Text>
             </View>
           )}
