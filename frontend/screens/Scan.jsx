@@ -16,7 +16,7 @@ import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
 import { compressImage }           from '../utils/Offlinequeue'; // TODO: this probably deserves to live in its own imageUtils.js now that the rest of offlineQueue.js isn't used
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
-import { getPlan }       from '../constants/subscriptionPlans';
+import { getPlan }       from '../constants/SubscriptionPlans';
 import { COLORS }        from '../assets/theme';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
