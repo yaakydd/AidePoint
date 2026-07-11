@@ -11,9 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import ForgotPassword from '../auth/ForgotPassword';
 import { COLORS, FONTS, SPACING } from '../assets/theme';
 
-// ─── HELPERS ────────────────────────────────────────────────
-
-// "Joshua Antwi"  "JA"
+// "Joshua Antwi" -> "JA"
 function getInitials(name = '') {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
@@ -27,11 +25,9 @@ const ROLE_DISPLAY = {
   senior_lab_technician: 'Senior Lab Technician',
 };
 
-
-
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { user, logout, updateProfile, isOnline } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
 
   const [storeImages, setStoreImages] = useState(user?.storeImages ?? false);
   const [saving, setSaving] = useState(false);
@@ -39,7 +35,6 @@ export default function ProfileScreen() {
   const initials  = getInitials(user?.name);
   const roleLabel = ROLE_DISPLAY[user?.role] || 'Lab Technician';
 
-  // ── Toggle image storage ────────────────────────────────
   async function handleToggle(newValue) {
     const prev = storeImages;
     setStoreImages(newValue); // update UI immediately
@@ -54,7 +49,6 @@ export default function ProfileScreen() {
     }
   }
 
-  // ── Logout confirmation ─────────────────────────────────
   function handleLogout() {
     Alert.alert(
       'Sign Out',
@@ -66,12 +60,10 @@ export default function ProfileScreen() {
     );
   }
 
-  // ─── RENDER ────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -88,7 +80,6 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
 
-        {/* ── Avatar card ── */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarInitials}>{initials}</Text>
@@ -105,7 +96,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── Account Details ── */}
         <SectionCard title="ACCOUNT DETAILS">
           <Row
             iconBg="#EFF6FF"
@@ -122,7 +112,6 @@ export default function ProfileScreen() {
           />
         </SectionCard>
 
-        {/* ── Settings & Preferences ── */}
         <SectionCard title="SETTINGS & PREFERENCES">
           <Row
             iconBg="#FFF7ED"
@@ -144,11 +133,10 @@ export default function ProfileScreen() {
             icon={<MaterialCommunityIcons name="shield-lock-outline" size={19} color="#0EA5E9" />}
             label="Security & Password"
             value="Change password"
-            onPress={() => navigation.navigate('ForgotPassword')}  
+            onPress={() => navigation.navigate('ForgotPassword')}
           />
           <Divider />
 
-          {/* Save Scan Images toggle */}
           <View style={styles.row}>
             <View style={[styles.iconBox, { backgroundColor: '#FDF4FF' }]}>
               <MaterialCommunityIcons name="image-outline" size={19} color="#A855F7" />
@@ -170,16 +158,8 @@ export default function ProfileScreen() {
               ios_backgroundColor="#E2E8F0"
             />
           </View>
-
-          {/* Subtle offline hint under toggle when offline */}
-          {!isOnline && (
-            <Text style={styles.offlineNote}>
-              Offline — preference saved locally, will sync when connected
-            </Text>
-          )}
         </SectionCard>
 
-        {/* ── Support ── */}
         <SectionCard title="SUPPORT">
           <Row
             iconBg="#F0FDF4"
@@ -208,8 +188,6 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
-
-// ─── SUB-COMPONENTS ────────────────────────────────────────
 
 function SectionCard({ title, children }) {
   return (
@@ -248,15 +226,12 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
-// ─── STYLES ────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#F1F5F9',
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,7 +248,6 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
 
-  // Avatar section
   avatarSection: {
     backgroundColor: '#E0F2FE',
     alignItems: 'center',
@@ -333,7 +307,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Cards / sections
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -356,7 +329,6 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
 
-  // Rows
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -392,14 +364,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F1F5F9',
     marginLeft: 64,
-  },
-
-  offlineNote: {
-    fontSize: 11,
-    color: '#F97316',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    marginTop: -4,
   },
 
   version: {

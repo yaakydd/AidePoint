@@ -3,22 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   Image, Alert, Modal, ActivityIndicator, Platform,
-  StyleSheet, Animated, AppState,
+  StyleSheet, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import NetInfo from '@react-native-community/netinfo';
 
 import { useAuth }       from '../context/AuthContext';
 import { supabase }      from '../utils/supabase';
 import { buildReport, saveReport } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
-import { analyzeBloodSmear, OfflineError } from '../utils/api';
-import {
-  compressImage, persistImageLocally,
-  enqueueUpload, processPendingQueue,
-} from '../utils/offlineQueue';
+import { analyzeBloodSmear }       from '../utils/api';
+import { compressImage }           from '../utils/offlineQueue'; // TODO: this probably deserves to live in its own imageUtils.js now that the rest of offlineQueue.js isn't used
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
 import { getPlan }       from '../constants/subscriptionPlans';
 import { COLORS }        from '../assets/theme';
@@ -30,7 +26,6 @@ function generateScanId() {
   return `AP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
-// ── Upgrade upsell text per plan ─────────────────────────────────────────────
 function getUpgradeMessage(plan) {
   if (plan.id === 'basic') {
     return `You've used all ${plan.scans.dailyLimit} Basic scans for today.\n\nUpgrade to Max for 30 scans/day, or Pro for unlimited scans.`;
@@ -56,36 +51,14 @@ const Scan = ({ navigation, route }) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [scanId,       setScanId]       = useState('');
   const [isAnalysing,  setIsAnalysing]  = useState(false);
-  const [isOnline,     setIsOnline]     = useState(true);
   const [remaining,    setRemaining]    = useState(null);
   const [showResetTip, setShowResetTip] = useState(false);
-  const [resultModal,  setResultModal]  = useState(null); // holds the report after analysis
-  const resetTipTimer  = useRef(null);
-  const appState       = useRef(AppState.currentState);
-  const tipOpacity     = useRef(new Animated.Value(0)).current;
+  const [resultModal,  setResultModal]  = useState(null);
+  const tipOpacity = useRef(new Animated.Value(0)).current;
 
-  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     setScanId(generateScanId());
     loadRemaining();
-
-    // Listen for network changes
-    const unsubNet = NetInfo.addEventListener(state => {
-      setIsOnline(!!state.isConnected && !!state.isInternetReachable);
-      if (state.isConnected) {
-        processPendingQueue();
-      }
-    });
-
-    // When app comes back to foreground, try to sync queued uploads
-    const unsubApp = AppState.addEventListener('change', nextState => {
-      if (appState.current.match(/inactive|background/) && nextState === 'active') {
-        processPendingQueue();
-      }
-      appState.current = nextState;
-    });
-
-    return () => { unsubNet(); unsubApp.remove(); };
   }, []);
 
   async function loadRemaining() {
@@ -94,7 +67,7 @@ const Scan = ({ navigation, route }) => {
     setRemaining(r);
   }
 
-  // ── Receive photo from CameraScreen ──────────────────────────────────────
+  // picks up the photo CameraScreen hands back when it navigates here
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const photo = route.params?.capturedPhoto;
@@ -115,8 +88,7 @@ const Scan = ({ navigation, route }) => {
     bloodPressure.trim()!== '' &&
     image !== null;
 
-  // ── Navigation — fixed screen names ──────────────────────────────────────
-  // The ScanStackNavigator registers the screen as 'Camera', NOT 'CameraScreen'
+  // ScanStackNavigator registers this screen as 'Camera', not 'CameraScreen'
   function openCamera() {
     navigation.navigate('Camera', {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
@@ -131,7 +103,6 @@ const Scan = ({ navigation, route }) => {
     });
   }
 
-  // ── File picker ───────────────────────────────────────────────────────────
   async function handlePickFile() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -155,7 +126,6 @@ const Scan = ({ navigation, route }) => {
     }
   }
 
-  // ── Reset tooltip ─────────────────────────────────────────────────────────
   function handleResetPress() {
     if (showResetTip) {
       triggerReset();
@@ -184,11 +154,9 @@ const Scan = ({ navigation, route }) => {
     ]);
   }
 
-  // ── Analysis ──────────────────────────────────────────────────────────────
   async function handleStartAnalysis() {
     if (!isFormValid || isAnalysing) return;
 
-    // Gate: check subscription scan limit
     const rem = await getRemainingScans(user.id, plan);
     if (rem !== Infinity && rem <= 0) {
       Alert.alert('Scan Limit Reached', getUpgradeMessage(plan), [
@@ -201,11 +169,8 @@ const Scan = ({ navigation, route }) => {
     setIsAnalysing(true);
 
     try {
-      // 1. Compress image first — always, regardless of connectivity
       const compressedUri = await compressImage(image);
-      const localUri      = await persistImageLocally(compressedUri, scanId);
 
-      // 2. Create patient record
       const { data: patientRow, error: patientErr } = await supabase
         .from('patients')
         .insert({
@@ -218,103 +183,62 @@ const Scan = ({ navigation, route }) => {
         .single();
       if (patientErr) throw patientErr;
 
-      let prediction;
-      let isQueued = false;
+      const prediction = await analyzeBloodSmear(compressedUri);
 
-      try {
-        // 3. Try online inference
-        prediction = await analyzeBloodSmear(localUri);
-      } catch (inferErr) {
-        if (inferErr instanceof OfflineError) {
-          // Offline — create a pending placeholder prediction
-          isQueued = true;
-          prediction = {
-            condition:          'pending',
-            confidence:         0,
-            urgency:            'Awaiting upload',
-            morphology_note:    'Image queued for analysis when connection is restored.',
-            cbc:                {},
-            cbc_flags:          {},
-            morphology_probs:   {},
-            anemia_probability: null,
-            inference_ms:       0,
-          };
-        } else {
-          throw inferErr;
-        }
-      }
-
-      // 4. Build report
       const report = buildReport({
         patientName:   patientName.trim(),
         patientId:     patientRow.id,
         condition:     prediction.condition,
         confidence:    prediction.confidence,
         labTechName,
-        imageUri:      localUri,
+        imageUri:      compressedUri,
         temperature:   temperature.trim(),
         bloodPressure: bloodPressure.trim(),
       });
 
-      const scanPayload = {
-        patient_id: patientRow.id,
-        created_by: user.id,
-        image_url:  null, // will be filled after upload
-        status:     isQueued ? 'pending' : 'done',
-        results: {
-          condition:          prediction.condition,
-          confidence:         prediction.confidence,
-          urgency:            prediction.urgency,
-          morphology_note:    prediction.morphology_note,
-          cbc:                prediction.cbc,
-          cbc_flags:          prediction.cbc_flags,
-          morphology_probs:   prediction.morphology_probs,
-          anemia_probability: prediction.anemia_probability,
-          temperature:        temperature.trim(),
-          bloodPressure:      bloodPressure.trim(),
-          labTechName,
-          patientAge:         patientAge.trim(),
-          patientGender:      patientGender.toLowerCase(),
-          scanId,
-          analyzedAt:         new Date().toISOString(),
-          inference_ms:       prediction.inference_ms,
-        },
-      };
+      const { data: scanRow, error: scanErr } = await supabase
+        .from('scans')
+        .insert({
+          patient_id: patientRow.id,
+          created_by: user.id,
+          image_url:  compressedUri,
+          status:     'done',
+          results: {
+            condition:          prediction.condition,
+            confidence:         prediction.confidence,
+            urgency:            prediction.urgency,
+            morphology_note:    prediction.morphology_note,
+            cbc:                prediction.cbc,
+            cbc_flags:          prediction.cbc_flags,
+            morphology_probs:   prediction.morphology_probs,
+            anemia_probability: prediction.anemia_probability,
+            temperature:        temperature.trim(),
+            bloodPressure:      bloodPressure.trim(),
+            labTechName,
+            patientAge:         patientAge.trim(),
+            patientGender:      patientGender.toLowerCase(),
+            scanId,
+            analyzedAt:         new Date().toISOString(),
+            inference_ms:       prediction.inference_ms,
+          },
+        })
+        .select('id')
+        .single();
+      if (scanErr) throw scanErr;
+      report.id = scanRow.id;
 
-      if (isQueued) {
-        // 5a. Queue for later upload
-        await enqueueUpload({ localImageUri: localUri, scanPayload, userId: user.id });
-      } else {
-        // 5b. Online — save to Supabase right now
-        const { data: scanRow, error: scanErr } = await supabase
-          .from('scans')
-          .insert({ ...scanPayload, image_url: localUri })
-          .select('id')
-          .single();
-        if (scanErr) throw scanErr;
-        report.id = scanRow.id;
+      await saveReport(report);
 
-        // Try to upload image in background (non-blocking)
-        enqueueUpload({ localImageUri: localUri, scanPayload: { ...scanPayload, id: scanRow.id }, userId: user.id });
-        processPendingQueue();
-      }
-
-      // 6. Save to local AsyncStorage for offline ReportScreen
-      await saveReport({ ...report, id: report.id ?? scanId, isQueued });
-
-      // 7. Record scan usage & check for bonus reward
       const usage = await recordScan(user.id, plan);
       setRemaining(usage.remaining);
 
-      // 8. Show result modal
       setResultModal({
-        report: { ...report, isQueued },
+        report,
         bonusJustGranted: usage.bonusJustGranted,
         bonusRemaining:   usage.bonusRemaining,
         remaining:        usage.remaining,
       });
 
-      // 9. Reset form for next patient
       setPatientName(''); setPatientAge(''); setPatientGender('');
       setTemperature(''); setBloodPressure('');
       setImage(null); setImageSourceType(null);
@@ -346,22 +270,11 @@ const Scan = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Offline Banner */}
-      {!isOnline && (
-        <View style={styles.offlineBanner}>
-          <MaterialIcons name="cloud-off" size={16} color="#fff" />
-          <Text style={styles.offlineBannerText}>
-            Offline — scans will be queued and uploaded when signal returns
-          </Text>
-        </View>
-      )}
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_CLEARANCE }]}
       >
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back-ios-new" size={20} color={COLORS.textPrimary} />
@@ -369,7 +282,6 @@ const Scan = ({ navigation, route }) => {
 
           <Text style={styles.headerTitle}>Scan</Text>
 
-          {/* Reset icon with tooltip */}
           <View style={styles.resetWrapper}>
             <TouchableOpacity style={styles.resetIconBtn} onPress={handleResetPress}>
               <MaterialIcons name="restart-alt" size={22} color={COLORS.danger} />
@@ -382,7 +294,6 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Scan ID + remaining scans */}
         <View style={styles.scanIdCard}>
           <View style={styles.scanIdLeft}>
             <MaterialCommunityIcons name="fingerprint" size={18} color={COLORS.textMuted} />
@@ -400,7 +311,6 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Patient Information */}
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="account-outline" size={20} color={COLORS.primary} />
           <Text style={styles.sectionTitle}>Patient Information</Text>
@@ -475,7 +385,6 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Blood Smear */}
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="image-outline" size={20} color={COLORS.primary} />
           <Text style={styles.sectionTitle}>Blood Smear Sample</Text>
@@ -517,7 +426,6 @@ const Scan = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Validation hint — red, inline with icon */}
         {!isFormValid && (
           <View style={styles.validationContainer}>
             <MaterialIcons name="error-outline" size={16} color={COLORS.danger} />
@@ -542,7 +450,6 @@ const Scan = ({ navigation, route }) => {
         </Text>
       </ScrollView>
 
-      {/* Full-screen image viewer */}
       <Modal visible={imageViewerOpen} transparent animationType="fade" onRequestClose={() => setImageViewerOpen(false)}>
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeViewer} onPress={() => setImageViewerOpen(false)}>
@@ -552,7 +459,6 @@ const Scan = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Result Modal — shown after analysis */}
       {resultModal && (
         <ResultModal
           data={resultModal}
@@ -570,7 +476,6 @@ const Scan = ({ navigation, route }) => {
   );
 };
 
-// ── Result Modal ──────────────────────────────────────────────────────────────
 import { CONDITION_CONFIG } from '../utils/ReportUtils';
 
 const SEVERITY_COLORS = {
@@ -583,7 +488,6 @@ function ResultModal({ data, onClose, onViewReport }) {
   const { report, bonusJustGranted, bonusRemaining, remaining } = data;
   const cfg      = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.normal;
   const sevStyle = SEVERITY_COLORS[cfg.severity] ?? SEVERITY_COLORS.yellow;
-  const isQueued = report.isQueued;
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -591,30 +495,16 @@ function ResultModal({ data, onClose, onViewReport }) {
         <View style={resultStyles.sheet}>
           <View style={resultStyles.handle} />
 
-          {/* Status icon */}
           <View style={[resultStyles.iconCircle, { backgroundColor: sevStyle.bg }]}>
             <MaterialCommunityIcons name={sevStyle.icon} size={38} color={sevStyle.text} />
           </View>
 
-          {isQueued ? (
-            <>
-              <Text style={resultStyles.title}>Scan Saved Offline</Text>
-              <Text style={resultStyles.sub}>
-                No internet connection detected. This scan has been saved locally and will
-                be uploaded and analysed automatically when signal is restored.
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={resultStyles.title}>Analysis Complete</Text>
-              <Text style={[resultStyles.conditionLabel, { color: sevStyle.text }]}>
-                {cfg.label}
-              </Text>
-              <Text style={resultStyles.sub}>{cfg.urgency}</Text>
-            </>
-          )}
+          <Text style={resultStyles.title}>Analysis Complete</Text>
+          <Text style={[resultStyles.conditionLabel, { color: sevStyle.text }]}>
+            {cfg.label}
+          </Text>
+          <Text style={resultStyles.sub}>{cfg.urgency}</Text>
 
-          {/* Bonus reward banner */}
           {bonusJustGranted && (
             <View style={resultStyles.bonusBanner}>
               <MaterialCommunityIcons name="gift-outline" size={18} color={COLORS.primaryDark} />
@@ -634,12 +524,10 @@ function ResultModal({ data, onClose, onViewReport }) {
             <TouchableOpacity style={resultStyles.btnSecondary} onPress={onClose}>
               <Text style={resultStyles.btnSecondaryText}>New Scan</Text>
             </TouchableOpacity>
-            {!isQueued && (
-              <TouchableOpacity style={resultStyles.btnPrimary} onPress={onViewReport}>
-                <MaterialIcons name="article" size={18} color="#fff" />
-                <Text style={resultStyles.btnPrimaryText}>View Report</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={resultStyles.btnPrimary} onPress={onViewReport}>
+              <MaterialIcons name="article" size={18} color="#fff" />
+              <Text style={resultStyles.btnPrimaryText}>View Report</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -649,7 +537,6 @@ function ResultModal({ data, onClose, onViewReport }) {
 
 export default Scan;
 
-// ── Gender pill styles ────────────────────────────────────────────────────────
 const genderStyles = StyleSheet.create({
   pillRow:         { flexDirection: 'row', gap: 8, marginTop: 2 },
   pill:            { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 11, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' },
@@ -658,7 +545,6 @@ const genderStyles = StyleSheet.create({
   pillTextActive:  { color: '#fff' },
 });
 
-// ── Result modal styles ───────────────────────────────────────────────────────
 const resultStyles = StyleSheet.create({
   overlay:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet:          { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 36, alignItems: 'center' },
