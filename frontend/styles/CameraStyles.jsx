@@ -1,21 +1,12 @@
 // styles/CameraStyles.js
 
-import {
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, SCREEN } from '../assets/theme';
 
-import {
-  COLORS,
-  FONTS,
-  SPACING,
-  RADIUS,
-  SHADOWS,
-  layout,
-  SCREEN,
-} from '../assets/theme';
-
-export const FRAME_SIZE = SCREEN.WIDTH * 0.78;
+// Circular guide — mirrors the round vignette you see through a microscope
+// eyepiece, so the on-screen guide matches what a good capture should
+// actually look like.
+export const GUIDE_SIZE = Math.min(SCREEN.WIDTH * 0.78, 320);
 
 export const CameraStyles = StyleSheet.create({
 
@@ -24,120 +15,147 @@ export const CameraStyles = StyleSheet.create({
     backgroundColor: COLORS.black,
   },
 
-  blank: {
+  centred: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.black,
   },
 
-  camera: {
-    flex: 1,
-  },
-
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  topBar: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 58 : 18,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-
-    paddingHorizontal: SPACING.lg,
+    zIndex: 10,
   },
 
-  topBarTitle: {
+  // ── Top bar ──────────────────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: Platform.OS === 'android' ? SPACING.lg : SPACING.xs,
+    paddingBottom: SPACING.md,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+
+  topTitle: {
     color: COLORS.white,
-    fontSize: FONTS.md,
+    fontSize: FONTS.sm,
     fontWeight: FONTS.semibold,
+    letterSpacing: 0.3,
   },
 
   iconBtn: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.full,
-
-    backgroundColor: 'rgba(0,0,0,0.45)',
-
+    backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  instructionBanner: {
+  // ── Circular guide frame ────────────────────────────────────────────────
+  guideCentreWrapper: {
+    alignItems: 'center',
+  },
+
+  guideFrame: {
+    width: GUIDE_SIZE,
+    height: GUIDE_SIZE,
+    borderRadius: GUIDE_SIZE / 2,
+    borderWidth: 2.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  guideFrameInner: {
+    width: GUIDE_SIZE - 16,
+    height: GUIDE_SIZE - 16,
+    borderRadius: (GUIDE_SIZE - 16) / 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderStyle: 'dashed',
+  },
+
+  guideCornerDot: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 120 : 85,
-    alignSelf: 'center',
-
-    flexDirection: 'row',
-    alignItems: 'center',
-
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: RADIUS.full,
-    gap: SPACING.sm,
-  },
-
-  instructionText: {
-    color: COLORS.white,
-    fontSize: FONTS.sm,
-    fontWeight: FONTS.medium,
-  },
-
-  viewfinderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  frame: {
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
-
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.xl,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  centerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: COLORS.primary,
   },
 
-  zoomBadge: {
-    position: 'absolute',
-    bottom: -50,
-
-    backgroundColor: 'rgba(0,0,0,0.5)',
-
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-
-    borderRadius: RADIUS.full,
+  guideText: {
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.medium,
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING['2xl'],
   },
 
-  zoomText: {
+  // ── Capture tips panel ──────────────────────────────────────────────────
+  tipsPanel: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 80 : 64,
+    left: SPACING.lg,
+    right: SPACING.lg,
+    backgroundColor: 'rgba(15,23,42,0.92)',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
+    zIndex: 30,
+    ...SHADOWS.lg,
+  },
+
+  tipsPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+
+  tipsPanelTitle: {
     color: COLORS.white,
+    fontSize: FONTS.md,
     fontWeight: FONTS.bold,
   },
 
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+
+  tipNumberCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+
+  tipNumberText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: FONTS.bold,
+  },
+
+  tipText: {
+    flex: 1,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: FONTS.sm,
+    lineHeight: 19,
+  },
+
+  // ── Status row (flash / focus indicators) ───────────────────────────────
   statusRow: {
     position: 'absolute',
-    bottom: 145,
-
+    bottom: 150,
     width: '100%',
-
     flexDirection: 'row',
     justifyContent: 'center',
     gap: SPACING.md,
@@ -146,10 +164,8 @@ export const CameraStyles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: RADIUS.full,
   },
@@ -158,9 +174,7 @@ export const CameraStyles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 999,
-
     marginRight: SPACING.sm,
-
     backgroundColor: COLORS.success,
   },
 
@@ -170,165 +184,95 @@ export const CameraStyles = StyleSheet.create({
     fontWeight: FONTS.medium,
   },
 
-  shutterBar: {
-    position: 'absolute',
+  // ── Bottom controls ──────────────────────────────────────────────────────
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    paddingBottom: Platform.OS === 'ios' ? SPACING.lg : SPACING['2xl'],
+    paddingTop: SPACING.lg,
+    paddingHorizontal: SPACING['2xl'],
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
 
-    bottom: layout.tabBarHeight + 40,
-
-    width: '100%',
+  sideBtn: {
+    width: 60,
     alignItems: 'center',
   },
 
-  shutterRing: {
-    width: 84,
-    height: 84,
-    borderRadius: 999,
+  sideBtnLabel: {
+    color: COLORS.white,
+    fontSize: FONTS.xs,
+    marginTop: 4,
+  },
 
+  captureBtn: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     borderWidth: 4,
     borderColor: COLORS.white,
-
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 
-  shutterDisc: {
-    width: 64,
-    height: 64,
-    borderRadius: 999,
+  captureBtnDisabled: {
+    opacity: 0.55,
+  },
+
+  captureInner: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: COLORS.white,
   },
 
-  flashOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.white,
-  },
-
-  previewImage: {
-    flex: 1,
-  },
-
-  previewOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-
-  previewHeader: {
-    paddingTop: 70,
-    paddingHorizontal: SPACING.xl,
-  },
-
-  previewTitle: {
-    color: COLORS.white,
-    fontSize: FONTS['2xl'],
-    fontWeight: FONTS.bold,
-    marginBottom: SPACING.sm,
-  },
-
-  previewSubtitle: {
-    color: COLORS.white,
-    fontSize: FONTS.sm,
-    lineHeight: 22,
-  },
-
-  previewBottom: {
-    flexDirection: 'row',
-
-    paddingHorizontal: SPACING.xl,
-
-    paddingBottom: layout.tabBarHeight + 30,
-
-    gap: SPACING.md,
-  },
-
-  retakeButton: {
-    flex: 1,
-
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    paddingVertical: SPACING.lg,
-
-    backgroundColor: 'rgba(255,255,255,0.2)',
-
-    borderRadius: RADIUS.lg,
-  },
-
-  confirmButton: {
-    flex: 1,
-
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    paddingVertical: SPACING.lg,
-
-    backgroundColor: COLORS.primaryDark,
-
-    borderRadius: RADIUS.lg,
-  },
-
-  actionText: {
-    color: COLORS.white,
-    fontWeight: FONTS.semibold,
-    marginLeft: SPACING.sm,
-  },
-
+  // ── Permission screen ────────────────────────────────────────────────────
   permissionScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-
-    backgroundColor: COLORS.background,
-
+    backgroundColor: '#0F172A',
     paddingHorizontal: SPACING['2xl'],
-  },
-
-  permissionIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 999,
-
-    backgroundColor: COLORS.surface,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    marginBottom: SPACING.xl,
-
-    ...SHADOWS.sm,
+    gap: SPACING.md,
   },
 
   permissionTitle: {
-    color: COLORS.textPrimary,
     fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
-
-    marginBottom: SPACING.sm,
+    color: COLORS.white,
+    textAlign: 'center',
   },
 
   permissionSub: {
-    color: COLORS.textSecondary,
+    fontSize: FONTS.sm,
+    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 22,
-
-    marginBottom: SPACING.xl,
   },
 
   permissionBtn: {
-    backgroundColor: COLORS.primaryDark,
-
+    backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING['2xl'],
     paddingVertical: SPACING.lg,
-
     borderRadius: RADIUS.lg,
+    marginTop: SPACING.sm,
   },
 
   permissionBtnText: {
     color: COLORS.white,
+    fontSize: FONTS.md,
     fontWeight: FONTS.semibold,
   },
 
+  cancelLink: {
+    marginTop: SPACING.sm,
+    padding: SPACING.sm,
+  },
+
+  cancelLinkText: {
+    color: '#64748B',
+    fontSize: FONTS.sm,
+  },
 });

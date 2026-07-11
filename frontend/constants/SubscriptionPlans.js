@@ -1,5 +1,21 @@
 // constants/subscriptionPlans.js
 
+/**
+ * AidePoint subscription tiers — controls both AideBot daily chat allowance
+ * and blood-smear scan allowance/rewards. `user.subscriptionTier` (from
+ * AuthContext / Supabase profile) should be one of these keys.
+ *
+ * Scan reward logic:
+ *  - basic / max: every completed scan counts toward both the daily scan
+ *    count AND the "saved images" counter (the smear image is always
+ *    uploaded to Supabase Storage as part of analysis, so a completed scan
+ *    *is* a saved image). Reaching `saveGoal` saved images in a day grants
+ *    `bonusScans` extra scans for that same day.
+ *  - pro: scans are effectively unlimited, but saved images accumulate
+ *    over time (not reset daily) toward a discount applied at their next
+ *    subscription renewal — handled by your billing logic server-side;
+ *    the app just tracks and displays progress toward it.
+ */
 export const PLANS = {
   basic: {
     id: 'basic',
@@ -8,21 +24,19 @@ export const PLANS = {
     // AideBot
     dailyChatLimit: 15,
     chatHistoryDays: 7,
-    // Scans
-    // dailyScanLimit: how many scans before the gate fires
-    // saveGoal: complete this many scans in one day to earn bonus scans
-    // bonusScans: extra scans unlocked when saveGoal is reached
-    // reportHistoryDays: how far back the Reports screen loads from AsyncStorage
-    dailyScanLimit: 5,
-    saveGoal: 5,
-    bonusScans: 2,
     reportHistoryDays: 14,
+    scans: {
+      dailyLimit: 5,
+      saveGoal: 5,
+      bonusScans: 1,
+      rewardType: 'bonus_scans',
+    },
     features: [
       '5 blood smear scans / day',
       'Save 5 images in a day → 2 bonus scans unlocked',
       '15 AideBot messages / day',
+      '5 blood smear scans / day (+2 bonus when you save 5 images in a day)',
       'Basic anaemia & malaria reference info',
-      'Standard processing speed',
       '7-day chat history · 14-day report history',
       'Community email support',
     ],
@@ -33,16 +47,20 @@ export const PLANS = {
     price: 'Mid-tier',
     dailyChatLimit: 100,
     chatHistoryDays: 30,
-    dailyScanLimit: 30,
-    saveGoal: 5,
-    bonusScans: 3,
     reportHistoryDays: 90,
+    scans: {
+      dailyLimit: 30,
+      saveGoal: 5,
+      bonusScans: 3,
+      rewardType: 'bonus_scans',
+    },
     features: [
       '30 blood smear scans / day',
       'Save 5 images in a day → 3 bonus scans unlocked',
       '100 AideBot messages / day',
+      '30 blood smear scans / day (+3 bonus when you save 5 images in a day)',
       'Scan-result-aware chat (AideBot can reference a specific scan)',
-      'Priority processing queue',
+      'Priority scan processing queue',
       '30-day chat history · 90-day report history',
       'Priority email support (24–48h)',
     ],
@@ -53,16 +71,18 @@ export const PLANS = {
     price: 'Top-tier',
     dailyChatLimit: 500,
     chatHistoryDays: 365,
-    dailyScanLimit: Infinity,    // no gate — unlimited
-    saveGoal: 5,
-    bonusScans: 0,               // no scan bonus — discount applied at renewal instead
     reportHistoryDays: 365,
+    scans: {
+      dailyLimit: Infinity,
+      saveGoal: 5,
+      rewardType: 'renewal_discount',
+      discountLabel: '15% off your next renewal for every 5 images saved',
+    },
     features: [
-      'Unlimited blood smear scans',
-      'Every 5 images saved earns a discount on your next renewal',
-      '500 AideBot messages / day',
+      '500 AideBot messages / day (effectively unlimited for daily lab use)',
+      'Unlimited blood smear scans — every 5 images saved earns a discount on your next renewal',
       'Full scan-result-aware chat + treatment guideline lookups',
-      'Fastest processing queue',
+      'Fastest scan processing queue',
       '1-year chat & report history',
       'Priority bug-report triage',
       'Multi-technician / lab team support',
@@ -71,22 +91,7 @@ export const PLANS = {
 };
 
 export const DEFAULT_PLAN = 'basic';
-export const getPlan = (tierId) => PLANS[tierId] ?? PLANS[DEFAULT_PLAN];
 
-// ── How scan limits work (plain English) ─────────────────────────────────────
-//
-// Basic example:
-//   - Tech does scan 1 → dailyScanCount becomes 1. Remaining = 4.
-//   - Tech does scan 2,3,4,5 → dailyScanCount = 5. Remaining = 0.
-//   - Because savedCount (= dailyScanCount) has hit saveGoal (5),
-//     bonusGranted = true, bonusScans = 2. Remaining jumps to 2.
-//   - Tech does scan 6,7 → remaining hits 0 again. Gate fires.
-//   - Alert: "You've used all 7 Basic scans today. Upgrade to Max for 30/day."
-//   - At midnight the date-keyed AsyncStorage entry no longer matches today,
-//     so all counters effectively reset to 0 — no cleanup job needed.
-//
-// Pro:
-//   - dailyScanLimit = Infinity, so the gate never fires.
-//   - Saved images accumulate in a lifetime counter (getLifetimeSavedCount).
-//   - Your payment screen reads that counter and passes it to your
-//     Paystack/Stripe renewal link to apply a discount server-side.
+export function getPlan(tierId) {
+  return PLANS[tierId] ?? PLANS[DEFAULT_PLAN];
+}
