@@ -1,33 +1,20 @@
-// screens/ProfileScreen.js
-//
-// Redesigned in the "Gmail account page" style:
-//   — centered identity block (avatar, name, email, role, plan pill,
-//     "Manage Subscription" pill button) instead of a left-aligned card
-//   — grouped settings sections below (Account / Data & Privacy /
-//     Security / Preferences / Support)
-//   — plain text "Sign out" link at the very bottom instead of a red row
-//     inside a card, matching Gmail's "Sign out of all accounts" pattern
-//
-// All styling lives in styles/ProfileStyles.js — see note at the bottom
-// of this file about the one field (`user.subscriptionTier`) that still
-// needs to be wired up in AuthContext.
-
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  Switch, StatusBar, Alert,
+  Switch, StatusBar, Alert, Image, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
 
-// Must match whatever key reportPin.js uses to store the PIN.
-// If your reportPin.js already exports a constant for this, import
-// that instead of redefining it here so the two never drift apart.
+// must match whatever key reportPin.js uses
 const PIN_KEY = 'aidepoint_report_pin';
+const AVATAR_BUCKET = 'avatars';
 
 const ROLE_DISPLAY = {
   lab_technician:        'Lab Technician',
@@ -47,16 +34,17 @@ function getInitials(name = '') {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { user, logout, updateProfile, isOnline } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
 
   const [storeImages, setStoreImages] = useState(user?.storeImages ?? false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const initials  = getInitials(user?.name);
   const roleLabel = ROLE_DISPLAY[user?.role] || 'Lab Technician';
 
-  // Falls back to 'basic' until subscriptionTier is added to AuthContext
-  // (see note at the bottom of this file).
+  // falls back to 'basic' until subscriptionTier is actually populated in
+  // AuthContext's hydrateUser() — see the note at the bottom of this file
   const tier      = user?.subscriptionTier || 'basic';
   const tierLabel = TIER_LABELS[tier] || 'Basic Plan';
   const tierColor = TIER_COLORS[tier] || TIER_COLORS.basic;
@@ -72,6 +60,51 @@ export default function ProfileScreen() {
     if (!result.success) {
       setStoreImages(prev);
       Alert.alert('Error', result.error || 'Could not save preference.');
+    }
+  }
+
+  async function handleChangeAvatar() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission Needed', 'Allow photo library access to set a profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    setUploadingAvatar(true);
+
+    try {
+      // grab the picked file as a blob so we can hand it to Supabase storage
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+      const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${user.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(path, blob, { upsert: true, contentType: `image/${ext}` });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+      // cache-bust — same path every time means the old image would
+      // otherwise stick around in the RN Image cache after an update
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      const saveResult = await updateProfile({ avatarUrl: publicUrl });
+      if (!saveResult.success) throw new Error(saveResult.error);
+
+    } catch (err) {
+      Alert.alert('Upload Failed', err.message ?? 'Could not update your profile picture.');
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -128,15 +161,28 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
       >
 
-        {/* ── Centered identity block, Gmail-style ── */}
         <View style={styles.identityBlock}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitials}>{initials}</Text>
+              {user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              )}
             </View>
-            <View style={styles.avatarBadge}>
-              <MaterialCommunityIcons name="check-decagram" size={14} color="#FFFFFF" />
-            </View>
+
+            <TouchableOpacity
+              style={styles.avatarBadge}
+              onPress={handleChangeAvatar}
+              disabled={uploadingAvatar}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.userName}>{user?.name || 'Unknown'}</Text>
@@ -158,15 +204,6 @@ export default function ProfileScreen() {
             <Text style={styles.manageBtnText}>Manage Subscription</Text>
           </TouchableOpacity>
         </View>
-
-        {!isOnline && (
-          <View style={styles.offlineBanner}>
-            <MaterialCommunityIcons name="cloud-off-outline" size={14} color="#B45309" />
-            <Text style={styles.offlineBannerText}>
-              Offline — changes save locally and sync when connected
-            </Text>
-          </View>
-        )}
 
         <Section title="ACCOUNT">
           <Row
@@ -254,8 +291,6 @@ export default function ProfileScreen() {
   );
 }
 
-// ─── SUB-COMPONENTS ────────────────────────────────────────
-
 function Section({ title, children }) {
   return (
     <View style={styles.card}>
@@ -291,13 +326,18 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
-// ─── NOTE ───────────────────────────────────────────────────
-// `user.subscriptionTier` is not yet populated by AuthContext.
-// In context/AuthContext.js → hydrateUser(), add one line to the
-// userData object built from the `profiles` row:
+// ── Two things AuthContext still needs for this file to fully work ──
 //
-//   subscriptionTier: profile?.subscription_tier || 'basic',
+// 1. In hydrateUser(), add avatarUrl to the userData object built from
+//    the profiles row:
+//      avatarUrl: profile?.avatar_url || null,
 //
-// (the `subscription_tier` column already exists per your Supabase
-// schema notes). Once that's added, the plan pill and "Manage
-// Subscription" button here will reflect the real tier automatically.
+// 2. In updateProfile(), add avatarUrl to the dbChanges mapping:
+//      if (changes.avatarUrl !== undefined) dbChanges.avatar_url = changes.avatarUrl;
+//    and to the optimistic `updated` object the same way storeImages is
+//    handled there already.
+//
+// Also needs a `avatar_url` column on `profiles`, and a Supabase storage
+// bucket called "avatars" — public read, write restricted to the user's
+// own folder (storage policy checking auth.uid() against the first path
+// segment, same pattern as scan-images probably already uses).
