@@ -16,7 +16,7 @@ export const ChatStyles = StyleSheet.create({
         backgroundColor: COLORS.background,
     },
 
-    // ── Body Layout Structure ────────────────────────────────────────────────
+    // Body Layout Structure 
     mainLayoutBody: {
         flex: 1,
     },
@@ -36,14 +36,14 @@ export const ChatStyles = StyleSheet.create({
         paddingBottom: SPACING.md,
     },
 
-    // ── Interaction Deck (floats above the tab bar, never hidden behind it) ──
+    // Interaction Deck (floats above the tab bar, never hidden behind it)
     bottomControlsDeck: {
         width: '100%',
         backgroundColor: 'transparent',
         paddingBottom: layout.tabBarHeight,
     },
 
-    // ── Suggestion Chips Layout ──────────────────────────────────────────────
+    // Suggestion Chips Layout 
     suggestionContainer: {
         width: '100%',
         paddingVertical: SPACING.xs,
@@ -67,7 +67,7 @@ export const ChatStyles = StyleSheet.create({
         fontWeight: FONTS.semibold,
     },
 
-    // ── Input Bar Capsule ─────────────────────────────────────────────────────
+    // Input Bar Capsule 
     inputLayout: {
         width: '100%',
         backgroundColor: 'transparent',
@@ -113,7 +113,7 @@ export const ChatStyles = StyleSheet.create({
         opacity: 0.5,
     },
 
-    // ── History Sidebar ───────────────────────────────────────────────────────
+    // History Sidebar 
     sidebarOverlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: COLORS.overlay,
@@ -233,7 +233,7 @@ export const ChatStyles = StyleSheet.create({
         color: COLORS.textPrimary,
     },
 
-    // ── Disclaimer ────────────────────────────────────────────────────────────
+    // Disclaimer 
     disclaimerRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
@@ -248,7 +248,7 @@ export const ChatStyles = StyleSheet.create({
         lineHeight: FONTS.xs * FONTS.normal,
     },
 
-    // ── Base Chat Window Styling ─────────────────────────────────────────────
+    // Base Chat Window Styling 
     leftHeader: {
         flexDirection: 'row',
         alignItems: 'center',

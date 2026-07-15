@@ -6,7 +6,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
 import { CONDITION_CONFIG } from '../utils/ReportUtils';
-import { exportReportAsPdf } from '../utils/reportPdf';
+import { exportReportAsPdf } from '../utils/ReportPDF';
 import { COLORS } from '../assets/theme';
 
 export default function DetailModal({ report, visible, onClose }) {

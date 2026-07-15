@@ -1,158 +1,96 @@
 // utils/api.js
-// Single source of truth for all Railway backend communication.
-// No screen imports fetch() directly — everything goes through here.
+// Talks to the Railway backend. App's online-only now so there's no
+// connectivity pre-check or offline error type anymore — if the network's
+// bad the fetch just fails and we surface something useful about it.
 
 import { supabase } from './supabase';
 
-// Set your Railway URL here after deploying.
-// For local testing replace with: http://<your-local-ip>:8000
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'https://your-app.railway.app';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://your-app.railway.app';
+const TIMEOUT_MS = 35000; // Railway cold start + upload on a slow connection can eat a few seconds
 
-const TIMEOUT_MS = 35_000; // 35 s — first cold-start on Railway free tier is slow
-
-/**
- * Gets the current Supabase JWT.
- * Throws a user-friendly error if the session is gone.
- */
 async function getAuthToken() {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
+  const { data: { session }, error } = await supabase.auth.getSession();
   if (error || !session?.access_token) {
     throw new Error('Your session has expired. Please log in again.');
   }
   return session.access_token;
 }
 
-/**
- * Sends a blood smear image to the Railway /predict endpoint.
- *
- * @param {string} imageUri  Local file URI from camera or document picker
- * @returns {Promise<object>} Full clinical result from the AI model
- *
- * Non-functional requirements:
- *   - 35 s AbortController timeout (no infinite spinner)
- *   - Retries ONCE on network failure (not on 4xx user errors)
- *   - All errors return plain English strings safe to show in Alert
- *   - Auth token attached automatically — screens never touch tokens
- */
 export async function analyzeBloodSmear(imageUri) {
   const token = await getAuthToken();
 
-  // Determine file extension for correct MIME type
-  const ext      = imageUri.split('.').pop().toLowerCase();
+  const ext = imageUri.split('.').pop().split('?')[0].toLowerCase() || 'jpg';
   const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
   const formData = new FormData();
   formData.append('file', {
-    uri:  imageUri,
+    uri: imageUri,
     name: `blood_smear.${ext}`,
     type: mimeType,
   });
 
-  const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
   let lastError = null;
 
+  // one retry on transient failures — a cold Railway instance or a dropped
+  // request shouldn't make the tech redo the whole form
   for (let attempt = 1; attempt <= 2; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
       const response = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // Do NOT manually set Content-Type for FormData —
-          // fetch sets it automatically with the correct boundary
-        },
-        body:   formData,
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
         signal: controller.signal,
       });
-
       clearTimeout(timeoutId);
 
-      let json;
-      try {
-        json = await response.json();
-      } catch {
-        throw new Error('Server returned an unreadable response. Please try again.');
-      }
+      let json = null;
+      try { json = await response.json(); } catch {}
 
       if (!response.ok) {
-        // 401 — session expired on server side
-        if (response.status === 401) {
-          throw new Error('Your session has expired. Please log in again.');
-        }
-        // 413 — image too large
-        if (response.status === 413) {
-          throw new Error('Image is too large. Please use a smaller photo.');
-        }
-        // 415 — wrong file type
-        if (response.status === 415) {
-          throw new Error('Only JPEG or PNG images are supported.');
-        }
-        // 503 — model not ready (Railway cold start)
-        if (response.status === 503) {
-          throw new Error('The analysis server is starting up. Please try again in 10 seconds.');
-        }
-        // Everything else
-        throw new Error(json?.detail ?? `Analysis failed (error ${response.status}).`);
+        const detail = json?.detail;
+        if (response.status === 401) throw new Error('Your session has expired. Please log in again.');
+        if (response.status === 413) throw new Error('Image file is too large. Please use a smaller photo.');
+        if (response.status === 415) throw new Error('Only JPEG or PNG images are accepted.');
+        if (response.status === 422) throw new Error('The image could not be read. Please try a different photo.');
+        if (response.status === 503) throw new Error('Analysis server is starting up. Wait a few seconds and try again.');
+        throw new Error(detail ?? `Analysis failed (server error ${response.status}).`);
       }
 
-      // Success
       return json;
 
     } catch (err) {
-      lastError = err;
+      clearTimeout(timeoutId);
 
-      // Timeout — no retry
       if (err.name === 'AbortError') {
-        throw new Error(
-          'Analysis timed out. Please check your connection and try again.'
-        );
+        throw new Error('Analysis timed out. This can happen on a slow connection — try again.');
       }
 
-      // User/input errors (4xx) — no retry
+      // don't bother retrying stuff that's just going to fail the same way twice
       const msg = err.message ?? '';
-      if (
+      const isClientError =
         msg.includes('session has expired') ||
         msg.includes('too large') ||
         msg.includes('Only JPEG') ||
-        msg.includes('error 4')
-      ) {
-        throw err;
-      }
+        msg.includes('could not be read');
 
-      // Network failure on first attempt — wait 1.5 s then retry
-      if (attempt === 1) {
-        await new Promise(r => setTimeout(r, 1500));
-        continue;
-      }
+      if (isClientError) throw err;
 
-      // Both attempts failed
-      throw new Error(
-        'Could not reach the analysis server. Please check your internet connection.'
-      );
+      lastError = err;
+      if (attempt === 1) await new Promise(r => setTimeout(r, 1500));
     }
   }
 
-  throw lastError;
+  throw lastError ?? new Error('Could not reach the analysis server. Check your connection and try again.');
 }
 
-/**
- * Health check — useful for testing connectivity before letting user scan.
- * Returns true if backend is up, false otherwise.
- */
 export async function checkBackendHealth() {
   try {
     const controller = new AbortController();
-    const timeoutId  = setTimeout(() => controller.abort(), 8000);
-
-    const resp = await fetch(`${API_BASE_URL}/health`, {
-      signal: controller.signal,
-    });
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
     return resp.ok;
   } catch {

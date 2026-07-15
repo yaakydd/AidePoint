@@ -17,8 +17,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import * as ImageManipulator from 'expo-image-manipulator';
-import NetInfo from '@react-native-community/netinfo';
+// import * as ImageManipulator from 'expo-image-manipulator';
+// import NetInfo from '@react-native-community/netinfo';
 import { supabase } from './supabase';
 
 const QUEUE_KEY = 'aidepoint:upload_queue_v1';

@@ -21,6 +21,7 @@ export const PLANS = {
     id: 'basic',
     label: 'Basic',
     price: 'Free',
+    // AideBot
     dailyChatLimit: 15,
     chatHistoryDays: 7,
     reportHistoryDays: 14,
@@ -31,6 +32,8 @@ export const PLANS = {
       rewardType: 'bonus_scans',
     },
     features: [
+      '5 blood smear scans / day',
+      'Save 5 images in a day → 2 bonus scans unlocked',
       '15 AideBot messages / day',
       '5 blood smear scans / day (+2 bonus when you save 5 images in a day)',
       'Basic anaemia & malaria reference info',
@@ -52,6 +55,8 @@ export const PLANS = {
       rewardType: 'bonus_scans',
     },
     features: [
+      '30 blood smear scans / day',
+      'Save 5 images in a day → 3 bonus scans unlocked',
       '100 AideBot messages / day',
       '30 blood smear scans / day (+3 bonus when you save 5 images in a day)',
       'Scan-result-aware chat (AideBot can reference a specific scan)',
@@ -80,7 +85,7 @@ export const PLANS = {
       'Fastest scan processing queue',
       '1-year chat & report history',
       'Priority bug-report triage',
-      'Multi-technician / lab team account support',
+      'Multi-technician / lab team support',
     ],
   },
 };
