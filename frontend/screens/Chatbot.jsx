@@ -73,7 +73,7 @@ const Chatbot = () => {
     const messages = activeSession.messages;
     const limitReached = usageCount >= plan.dailyChatLimit;
 
-    // ── Load persisted history + today's usage on mount ─────────────────────
+    // Load persisted history + today's usage on mount 
     useEffect(() => {
         (async () => {
             const stored = await loadSessions(user?.id);
@@ -95,7 +95,7 @@ const Chatbot = () => {
         });
     }, [user?.id]);
 
-    // ── Sending a message ────────────────────────────────────────────────────
+    // Sending a message 
 
     const handleSend = async (textToSend = inputText) => {
         const messageText = typeof textToSend === 'string' ? textToSend : inputText;
@@ -166,7 +166,7 @@ const Chatbot = () => {
         }
     };
 
-    // ── Sidebar actions ───────────────────────────────────────────────────────
+    // Sidebar actions 
 
     const handleStartNewChat = () => {
         setActiveSession(newSession());
@@ -209,17 +209,17 @@ const Chatbot = () => {
             .join('\n');
 
         const body =
-            `Issue description:\n${bugReport}\n\n---\nChat history (${activeSession.title}):\n${transcript}`;
+            `Issue description:\n${bugReport} \nChat history (${activeSession.title}):\n${transcript}`;
 
-        const url = `mailto:support@aidebot.com?subject=Bug Report&body=${encodeURIComponent(body)}`;
+        const url = `mailto:support@aidebot.gmail.com?subject=Bug Report&body=${encodeURIComponent(body)}`;
         Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open email app."));
         setIsBugModalVisible(false);
         setBugReport("");
     };
 
     const suggestions = [
-        { id: "1", text: "Explain Sickle Cell findings" },
-        { id: "2", text: "Treatment guidelines" }
+        { id: "1", text: "What is Anemia?" },
+        { id: "2", text: "What are the symptoms of Anemia?" }
     ];
 
     const canSend = inputText.trim().length > 0 && !isSending && !limitReached;
@@ -227,7 +227,7 @@ const Chatbot = () => {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
 
-            {/* ── Fixed Header ── */}
+            {/* Fixed Header */}
             <View style={styles.leftHeader}>
                 <View style={styles.leftContent}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -248,7 +248,7 @@ const Chatbot = () => {
                 </View>
             </View>
 
-            {/* ── Outer Layout System ──────────────────────────────────────── */}
+            {/*  Outer Layout System */}
             <KeyboardAvoidingView
                 style={styles.mainLayoutBody}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -308,7 +308,7 @@ const Chatbot = () => {
                     style={styles.messageList}
                 />
 
-                {/* Inline Interaction Layer — lifted clear of the floating tab bar */}
+                {/* Inline Interaction Layer, lifted clear of the floating tab bar */}
                 <View style={styles.bottomControlsDeck}>
                     {/* Horizontal Suggestion Chips */}
                     {messages.length === 1 && (
@@ -371,7 +371,7 @@ const Chatbot = () => {
                 </View>
             </KeyboardAvoidingView>
 
-            {/* ── History Sidebar ─────────────────────────────────────────────── */}
+            {/* History Sidebar */}
             <Modal animationType="fade" transparent visible={sidebarVisible} onRequestClose={() => setSidebarVisible(false)}>
                 <View style={styles.sidebarOverlay}>
                     <View style={styles.sidebarPanel}>
@@ -444,7 +444,7 @@ const Chatbot = () => {
                 </View>
             </Modal>
 
-            {/* ── Info Modal ────────────────────────────────────────────────── */}
+            {/* Info Modal */}
             <Modal animationType="fade" transparent visible={isInfoVisible} onRequestClose={() => setIsInfoVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
