@@ -1,3 +1,11 @@
+// screens/ProfileScreen.js
+//
+// Gmail-style layout (centered identity block, grouped settings sections,
+// plain-text sign-out link). Two things added this round: real avatar
+// upload (tap the camera badge on the avatar), and stripped the isOnline/
+// offline-banner bits since the app's online-only now — matches the same
+// cleanup already done on api.js and Scan.js.
+
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
