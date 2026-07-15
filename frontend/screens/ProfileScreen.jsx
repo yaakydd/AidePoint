@@ -43,7 +43,6 @@ function getInitials(name = '') {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, logout, updateProfile } = useAuth();
-  const { user, logout, updateProfile } = useAuth();
 
   const [storeImages, setStoreImages] = useState(user?.storeImages ?? false);
   const [saving, setSaving] = useState(false);

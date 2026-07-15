@@ -25,7 +25,7 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { SUBSCRIPTION_PLANS, getPlan } from '../constants/subscriptionPlans';
+import { SUBSCRIPTION_PLANS, getPlan } from '../constants/SubscriptionPlans';
 import { styles } from '../styles/SubscriptionStyles';
 
 const PLAN_COLORS = {

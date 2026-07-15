@@ -14,14 +14,11 @@ import { supabase }      from '../utils/supabase';
 import { buildReport, saveReport } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
-import { compressImage }           from '../utils/offlineQueue'; // TODO: this probably deserves to live in its own imageUtils.js now that the rest of offlineQueue.js isn't used
-import { analyzeBloodSmear }       from '../utils/api';
-import { compressImage }           from '../utils/Offlinequeue'; // TODO: this probably deserves to live in its own imageUtils.js now that the rest of offlineQueue.js isn't used
+import { compressImage } from '../utils/Offlinequeue';
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
-import { getPlan }       from '../constants/subscriptionPlans';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale } from '../assets/theme';
 import { getPlan }       from '../constants/SubscriptionPlans';
-import { COLORS }        from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale } from '../assets/theme';
+
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 const GENDERS = ['Male', 'Female'];
@@ -59,8 +56,7 @@ const Scan = ({ navigation, route }) => {
   const [showResetTip, setShowResetTip] = useState(false);
   const [resultModal,  setResultModal]  = useState(null);
   const tipOpacity = useRef(new Animated.Value(0)).current;
-  const [resultModal,  setResultModal]  = useState(null);
-  const tipOpacity = useRef(new Animated.Value(0)).current;
+
 
   useEffect(() => {
     setScanId(generateScanId());
@@ -193,8 +189,6 @@ const Scan = ({ navigation, route }) => {
 
       const prediction = await analyzeBloodSmear(compressedUri);
 
-      const prediction = await analyzeBloodSmear(compressedUri);
-
       const report = buildReport({
         patientName:   patientName.trim(),
         patientId:     patientRow.id,
@@ -237,45 +231,13 @@ const Scan = ({ navigation, route }) => {
         .single();
       if (scanErr) throw scanErr;
       report.id = scanRow.id;
-      const { data: scanRow, error: scanErr } = await supabase
-        .from('scans')
-        .insert({
-          patient_id: patientRow.id,
-          created_by: user.id,
-          image_url:  compressedUri,
-          status:     'done',
-          results: {
-            condition:          prediction.condition,
-            confidence:         prediction.confidence,
-            urgency:            prediction.urgency,
-            morphology_note:    prediction.morphology_note,
-            cbc:                prediction.cbc,
-            cbc_flags:          prediction.cbc_flags,
-            morphology_probs:   prediction.morphology_probs,
-            anemia_probability: prediction.anemia_probability,
-            temperature:        temperature.trim(),
-            bloodPressure:      bloodPressure.trim(),
-            labTechName,
-            patientAge:         patientAge.trim(),
-            patientGender:      patientGender.toLowerCase(),
-            scanId,
-            analyzedAt:         new Date().toISOString(),
-            inference_ms:       prediction.inference_ms,
-          },
-        })
-        .select('id')
-        .single();
-      if (scanErr) throw scanErr;
-      report.id = scanRow.id;
-
-      await saveReport(report);
+      
       await saveReport(report);
 
       const usage = await recordScan(user.id, plan);
       setRemaining(usage.remaining);
 
       setResultModal({
-        report,
         report,
         bonusJustGranted: usage.bonusJustGranted,
         bonusRemaining:   usage.bonusRemaining,
