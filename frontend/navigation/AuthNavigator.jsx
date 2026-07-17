@@ -12,7 +12,7 @@ const Stack = createNativeStackNavigator();
 const LAUNCHED_KEY = 'aidepoint_has_launched';
 
 export default function AuthNavigator() {
-  // null = still checking, true = show onboarding, false = skip to SignIn
+
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
 
   useEffect(() => {
@@ -43,8 +43,10 @@ export default function AuthNavigator() {
       initialRouteName={isFirstLaunch ? 'Onboarding' : 'SignIn'}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="SignIn" component={SignIn} />
+            <Stack.Screen name="SignIn" component={SignIn} />
       <Stack.Screen name="SignUp" component={SignUp} />
+
+
 
       {/*
         VerifyEmail sits inside the Auth stack so it's reachable right after

@@ -43,7 +43,7 @@ function getStrength(pwd) {
   return              { label: 'Very Strong',      color: '#10B981', score: 4 };
 }
 
-export default function ForgotPassword() {
+const ForgotPassword = () => {
   const navigation = useNavigation();
 
   const [step,    setStep]    = useState(1);   // 1 | 2 | 3
@@ -67,7 +67,7 @@ export default function ForgotPassword() {
 
   const strength = getStrength(newPassword);
 
-  // ─── STEP 1: Send reset email ──────────────────────────
+  // STEP 1: Send reset email 
 
   async function handleSendOTP() {
     if (!email.trim()) { setError('Please enter your email address.'); return; }
@@ -93,7 +93,7 @@ export default function ForgotPassword() {
     setStep(2);
   }
 
-  // ─── STEP 2: OTP input handlers ───────────────────────
+  // STEP 2: OTP input handlers 
 
   function handleOtpChange(text, index) {
     if (text.length === OTP_BOXES) {
@@ -154,7 +154,7 @@ export default function ForgotPassword() {
     );
   }
 
-  // ─── STEP 3: Set new password ──────────────────────────
+  // STEP 3: Set new password 
 
   async function handleSetPassword() {
     if (strength.score < 3) { setError('Password is too weak.'); return; }
@@ -193,8 +193,6 @@ export default function ForgotPassword() {
     );
   }
 
-  // ─── RENDER ────────────────────────────────────────────
-
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
@@ -231,7 +229,7 @@ export default function ForgotPassword() {
             ))}
           </View>
 
-          {/* ─── STEP 1: Email ─── */}
+          {/* STEP 1: Email */}
           {step === 1 && (
             <>
               <View style={styles.iconWrap}>
@@ -428,6 +426,7 @@ export default function ForgotPassword() {
     </SafeAreaView>
   );
 }
+export default ForgotPassword;
 
 const styles = StyleSheet.create({
   safe:       { flex: 1, backgroundColor: '#fff' },
