@@ -77,7 +77,8 @@ export default function SignIn() {
               <Text style={styles.errorText}>{authError}</Text>
             </View>
           )}
-
+          
+          <View style={styles.form}>
           {/* Email */}
           <Text style={styles.label}>Email Address</Text>
           <View style={[styles.inputRow, errors.email && styles.inputError]}>
@@ -95,12 +96,6 @@ export default function SignIn() {
           {errors.email && <Text style={styles.err}>{errors.email}</Text>}
 
           {/* Password */}
-          <View style={styles.passwordHeader}>
-            <Text style={styles.label}>Password</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
-          </View>
           <View style={[styles.inputRow, errors.password && styles.inputError]}>
             <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={styles.inputIcon} />
             <TextInput
@@ -113,6 +108,12 @@ export default function SignIn() {
             />
             <TouchableOpacity onPress={() => setShowPass(p => !p)} style={styles.eyeBtn}>
               <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.passwordHeader}>
+            <Text style={styles.label}>Password</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
           {errors.password && <Text style={styles.err}>{errors.password}</Text>}
@@ -140,6 +141,7 @@ export default function SignIn() {
               <Text style={styles.signupLink}>Create one</Text>
             </Text>
           </TouchableOpacity>
+          </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -149,7 +151,6 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
 
-  container:  { padding: 24, paddingBottom: 48, flexGrow: 1 },
 
   header:     { alignItems: 'center', marginTop: 40, marginBottom: 36 },
   logoCircle: {
