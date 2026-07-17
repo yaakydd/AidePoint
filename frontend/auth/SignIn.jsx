@@ -14,12 +14,11 @@ import { COLORS }   from '../assets/theme';
 export default function SignIn() {
   const navigation = useNavigation();
   const { login, authError, clearError } = useAuth();
-
-  const [email,    setEmail]    = useState('');
+  const [email, setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [errors,   setErrors]   = useState({});
-  const [loading,  setLoading]  = useState(false);
+  const [errors, setErrors]   = useState({});
+  const [loading, setLoading]  = useState(false);
 
   function validate() {
     const e = {};
@@ -53,7 +52,6 @@ export default function SignIn() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -150,7 +148,7 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  safe:       { flex: 1, backgroundColor: '#fff' },
+
   container:  { padding: 24, paddingBottom: 48, flexGrow: 1 },
 
   header:     { alignItems: 'center', marginTop: 40, marginBottom: 36 },

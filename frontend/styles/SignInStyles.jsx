@@ -1,10 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 export const signInStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
+  safe:       { flex: 1, backgroundColor: '#fff' },
   scrollContent: {
     paddingHorizontal: 30,
     paddingVertical: 150,

@@ -43,7 +43,7 @@ export default function AuthNavigator() {
       initialRouteName={isFirstLaunch ? 'Onboarding' : 'SignIn'}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-            <Stack.Screen name="SignIn" component={SignIn} />
+      <Stack.Screen name="SignIn" component={SignIn} />
       <Stack.Screen name="SignUp" component={SignUp} />
 
 
