@@ -1,0 +1,26 @@
+{
+  "classes": [
+    "Healthy",
+    "Iron deficiency anemia",
+    "Leukemia",
+    "Leukemia with thrombocytopenia",
+    "Macrocytic anemia",
+    "Normocytic hypochromic anemia",
+    "Normocytic normochromic anemia",
+    "Other microcytic anemia",
+    "Thrombocytopenia"
+  ],
+  "feature_order": [
+    "WBC",
+    "RBC",
+    "HGB",
+    "HCT",
+    "MCV",
+    "MCH",
+    "MCHC",
+    "PLT",
+    "NEUTp",
+    "LYMp"
+  ],
+  "note": "Near-perfect held-out accuracy on this dataset likely reflects threshold-derived labels, not independent clinical diagnosis. Treat this model as a check against cbcTypeEngine.js's rule-based logic, not a replacement for it, until validated against real independently-diagnosed cases."
+}
