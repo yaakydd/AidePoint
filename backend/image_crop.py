@@ -1,3 +1,4 @@
+# image_crop.py
 # Fixes the actual domain-gap problem, not just detecting it. Training data
 # is close, properly-framed crops of stained smear (no dark corners). Real
 # users are mostly holding a phone up to a microscope eyepiece, which gives
@@ -57,7 +58,6 @@ def auto_crop_microscope_field(img_bgr: np.ndarray) -> np.ndarray:
     half = radius / 1.4142
     x0, y0 = int(max(fx - half, 0)), int(max(fy - half, 0))
     x1, y1 = int(min(fx + half, w)), int(min(fy + half, h))
-
     if x1 - x0 < 20 or y1 - y0 < 20:
         return img_bgr
 
