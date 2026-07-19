@@ -262,4 +262,4 @@ class AidePointONNX:
             "unreliable_reasons": reasons,
             "shape_screening":    shape_result,
             "scope_disclaimer":   SCOPE_DISCLAIMER,
-        }
+}
