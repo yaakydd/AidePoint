@@ -8,6 +8,14 @@
 # dimensional distances concentrate; a different color palette and heavy
 # vignetting don't reliably move a 256-dim diagonal distance far enough).
 # Combining it with cheap, explainable pixel-level checks catches it.
+#
+# What this gate does NOT do, and this matters for what shape_screening.py
+# exists to cover instead: it answers "does this image look statistically
+# like training data overall?" A well-cropped, properly-stained sickle
+# cell photo passes this fine, because it genuinely does resemble AneRBC's
+# color/framing distribution — the problem there isn't image quality, it's
+# that the model was never taught the difference. That's a separate,
+# narrower check (see shape_screening.py).
 
 import numpy as np
 import cv2
@@ -54,7 +62,6 @@ def color_vignette_checks(raw_resized_bgr: np.ndarray, stats: dict) -> list[str]
             f"{s_mean:.0f} vs ~{stats['sat_mean']:.0f}\u00b1{stats['sat_std']:.0f}) "
             f"— may be a different stain type, white balance, or lighting setup"
         )
-
     if vignette_ratio < stats["vignette_min_ratio"]:
         reasons.append(
             f"dark-cornered / circular vignette detected (corner:center "
@@ -63,7 +70,6 @@ def color_vignette_checks(raw_resized_bgr: np.ndarray, stats: dict) -> list[str]
             f"slide capture; ask the user to recapture using the in-app "
             f"framing guide"
         )
-
     return reasons
 
 
@@ -71,12 +77,10 @@ def run_reliability_gate(embedding: np.ndarray, raw_resized_bgr: np.ndarray,
                           stats: dict) -> tuple[bool, list[str]]:
     """Combines both signals. Returns (is_unreliable, reasons)."""
     reasons = color_vignette_checks(raw_resized_bgr, stats)
-
     dist = embedding_ood_distance(embedding, stats)
     if dist > stats["embedding_distance_threshold"]:
         reasons.append(
             f"embedding distance {dist:.2f} exceeds trained-data spread "
             f"(threshold {stats['embedding_distance_threshold']:.2f})"
         )
-
     return len(reasons) > 0, reasons
