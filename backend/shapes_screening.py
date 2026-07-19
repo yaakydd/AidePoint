@@ -1,4 +1,6 @@
-#A second, more targeted gate alongside quality_checks.py's OOD/color
+# shape_screening.py
+#
+# A second, more targeted gate alongside quality_checks.py's OOD/color
 # checks. That gate answers "does this image look statistically like
 # training data?" -- a well-cropped sickle cell photo passes it fine,
 # because it IS a real, well-stained, properly framed smear. This gate
