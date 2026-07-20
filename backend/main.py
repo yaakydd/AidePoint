@@ -152,7 +152,7 @@ async def _update_subscription_tier(user_id: str, plan_id: str) -> None:
                    user_id, resp.status_code, resp.text)
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+#  Routes 
 
 @app.get("/health")
 async def health():
@@ -208,11 +208,11 @@ async def predict(
             detail="Empty file received.",
         )
 
-    # ── Preprocess ──────────────────────────────────────────────────────────
-    # preprocess_image() returns two values — the model-ready tensor, and
-    # the raw resized image the reliability gate and shape screening need.
+    # preprocess_image() now returns a dict -- the model-ready tensor,
+    # the raw resized image the reliability/shape checks need, and the
+    # before/after crop preview data used by the app's transparency trail.
     try:
-        image_array, raw_resized_bgr = preprocess_image(image_bytes)
+        preprocessed = preprocess_image(image_bytes)
     except Exception as exc:
         log.warning("Preprocessing failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(
@@ -223,7 +223,9 @@ async def predict(
     # ── Inference ───────────────────────────────────────────────────────────
     t0 = time.perf_counter()
     try:
-        result = _model.predict(image_array, raw_resized_bgr)
+        result = _model.predict(
+            preprocessed["model_input"], preprocessed["raw_resized_image"]
+        )
     except Exception as exc:
         log.error("Inference error for user %s: %s", user.get("id"), exc)
         raise HTTPException(
@@ -244,6 +246,9 @@ async def predict(
     return JSONResponse(content={
         **result,
         "inference_ms": elapsed_ms,
+        "was_cropped": preprocessed["was_cropped"],
+        "original_preview_base64": preprocessed["original_preview_base64"],
+        "cropped_preview_base64": preprocessed["cropped_preview_base64"],
     })
 
 
@@ -422,7 +427,7 @@ async def verify_payment(
     return {"verified": False, "status": charge.get("status")}
 
 
-# ── Global error handler — never expose raw tracebacks ───────────────────────
+# ── Global error handler — never expose raw tracebacks 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     log.error("Unhandled error: %s", exc, exc_info=True)
