@@ -1,10 +1,8 @@
-# shape_screening.py
-#
 # Two things live here now:
-#   1. run_shape_screening() -- the original reliability check: "do enough
+#   1. run_shape_screening() - the original reliability check: "do enough
 #      of this image's cells look like normal round RBCs to trust a
 #      confident label?"
-#   2. get_cell_overlay() -- returns per-cell shape data (position, size,
+#   2. get_cell_overlay() - returns per-cell shape data (position, size,
 #      and a severity score) so the app can draw a live annotation
 #      directly on top of the photo: a colored circle around every
 #      detected cell, green for normal, sliding through yellow to red the
