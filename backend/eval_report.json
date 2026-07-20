@@ -1,0 +1,37 @@
+{
+  "binary": {
+    "auc": 0.9984,
+    "ap": 0.9984,
+    "accuracy": 0.9812,
+    "f1": 0.9815,
+    "precision": 0.9691,
+    "recall": 0.9942,
+    "optimal_threshold": 0.34
+  },
+  "cbc_mae": {
+    "WBC": 8.7579,
+    "RBC": 1.6046,
+    "HAEMOGLOBIN": 4.4983,
+    "HAEMATOCRIT": 10.4965,
+    "MCV": 27.4475,
+    "MCH": 10.0753,
+    "MCHC": 4.7557,
+    "RDW_CV": 4.3298,
+    "PLATELETS": 198.5171,
+    "MPV": 4.5112,
+    "NEUTROPHILS": 28.6104,
+    "LYMPHOCYTES": 35.305,
+    "MONOCYTES": 9.0392,
+    "EOSINOPHILS": 6.4113
+  },
+  "morphology_f1": {
+    "dimorphic_picture": 0.0952,
+    "anisocytosis": 0.7,
+    "hypochromia": 0.9171,
+    "microcytosis": 0.9209,
+    "macrocytosis": 0.2759,
+    "poikilocytosis": 0.6289,
+    "target_cells": 0.6002,
+    "normal_morphology": 0.9246
+  }
+}
