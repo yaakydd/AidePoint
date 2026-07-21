@@ -9,3 +9,10 @@ python-jose==3.3.0
 opencv-python-headless
 scikit-learn
 joblib
+scipy
+pydantic
+
+
+
+
+
