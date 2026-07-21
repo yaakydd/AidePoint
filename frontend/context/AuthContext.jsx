@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
         // This works offline because the session is stored in AsyncStorage
         const { data } = await supabase.auth.getSession();
         const session = data?.session;
+        console.log("SESSION =", data.session);
 
         if (!alive) return;
 

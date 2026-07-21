@@ -7,6 +7,7 @@ import SignIn           from '../auth/SignIn';
 import SignUp           from '../auth/SignUp';
 import VerifyEmail      from '../auth/VerifyEmail';
 import ForgotPassword   from '../auth/ForgotPassword';
+import SplashScreen from "../screens/SplashScreen";
 
 const Stack = createNativeStackNavigator();
 const LAUNCHED_KEY = 'aidepoint_has_launched';
@@ -35,7 +36,9 @@ export default function AuthNavigator() {
 
   // Don't render the navigator until we know which screen to start on.
   // This avoids a flash of the wrong screen.
-  if (isFirstLaunch === null) return null;
+if (isFirstLaunch === null) {
+    return <SplashScreen />;
+}
 
   return (
     <Stack.Navigator
@@ -45,8 +48,6 @@ export default function AuthNavigator() {
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="SignIn" component={SignIn} />
       <Stack.Screen name="SignUp" component={SignUp} />
-
-
 
       {/*
         VerifyEmail sits inside the Auth stack so it's reachable right after

@@ -19,6 +19,7 @@ const Stack = createNativeStackNavigator();
 const RootNavigator = () => {
 
     const { authState } = useAuth();
+    console.log("AUTH STATE:", authState);
 
     if(authState === "BOOTING")
         return <SplashScreen />;

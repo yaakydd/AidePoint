@@ -24,14 +24,14 @@ from pydantic import BaseModel
 from preprocess import preprocess_image
 from model import AidePointONNX
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# Logging 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
 )
 log = logging.getLogger("aidepoint")
 
-# ── Config from environment variables (set these in Railway dashboard) ────────
+#  Config from environment variables 
 ONNX_MODEL_PATH    = os.getenv("ONNX_MODEL_PATH", "aidepoint_stable.onnx")
 SUPABASE_URL       = os.getenv("SUPABASE_URL", "")        # your project URL
 SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "")   # public anon key
@@ -52,7 +52,7 @@ PLAN_PRICES_GHS = {
     "annual":  300.00,
 }
 
-# ── Model singleton ───────────────────────────────────────────────────────────
+# Model singleton 
 # Loaded once at startup, reused for every request. Thread-safe.
 _model: AidePointONNX | None = None
 
@@ -68,7 +68,6 @@ async def lifespan(app: FastAPI):
     log.info("Shutting down.")
 
 
-# ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="AidePoint API",
     version="1.1.0",
@@ -84,7 +83,7 @@ app.add_middleware(
 )
 
 
-# ── Auth: verify Supabase JWT ─────────────────────────────────────────────────
+# Auth: verify Supabase JWT 
 async def verify_supabase_token(request: Request) -> dict:
     """
     Extracts the Bearer token from the Authorization header and
@@ -187,7 +186,7 @@ async def predict(
             detail="Model not loaded yet. Try again in a few seconds.",
         )
 
-    # ── Validate file type ──────────────────────────────────────────────────
+    # Validate file type 
     content_type = file.content_type or ""
     if content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
@@ -195,7 +194,7 @@ async def predict(
             detail=f"Unsupported file type: {content_type}. Send JPEG or PNG.",
         )
 
-    # ── Read and size-check ─────────────────────────────────────────────────
+    #  Read and size-check 
     image_bytes = await file.read()
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(
@@ -220,7 +219,7 @@ async def predict(
             detail="Could not read image. Ensure it is a valid JPEG or PNG.",
         )
 
-    # ── Inference ───────────────────────────────────────────────────────────
+    #  Inference 
     t0 = time.perf_counter()
     try:
         result = _model.predict(
@@ -252,7 +251,7 @@ async def predict(
     })
 
 
-# ── Payments (Paystack) ───────────────────────────────────────────────────────
+# Payments (Paystack) 
 # Ghana-only, GHS-only app, needs recurring billing — Paystack fits better
 # here than Flutterwave for this specific combination. Decision already
 # made before this code was written; not re-litigating it here.
@@ -427,7 +426,7 @@ async def verify_payment(
     return {"verified": False, "status": charge.get("status")}
 
 
-# ── Global error handler — never expose raw tracebacks 
+#  Global error handler, never expose raw tracebacks 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     log.error("Unhandled error: %s", exc, exc_info=True)
