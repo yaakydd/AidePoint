@@ -32,7 +32,6 @@ if response.status_code == 200:
     print("was_cropped:", result.get("was_cropped"))
     print("cell_overlay cell_count:", result.get("cell_overlay", {}).get("cell_count"))
     print("cell_overlay flagged_count:", result.get("cell_overlay", {}).get("flagged_count"))
-    print("has anemia_type field (should be False):", "anemia_type" in result)
     print("scope_disclaimer:", result.get("scope_disclaimer"))
     print()
     print("Full response saved to predict_response.json for inspection.")
