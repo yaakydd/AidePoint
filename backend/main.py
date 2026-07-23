@@ -3,6 +3,9 @@
 # Hosted on Railway. Receives blood smear images, runs ONNX inference,
 # returns structured clinical JSON to the React Native app. Also handles
 # Paystack subscription billing.
+import os
+from dotenv import load_dotenv
+
 
 import os
 import time
@@ -24,6 +27,8 @@ from pydantic import BaseModel
 from preprocess import preprocess_image
 from model import AidePointONNX
 
+
+load_dotenv()
 # Logging 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,8 +38,8 @@ log = logging.getLogger("aidepoint")
 
 #  Config from environment variables 
 ONNX_MODEL_PATH    = os.getenv("ONNX_MODEL_PATH", "aidepoint_stable.onnx")
-SUPABASE_URL       = os.getenv("SUPABASE_URL", "")        # your project URL
-SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "")   # public anon key
+SUPABASE_URL       = os.getenv("SUPABASE_URL", "https://pbqsbpmyhrolwifgyjtz.supabase.co")        # your project URL
+SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBicXNicG15aHJvbHdpZmd5anR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODY0MjEsImV4cCI6MjA5NTQ2MjQyMX0.E9YJBjOCiEafDBZGTk0UHrCGovSi0nYwNFP_gYLHQLg")   # public anon key
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")  # service role — payments write
 MAX_IMAGE_BYTES    = 10 * 1024 * 1024   # 10 MB hard limit
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/jpg"}
@@ -109,10 +114,10 @@ async def verify_supabase_token(request: Request) -> dict:
                 },
             )
     except httpx.RequestError as exc:
-        log.error("Supabase auth check failed: %s", exc)
+        log.exception("Supabase auth check failed")
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication service unreachable",
+            status_code=503,
+            detail=str(exc),
         )
 
     if resp.status_code != 200:
