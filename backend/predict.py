@@ -3,14 +3,20 @@ import json
 
 
 BASE_URL = "http://localhost:8000"
-ACCESS_TOKEN = "eyJhbGciOiJFUzI1NiIsImtpZCI6IjFiNTdhNWExLWVmZjItNDJjOS1iN2NmLWQ2YmQzZWRhYmVhNyIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3BicXNicG15aHJvbHdpZmd5anR6LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIwZTllODRhMi0wNmUxLTRmOTYtOTNjMS00NGRmNzQ2Y2NkM2UiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzg0NjExNzk1LCJpYXQiOjE3ODQ2MDgxOTUsImVtYWlsIjoiYW50d2l5YWExN0BnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiYW50d2l5YWExN0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaG9zcGl0YWxfbGFiIjoiQ2l0eWRpYSBEaWFnbm9zdGljcyIsIm5hbWUiOiJBbnR3aSBZYWEgQXNhbnRld2FhIiwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdWIiOiIwZTllODRhMi0wNmUxLTRmOTYtOTNjMS00NGRmNzQ2Y2NkM2UifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc4NDYwODE5NX1dLCJzZXNzaW9uX2lkIjoiZDk3ODI0NzAtMWEwOC00ZTVkLThlYzAtYTM2ZWQyNzNjOGZlIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.fl6ZFrhpcpJPISQ465IV6uQx_HkVcbg2tU_3Yxl6T8vUtIAJJHjur7LNHy3vJCUKVHbHI8qNBP_QYxZ-vITvuA"
-IMAGE_PATH = "/home/yaa_baby/Downloads/Sickle.jpg"
+ACCESS_TOKEN = "eyJhbGciOiJFUzI1NiIsImtpZCI6IjFiNTdhNWExLWVmZjItNDJjOS1iN2NmLWQ2YmQzZWRhYmVhNyIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3BicXNicG15aHJvbHdpZmd5anR6LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIwZTllODRhMi0wNmUxLTRmOTYtOTNjMS00NGRmNzQ2Y2NkM2UiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzg0ODE4Njg0LCJpYXQiOjE3ODQ4MTUwODQsImVtYWlsIjoiYW50d2l5YWExN0BnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiYW50d2l5YWExN0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaG9zcGl0YWxfbGFiIjoiQ2l0eWRpYSBEaWFnbm9zdGljcyIsIm5hbWUiOiJBbnR3aSBZYWEgQXNhbnRld2FhIiwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdWIiOiIwZTllODRhMi0wNmUxLTRmOTYtOTNjMS00NGRmNzQ2Y2NkM2UifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc4NDgxNTA4NH1dLCJzZXNzaW9uX2lkIjoiOTJkNmQxMmMtMzY4ZS00ODVkLWEwYmItZjdlNzMyMTJhM2UyIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.URiVRXHsYUsBrBDuGHGruilS5uyxSMpVMGdCx6V9cGZ6cO2DW8vtib64euLOaPcjFea0uUkNuD6Kywss08POJw"
+IMAGE_PATH = "/home/yaa_baby/Downloads/anec.png"
 
 with open(IMAGE_PATH, "rb") as image_file:
     response = requests.post(
         f"{BASE_URL}/predict",
         headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-        files={"file": image_file},
+        files={
+    "file": (
+        "anec.png",
+        image_file,
+        "image/png",
+    )
+}
     )
 
 print("Status code:", response.status_code)
@@ -37,6 +43,3 @@ else:
     print("Error response:")
     print(response.text)
 
-
-print("SUPABASE_URL =", SUPABASE_URL)
-print("SUPABASE_ANON_KEY =", SUPABASE_ANON_KEY[:20])
