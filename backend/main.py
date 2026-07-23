@@ -131,7 +131,7 @@ async def _update_subscription_tier(user_id: str, plan_id: str) -> None:
     code paths over time.
     """
     if not SUPABASE_SERVICE_KEY:
-        log.error("SUPABASE_SERVICE_KEY not set — cannot update subscription_tier")
+        log.error("SUPABASE_SERVICE_KEY not set, cannot update subscription_tier")
         return
 
     async with httpx.AsyncClient(timeout=8.0) as client:
@@ -154,7 +154,6 @@ async def _update_subscription_tier(user_id: str, plan_id: str) -> None:
 
 @app.get("/health")
 async def health():
-    """Railway uses this to confirm the service is alive."""
     return {
         "status": "ok",
         "model_loaded": _model is not None,
