@@ -46,6 +46,12 @@ export const buildReport = ({
   patientName, patientId, condition, confidence,
   labTechName, imageUri, temperature, bloodPressure,
   doctorId, doctorName,
+  // Real per-scan data from the backend response, distinct from the
+  // fixed config-level text above -- morphologyFindings and
+  // cbcPatternSummary vary per scan, so they need to be stored on the
+  // report itself, not derived from CONDITION_CONFIG at display time.
+  morphologyFindings, cbcPatternSummary,
+  isUnreliable, unreliableReasons, imageQuality,
 }) => {
   const now = new Date();
   const cfg = CONDITION_CONFIG[condition] ?? CONDITION_CONFIG.healthy;
@@ -61,13 +67,19 @@ export const buildReport = ({
     patientName, patientId,
     temperature, bloodPressure,
 
-    // ── AI result
+    // ── AI result -- fixed config text (label/urgency/generic morphology
+    // description) plus the real per-scan findings from this specific scan
     condition,
     conditionLabel: cfg.label,
     confidence,
     severity:       cfg.severity,
     morphology:     cfg.morphology,
     urgency:        cfg.urgency,
+    morphologyFindings: morphologyFindings ?? {},
+    cbcPatternSummary:  cbcPatternSummary ?? {},
+    isUnreliable:       isUnreliable ?? false,
+    unreliableReasons:  unreliableReasons ?? [],
+    imageQuality:       imageQuality ?? null,
 
     // ── Personnel
     labTechName, imageUri,

@@ -19,7 +19,7 @@ function row(label, value) {
 }
 
 function buildReportHtml(report) {
-  const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.normal;
+  const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
   const confidencePct = typeof report.confidence === 'number'
     ? `${Math.round(report.confidence * 100)}%`
     : '—';
