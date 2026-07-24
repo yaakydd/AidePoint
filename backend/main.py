@@ -228,14 +228,14 @@ async def predict(
         preprocessed["raw_resized_image"], shape_result["cells_detected"]
     )
 
-    if should_block_inference(quality_result):
+if should_block_inference(quality_result):
         log.info(
             "predict blocked for user=%s: no usable cells detected (%s)",
             user.get("id"), quality_result.failure_reasons,
         )
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
+            detail={
                 "error": "image_unusable",
                 "message": "No cells could be detected in this image. Please retake the photo.",
                 "image_quality": quality_result.__dict__,
