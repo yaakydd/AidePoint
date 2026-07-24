@@ -55,6 +55,7 @@ const Scan = ({ navigation, route }) => {
   const [isAnalysing,  setIsAnalysing]  = useState(false);
   const [remaining,    setRemaining]    = useState(null);
   const [showResetTip, setShowResetTip] = useState(false);
+  const [resultModal,  setResultModal]  = useState(null);
   const tipOpacity = useRef(new Animated.Value(0)).current;
 
 
@@ -481,7 +482,7 @@ const Scan = ({ navigation, route }) => {
   );
 };
 
-import { CONDITION_CONFIG } from '../utils/ReportUtils';
+
 
 const SEVERITY_COLORS = {
   red:    { bg: '#FEE2E2', text: '#B91C1C', icon: 'alert-circle' },
@@ -489,65 +490,6 @@ const SEVERITY_COLORS = {
   green:  { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
 };
 
-function ResultModal({ data, onClose, onViewReport }) {
-  const { report, bonusJustGranted, bonusRemaining, remaining } = data;
-  const cfg      = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.normal;
-  const sevStyle = SEVERITY_COLORS[cfg.severity] ?? SEVERITY_COLORS.yellow;
-
-  return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={resultStyles.overlay}>
-        <View style={resultStyles.sheet}>
-          <View style={resultStyles.handle} />
-
-          <View style={[resultStyles.iconCircle, { backgroundColor: sevStyle.bg }]}>
-            <MaterialCommunityIcons name={sevStyle.icon} size={38} color={sevStyle.text} />
-          </View>
-
-          <Text style={resultStyles.title}>Analysis Complete</Text>
-          <Text style={[resultStyles.conditionLabel, { color: sevStyle.text }]}>
-            {cfg.label}
-          </Text>
-          <Text style={resultStyles.sub}>{cfg.urgency}</Text>
-          <Text style={resultStyles.title}>Analysis Complete</Text>
-          <Text style={[resultStyles.conditionLabel, { color: sevStyle.text }]}>
-            {cfg.label}
-          </Text>
-          <Text style={resultStyles.sub}>{cfg.urgency}</Text>
-
-          {bonusJustGranted && (
-            <View style={resultStyles.bonusBanner}>
-              <MaterialCommunityIcons name="gift-outline" size={18} color={COLORS.primaryDark} />
-              <Text style={resultStyles.bonusText}>
-                 You've saved 5 images today! {bonusRemaining} bonus scan{bonusRemaining !== 1 ? 's' : ''} unlocked.
-              </Text>
-            </View>
-          )}
-
-          <Text style={resultStyles.remainingNote}>
-            {remaining === Infinity
-              ? 'Unlimited scans remaining today'
-              : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`}
-          </Text>
-
-          <View style={resultStyles.btnRow}>
-            <TouchableOpacity style={resultStyles.btnSecondary} onPress={onClose}>
-              <Text style={resultStyles.btnSecondaryText}>New Scan</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={resultStyles.btnPrimary} onPress={onViewReport}>
-              <MaterialIcons name="article" size={18} color="#fff" />
-              <Text style={resultStyles.btnPrimaryText}>View Report</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={resultStyles.btnPrimary} onPress={onViewReport}>
-              <MaterialIcons name="article" size={18} color="#fff" />
-              <Text style={resultStyles.btnPrimaryText}>View Report</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 export default Scan;
 
@@ -561,34 +503,4 @@ const genderStyles = StyleSheet.create({
   pillActive:      { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   pillText:        { fontSize: FONTS.sm, fontWeight: FONTS.medium, color: COLORS.textMuted },
   pillTextActive:  { color: COLORS.white },
-});
-
-const resultStyles = StyleSheet.create({
-  overlay:        { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
-  sheet:          {
-    backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS['2xl'], borderTopRightRadius: RADIUS['2xl'],
-    paddingHorizontal: SPACING['2xl'], paddingTop: SPACING.md, paddingBottom: SPACING['4xl'] - 4, alignItems: 'center',
-  },
-  handle:         { width: 40, height: 4, borderRadius: RADIUS.xs / 2, backgroundColor: COLORS.border, marginBottom: SPACING.xl },
-  iconCircle:     { width: scale(72), height: scale(72), borderRadius: scale(36), justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.lg },
-  title:          { fontSize: FONTS.xl, fontWeight: FONTS.bold, color: COLORS.textPrimary, marginBottom: SPACING.xs },
-  conditionLabel: { fontSize: FONTS.lg, fontWeight: FONTS.bold, marginBottom: SPACING.xs },
-  sub:            { fontSize: FONTS.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: SPACING.lg },
-  bonusBanner:    {
-    flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryLight,
-    borderRadius: RADIUS.sm + 2, paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm + 2, marginBottom: SPACING.md,
-  },
-  bonusText:      { flex: 1, fontSize: FONTS.sm, color: COLORS.primaryDark, fontWeight: FONTS.semibold },
-  remainingNote:  { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: SPACING.xl },
-  btnRow:         { flexDirection: 'row', gap: SPACING.md, width: '100%' },
-  btnPrimary:     {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs + 2,
-    backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: SPACING.md + 2,
-  },
-  btnPrimaryText: { color: COLORS.white, fontSize: FONTS.md, fontWeight: FONTS.bold },
-  btnSecondary:   {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.background, borderRadius: RADIUS.md, paddingVertical: SPACING.md + 2,
-  },
-  btnSecondaryText:{ fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
 });
