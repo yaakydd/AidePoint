@@ -17,6 +17,7 @@ import { analyzeBloodSmear }       from '../utils/api';
 import { compressImage } from '../utils/Offlinequeue';
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
 import { getPlan }       from '../constants/SubscriptionPlans';
+import TransparencyTrail from '../components/TransparencyTrail';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale } from '../assets/theme';
 
 
@@ -54,7 +55,6 @@ const Scan = ({ navigation, route }) => {
   const [isAnalysing,  setIsAnalysing]  = useState(false);
   const [remaining,    setRemaining]    = useState(null);
   const [showResetTip, setShowResetTip] = useState(false);
-  const [resultModal,  setResultModal]  = useState(null);
   const tipOpacity = useRef(new Animated.Value(0)).current;
 
 
@@ -192,10 +192,9 @@ const Scan = ({ navigation, route }) => {
       const report = buildReport({
         patientName:   patientName.trim(),
         patientId:     patientRow.id,
-        condition:     prediction.condition,
-        confidence:    prediction.confidence,
+        condition:     prediction.is_anemic ? 'anemic' : 'healthy',
+        confidence:    prediction.explanation?.confidence ?? 'moderate',
         labTechName,
-        imageUri:      compressedUri,
         imageUri:      compressedUri,
         temperature:   temperature.trim(),
         bloodPressure: bloodPressure.trim(),
@@ -209,22 +208,22 @@ const Scan = ({ navigation, route }) => {
           image_url:  compressedUri,
           status:     'done',
           results: {
-            condition:          prediction.condition,
-            confidence:         prediction.confidence,
-            urgency:            prediction.urgency,
-            morphology_note:    prediction.morphology_note,
-            cbc:                prediction.cbc,
-            cbc_flags:          prediction.cbc_flags,
-            morphology_probs:   prediction.morphology_probs,
-            anemia_probability: prediction.anemia_probability,
-            temperature:        temperature.trim(),
-            bloodPressure:      bloodPressure.trim(),
+            is_anemic:           prediction.is_anemic,
+            anemia_probability:  prediction.anemia_probability,
+            confidence:          prediction.explanation?.confidence,
+            morphology_findings: prediction.morphology_findings,
+            cbc_pattern_summary: prediction.cbc_pattern_summary,
+            is_unreliable:       prediction.is_unreliable,
+            unreliable_reasons:  prediction.unreliable_reasons,
+            image_quality:       prediction.image_quality,
+            temperature:         temperature.trim(),
+            bloodPressure:       bloodPressure.trim(),
             labTechName,
-            patientAge:         patientAge.trim(),
-            patientGender:      patientGender.toLowerCase(),
+            patientAge:          patientAge.trim(),
+            patientGender:       patientGender.toLowerCase(),
             scanId,
-            analyzedAt:         new Date().toISOString(),
-            inference_ms:       prediction.inference_ms,
+            analyzedAt:          new Date().toISOString(),
+            inference_ms:        prediction.inference_ms,
           },
         })
         .select('id')
@@ -238,6 +237,7 @@ const Scan = ({ navigation, route }) => {
       setRemaining(usage.remaining);
 
       setResultModal({
+        prediction,
         report,
         bonusJustGranted: usage.bonusJustGranted,
         bonusRemaining:   usage.bonusRemaining,
@@ -465,7 +465,7 @@ const Scan = ({ navigation, route }) => {
       </Modal>
 
       {resultModal && (
-        <ResultModal
+        <TransparencyTrail
           data={resultModal}
           onClose={() => {
             setResultModal(null);
