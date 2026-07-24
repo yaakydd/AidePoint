@@ -117,7 +117,7 @@ export default function PinModal({ mode, onSuccess }) {
   }
 
   function handleKey(key) {
-    if (key === '⌫') {
+    if (key === '/b') {
       if (step === 'confirm') setConfirmPin(p => p.slice(0, -1));
       else                    setPin(p => p.slice(0, -1));
       setError('');

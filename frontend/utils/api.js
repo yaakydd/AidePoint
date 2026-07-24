@@ -51,12 +51,31 @@ export async function analyzeBloodSmear(imageUri) {
 
       if (!response.ok) {
         const detail = json?.detail;
+
         if (response.status === 401) throw new Error('Your session has expired. Please log in again.');
         if (response.status === 413) throw new Error('Image file is too large. Please use a smaller photo.');
         if (response.status === 415) throw new Error('Only JPEG or PNG images are accepted.');
-        if (response.status === 422) throw new Error('The image could not be read. Please try a different photo.');
         if (response.status === 503) throw new Error('Analysis server is starting up. Wait a few seconds and try again.');
-        throw new Error(detail ?? `Analysis failed (server error ${response.status}).`);
+
+        if (response.status === 422) {
+          // detail can now be an object ({ error, message, image_quality })
+          // for the "image unusable" case, or a plain string for other
+          // validation failures -- handle both instead of assuming one shape.
+          if (detail && typeof detail === 'object') {
+            const qualityError = new Error(
+              detail.message ?? 'The image could not be analyzed. Please try a different photo.'
+            );
+            qualityError.imageQuality = detail.image_quality ?? null;
+            qualityError.isImageQualityError = true;
+            throw qualityError;
+          }
+          throw new Error(detail ?? 'The image could not be read. Please try a different photo.');
+        }
+
+        const detailMessage = detail && typeof detail === 'object'
+          ? (detail.message ?? JSON.stringify(detail))
+          : detail;
+        throw new Error(detailMessage ?? `Analysis failed (server error ${response.status}).`);
       }
 
       return json;
