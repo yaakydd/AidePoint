@@ -19,7 +19,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-
+from image_quality import assess_image_quality, should_block_inference
+from shape_screening import run_shape_screening
 from preprocess import preprocess_image
 from model import AidePointONNX
 
@@ -217,6 +218,30 @@ async def predict(
             detail="Could not read image. Ensure it is a valid JPEG or PNG.",
         )
 
+
+    # Image quality check: runs before the model. Answers "is this photo
+    # even usable" (blur, brightness, cell count) -- a separate, earlier
+    # question from the reliability gate further down, which asks "does
+    # this usable photo look like our training data."
+    shape_result = run_shape_screening(preprocessed["raw_resized_image"])
+    quality_result = assess_image_quality(
+        preprocessed["raw_resized_image"], shape_result["cells_detected"]
+    )
+
+if should_block_inference(quality_result):
+        log.info(
+            "predict blocked for user=%s: no usable cells detected (%s)",
+            user.get("id"), quality_result.failure_reasons,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "image_unusable",
+                "message": "No cells could be detected in this image. Please retake the photo.",
+                "image_quality": quality_result.__dict__,
+            },
+        )
+    
     #  Inference 
     t0 = time.perf_counter()
     try:
@@ -246,6 +271,7 @@ async def predict(
         "was_cropped": preprocessed["was_cropped"],
         "original_preview_base64": preprocessed["original_preview_base64"],
         "cropped_preview_base64": preprocessed["cropped_preview_base64"],
+        "image_quality": quality_result.__dict__,
     })
 
 
