@@ -69,6 +69,7 @@ htmlcov/
 # IDE files
 .vscode/
 .idea/
+get_test_token.py
 
 # Jupyter Notebook
 .ipynb_checkpoints/
