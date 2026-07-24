@@ -43,11 +43,12 @@ import {
 import { COLORS, FONTS, SPACING, RADIUS } from '../assets/theme';
 
 const DOTS  = 4;
+const BACKSPACE_KEY = 'backspace';
 const KEYS  = [
   ['1','2','3'],
   ['4','5','6'],
   ['7','8','9'],
-  ['',  '0', '⌫'],
+  ['',  '0', BACKSPACE_KEY],
 ];
 
 export default function PinModal({ mode, onSuccess }) {
@@ -116,8 +117,8 @@ export default function PinModal({ mode, onSuccess }) {
     }
   }
 
-  function handleKey(key) {
-    if (key === '/b') {
+function handleKey(key) {
+    if (key === BACKSPACE_KEY) {
       if (step === 'confirm') setConfirmPin(p => p.slice(0, -1));
       else                    setPin(p => p.slice(0, -1));
       setError('');
@@ -130,7 +131,7 @@ export default function PinModal({ mode, onSuccess }) {
     if (step === 'confirm') setConfirmPin(next);
     else                    setPin(next);
     setError('');
-  }
+}
 
   async function handleBiometric() {
     const ok = await authenticateWithBiometrics();
@@ -189,7 +190,7 @@ export default function PinModal({ mode, onSuccess }) {
                   activeOpacity={0.65}
                   disabled={key === ''}
                 >
-                  {key === '⌫' ? (
+                  {key === BACKSPACE_KEY  ? (
                     <MaterialIcons name="backspace" size={22} color={COLORS.textPrimary} />
                   ) : (
                     <Text style={s.keyText}>{key}</Text>
