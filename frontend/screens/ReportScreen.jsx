@@ -3,6 +3,10 @@
 // Shows all generated reports in a searchable, filterable list.
 // Tapping a card opens a detail bottom sheet with full clinical information,
 // including PDF export.
+//
+// Gated behind a per-user PIN (see utils/reportPin.js and components/PinModal.js).
+// The PIN check runs on every screen focus, not just on mount, so returning
+// to this tab after the session timeout re-locks it.
 
 import React, {
   useState, useEffect, useMemo,
@@ -17,10 +21,14 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useAuth } from '../context/AuthContext';
 import { loadReports } from '../utils/ReportUtils';
+import { isPinCreated, startSession, isSessionExpired } from '../utils/reportPin';
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
+import PinModal from '../components/PinModal';
 import DetailModal from '../components/DetailModal';
 import { ReportStyles as styles } from '../styles/ReportStyles';
 import { COLORS } from '../assets/theme';
@@ -28,15 +36,12 @@ import { COLORS } from '../assets/theme';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
-// The backend reports a binary result -- anemic or healthy -- not a
-// specific disease type, so these are the only two real filters plus "All".
 const FILTERS = [
   { label: 'All', key: null },
   { label: 'Anemic', key: 'anemic' },
   { label: 'Healthy', key: 'healthy' },
 ];
 
-// ─── DATE HELPERS ──────────────────────────────────────────────
 const getRelativeTime = (iso) => {
   if (!iso) return '';
   const date = new Date(iso);
@@ -54,7 +59,6 @@ const getRelativeTime = (iso) => {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-// ─── REPORT CARD ─────────────────────────────────────────────────
 const ReportCard = React.memo(({ report, onPress }) => {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -89,14 +93,31 @@ const ReportCard = React.memo(({ report, onPress }) => {
   );
 });
 
-// ─── MAIN SCREEN ────────────────────────────────────────────────
 const ReportScreen = ({ navigation, route }) => {
+  const { user } = useAuth();
+
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [pinModalMode, setPinModalMode] = useState(null); // 'create' | 'enter' | null
+
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      (async () => {
+        if (!pinUnlocked || isSessionExpired()) {
+          const created = await isPinCreated(user.id);
+          setPinModalMode(created ? 'enter' : 'create');
+          setPinUnlocked(false);
+        }
+      })();
+    }, [pinUnlocked, user?.id])
+  );
 
   useEffect(() => {
     (async () => {
@@ -106,7 +127,6 @@ const ReportScreen = ({ navigation, route }) => {
     })();
   }, []);
 
-  // Jump straight to a freshly-saved report when navigated here with newScanId
   useEffect(() => {
     const newScanId = route?.params?.newScanId;
     if (newScanId && reports.length > 0) {
@@ -128,7 +148,6 @@ const ReportScreen = ({ navigation, route }) => {
     setTimeout(() => setSelectedReport(null), 200);
   }, []);
 
-  // ─── FILTERED DATA -- search matches patient name (or ID) ────────
   const visibleReports = useMemo(() => {
     const term = query.trim().toLowerCase();
 
@@ -156,6 +175,20 @@ const ReportScreen = ({ navigation, route }) => {
     offset: 90 * index,
     index,
   }), []);
+
+  if (pinModalMode) {
+    return (
+      <PinModal
+        mode={pinModalMode}
+        userId={user.id}
+        onSuccess={() => {
+          setPinUnlocked(true);
+          setPinModalMode(null);
+          startSession();
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -192,7 +225,6 @@ const ReportScreen = ({ navigation, route }) => {
                 <Text style={styles.headerCount}>{reports?.length ?? 0} total</Text>
               </View>
 
-              {/* SEARCH -- by patient name or ID */}
               <View style={styles.searchContainer}>
                 <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
                 <TextInput
@@ -204,7 +236,6 @@ const ReportScreen = ({ navigation, route }) => {
                 />
               </View>
 
-              {/* FILTERS -- single strip, no boxed wrapper */}
               <View style={styles.filterWrapper}>
                 <ScrollView
                   horizontal
