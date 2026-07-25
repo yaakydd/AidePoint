@@ -1,4 +1,3 @@
-// utils/ReportUtils.js
 // Single source of truth for all condition data and report persistence.
 // Every screen that needs condition labels, colours, or storage reads from here.
 
@@ -40,7 +39,7 @@ export const CONDITION_CONFIG = {
   },
 };
 
-// ─── buildReport ─────────────────────────────────────────────────────────────
+// buildReport
 // Shapes raw scan data into the structured report object used everywhere.
 export const buildReport = ({
   patientName, patientId, condition, confidence,
@@ -57,7 +56,7 @@ export const buildReport = ({
   const cfg = CONDITION_CONFIG[condition] ?? CONDITION_CONFIG.healthy;
 
   return {
-    // ── Identity
+    //  Identity
     id:           patientId,
     createdAt:    now.toISOString(),   // ISO string -- used for sorting and date display
     dateDisplay:  now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -67,7 +66,7 @@ export const buildReport = ({
     patientName, patientId,
     temperature, bloodPressure,
 
-    // ── AI result -- fixed config text (label/urgency/generic morphology
+    // AI result : fixed config text (label/urgency/generic morphology
     // description) plus the real per-scan findings from this specific scan
     condition,
     conditionLabel: cfg.label,
@@ -81,11 +80,11 @@ export const buildReport = ({
     unreliableReasons:  unreliableReasons ?? [],
     imageQuality:       imageQuality ?? null,
 
-    // ── Personnel
+    //  Personnel
     labTechName, imageUri,
     doctorId, doctorName,
 
-    // ── Verification -- updated when each party signs off
+    //  Verification : updated when each party signs off
     labTechVerified: false,
     doctorVerified:  false,
     doctorNotes:     '',
@@ -93,7 +92,7 @@ export const buildReport = ({
   };
 };
 
-// ─── saveReport ──────────────────────────────────────────────────────────────
+//  saveReport 
 export const saveReport = async (report) => {
   try {
     const raw      = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
@@ -107,7 +106,7 @@ export const saveReport = async (report) => {
   }
 };
 
-// ─── loadReports ─────────────────────────────────────────────────────────────
+//  loadReports 
 // Used by ReportScreen on mount instead of duplicating AsyncStorage logic.
 export const loadReports = async () => {
   try {
