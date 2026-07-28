@@ -19,6 +19,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
+import { MaterialIcons } from '@expo/vector-icons';
+import ForgotPassword from '../auth/ForgotPassword';
 
 // must match whatever key reportPin.js uses
 const PIN_KEY = 'aidepoint_report_pin';
@@ -35,7 +37,7 @@ const TIER_COLORS = { basic: '#64748B', max: '#0EA5E9', pro: '#7C3AED' };
 function getInitials(name = '') {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0]).toUpperCase();
   }
   return (parts[0]?.[0] ?? '?').toUpperCase();
 }
