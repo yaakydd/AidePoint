@@ -10,6 +10,7 @@ import MainAppNavigator from "./MainAppNavigator";
 
 import SubscriptionScreen from "../screens/SubscriptionScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import ForgotPassword from "../auth/ForgotPassword";
 // import HelpCenterScreen from "../screens/HelpCenterScreen";
 // import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
 // import LanguageScreen from "../screens/LanguageScreen";
@@ -61,6 +62,14 @@ const RootNavigator = () => {
                     <Stack.Screen
                         name="Notifications"
                         component={NotificationsScreen}
+                    />
+                    <Stack.Screen
+                        name="Subscription"
+                        component={SubscriptionScreen}
+                    />
+                    <Stack.Screen
+                        name="ForgotPassword"
+                        component={ForgotPassword}
                     />
                     {/*<Stack.Screen
                         name="HelpCenter"
