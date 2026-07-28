@@ -1,0 +1,39 @@
+{
+  "binary": {
+    "optimal_threshold": 0.51,
+    "auc_roc": 0.9737121527777778,
+    "auc_pr": 0.9693543541317974,
+    "accuracy": 0.9041666666666667,
+    "f1_score": 0.9098746081504702,
+    "precision": 0.8587278106508875,
+    "recall": 0.9675,
+    "specificity": 0.8408333333333333,
+    "negative_predictive_value": 0.9627862595419847,
+    "confusion_matrix": {
+      "true_positives": 1161,
+      "false_positives": 191,
+      "true_negatives": 1009,
+      "false_negatives": 39
+    }
+  },
+  "cbc_mae_per_field": {
+    "RBC": 0.9413744807243347,
+    "HAEMOGLOBIN": 2.966386318206787,
+    "HAEMATOCRIT": 7.470994472503662,
+    "MCV": 9.874780654907227,
+    "MCH": 4.2386884689331055,
+    "MCHC": 2.488996744155884
+  },
+  "morphology_f1_per_flag": {
+    "dimorphic_picture": 0.044444444444444446,
+    "anisocytosis": 0.6693386773547094,
+    "hypochromia": 0.8767022451232978,
+    "microcytosis": 0.8718944099378882,
+    "macrocytosis": 0.0,
+    "poikilocytosis": 0.24836601307189543,
+    "target_cells": 0.5100671140939598,
+    "elliptocytosis": 0.830220713073005,
+    "normal_morphology": 0.9142857142857143
+  },
+  "validation_sample_count": 2400
+}
