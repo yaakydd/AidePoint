@@ -3,11 +3,10 @@ Redesigns CBC output from pseudo-lab-values into uncertainty-labeled
 pattern estimates.
 
 Why this exists: eval_report.json shows MAE for several CBC fields
-larger than the clinical reference range width (e.g. Hemoglobin MAE
-4.50 g/dL against a ~12-16 g/dL normal range, MCV MAE 27.45 against an
-~80-100 fL range). Presenting these as "Hemoglobin = 12.5 g/dL" implies
-lab-grade precision the model does not have, which is a genuine patient
-safety issue, not just a display choice.
+that can be large relative to the clinical reference range width.
+Presenting these as "Hemoglobin = 12.5 g/dL" implies lab-grade precision
+the model does not have, which is a genuine patient safety issue, not
+just a display choice.
 
 This module does not discard the regression outputs -- it re-expresses
 them as directional patterns with an explicit reliability tier, and
@@ -21,15 +20,23 @@ from dataclasses import dataclass
 # Do not use this dict for anything clinical -- it exists purely to compute
 # whether a field's measured MAE is small enough, relative to the range,
 # to be worth showing a directional estimate for.
+#
+# FIXED: trimmed from the original 8 fields to the 6 the model actually
+# outputs (WBC/platelets removed -- no visual grounding in a red-cell-only
+# photo, same reasoning as model.py's CBC_KEYS). Key casing also corrected
+# to match model.py's CBC_KEYS exactly (uppercase field names like
+# "HAEMOGLOBIN", not "hemoglobin") -- the previous lowercase keys here
+# meant every field passed in from a real prediction silently failed the
+# `field_name not in CBC_REFERENCE_RANGES` check in build_cbc_pattern_summary
+# below, so the CBC pattern summary came back empty on every real request,
+# with no error raised anywhere.
 CBC_REFERENCE_RANGES = {
-    "wbc": (4.0, 11.0),           # x10^9/L
-    "rbc": (4.2, 5.9),            # x10^12/L
-    "hemoglobin": (12.0, 16.0),   # g/dL
-    "hematocrit": (36.0, 46.0),   # %
-    "mcv": (80.0, 100.0),         # fL
-    "mch": (27.0, 33.0),          # pg
-    "mchc": (32.0, 36.0),         # g/dL
-    "platelets": (150.0, 400.0),  # x10^9/L
+    "RBC": (4.2, 5.9),            # x10^12/L
+    "HAEMOGLOBIN": (12.0, 16.0),  # g/dL
+    "HAEMATOCRIT": (36.0, 46.0),  # %
+    "MCV": (80.0, 100.0),         # fL
+    "MCH": (27.0, 33.0),          # pg
+    "MCHC": (32.0, 36.0),         # g/dL
 }
 
 # If a field's MAE exceeds this fraction of its reference range width,
@@ -70,10 +77,11 @@ def build_cbc_pattern_summary(
     eval_report_mae: dict[str, float],
 ) -> dict[str, CbcFieldPattern]:
     """
-    raw_predicted_values: the model's regression output per field, e.g.
-        {"hemoglobin": 10.8, "mcv": 92.0, ...}
-    eval_report_mae: measured MAE per field from eval_report.json, e.g.
-        {"hemoglobin": 4.50, "mcv": 27.45, ...}
+    raw_predicted_values: the model's regression output per field, keyed
+        exactly as model.py's CBC_KEYS (e.g. "HAEMOGLOBIN", not
+        "hemoglobin") -- e.g. {"HAEMOGLOBIN": 10.8, "MCV": 92.0, ...}
+    eval_report_mae: measured MAE per field from eval_report.json's
+        "cbc_mae_per_field" key, using the same casing.
 
     Returns a pattern summary per field. Fields classified 'not_estimable'
     should not be rendered with a direction at all in the UI -- only the
@@ -103,7 +111,7 @@ def build_cbc_pattern_summary(
                 direction="not_estimable",
                 confidence="not_estimable",
                 display_text=(
-                    f"{field_name.upper()} pattern could not be reliably estimated "
+                    f"{field_name} pattern could not be reliably estimated "
                     f"from image analysis -- confirm with laboratory CBC testing"
                 ),
             )
@@ -130,7 +138,7 @@ def build_cbc_pattern_summary(
             direction=direction,
             confidence=reliability,
             display_text=(
-                f"Image-based {field_name.upper()} pattern {direction_phrase} "
+                f"Image-based {field_name} pattern {direction_phrase} "
                 f"({confidence_phrase}, not a laboratory measurement)"
             ),
         )

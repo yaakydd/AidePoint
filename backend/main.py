@@ -9,6 +9,9 @@ import hmac
 import hashlib
 import logging
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import httpx
 import numpy as np
@@ -32,8 +35,8 @@ logging.basicConfig(
 log = logging.getLogger("aidepoint")
 
 #  Config from environment variables 
-ONNX_MODEL_PATH    = os.getenv("ONNX_MODEL_PATH", "aidepoint_stable.onnx")
-SUPABASE_URL       = os.getenv("SUPABASE_URL", "")        # your project URL
+ONNX_MODEL_PATH    = os.getenv("ONNX_MODEL_PATH", "AidePoint.onnx")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")# your project URL
 SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "")   # public anon key
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")  # service role — payments write
 MAX_IMAGE_BYTES    = 10 * 1024 * 1024   # 10 MB hard limit

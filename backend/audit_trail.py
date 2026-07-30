@@ -169,4 +169,4 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
             "returning a result to the client."
         )
 
-    return response.data[0]["prediction_id"]
+    return response.data[0]["prediction_id"]  # type: ignore

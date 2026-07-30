@@ -15,7 +15,7 @@ if not ACCESS_TOKEN:
         "Run: export AIDEPOINT_TEST_TOKEN='your_token_here'"
     )
 
-IMAGE_PATH = "/home/yaa_baby/Downloads/anec.png"
+IMAGE_PATH = "/home/yaa_baby/Downloads/Testing_Images/Sickle.jpg"
 
 with open(IMAGE_PATH, "rb") as image_file:
     response = requests.post(
@@ -23,9 +23,9 @@ with open(IMAGE_PATH, "rb") as image_file:
         headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
         files={
             "file": (
-                "anec.png",
+                "Sickle.jpg",
                 image_file,
-                "image/png",
+                "image/jpg",
             )
         },
     )

@@ -18,25 +18,32 @@ from typing import Any
 MORPHOLOGY_REPORTING_THRESHOLD = 0.5
 
 # Maps internal morphology flag names to the clinical phrasing used in
-# the explanation. Keep this in sync with whatever keys model.py emits.
+# the explanation. Keep this in sync with model.py's MORPHOLOGY_KEYS --
+# elliptocytosis added after a systematic scan of training reports found
+# it in 433 of 1,000 patients with zero prior vocabulary catching it.
+# teardrop_cells and burr_cells removed -- these were never real training
+# flags (model.py's MORPHOLOGY_KEYS never included them), so they could
+# never actually appear in morphology_probabilities; leaving them here
+# was dead entries, not a functional bug, but worth cleaning up so this
+# dict accurately reflects what the model can actually report.
 MORPHOLOGY_DISPLAY_NAMES = {
+    "dimorphic_picture": "Dimorphic red cell population detected",
+    "anisocytosis": "Increased red cell size variation detected",
     "hypochromia": "Hypochromic appearance detected",
     "microcytosis": "Microcytic pattern detected",
     "macrocytosis": "Macrocytic pattern detected",
-    "anisocytosis": "Increased red cell size variation",
-    "poikilocytosis": "Abnormal cell shape variation",
+    "poikilocytosis": "Abnormal cell shape variation detected",
     "target_cells": "Target cell morphology detected",
-    "teardrop_cells": "Teardrop cell morphology detected",
-    "burr_cells": "Burr cell morphology detected",
+    "elliptocytosis": "Elliptocyte morphology detected",
 }
 
 
 def classify_confidence(anemia_probability: float, decision_threshold: float) -> str:
     """
     Confidence is a function of distance from the decision threshold, not
-    just distance from 0.5 -- a probability of 0.40 is close to your 0.34
-    threshold and should read as lower confidence than the same number
-    would under a default 0.5 threshold.
+    just distance from 0.5 -- a probability close to the actual decision
+    threshold should read as lower confidence than the same distance from
+    a default 0.5 would suggest.
     """
     distance_from_threshold = abs(anemia_probability - decision_threshold)
 
@@ -92,6 +99,7 @@ def build_explanation(
         MORPHOLOGY_DISPLAY_NAMES.get(flag_name, flag_name.replace("_", " ").capitalize())
         for flag_name, probability in morphology_probabilities.items()
         if probability >= MORPHOLOGY_REPORTING_THRESHOLD
+        and flag_name != "normal_morphology"
     ]
 
     cell_summary = summarize_cell_overlay(cell_overlay)
