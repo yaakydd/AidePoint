@@ -12,7 +12,7 @@ prediction, since it's a documented failure case rather than a guess.
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from supabase import Client
 
@@ -33,19 +33,38 @@ class ReviewResponse(BaseModel):
     reviewed_at: datetime
 
 
-def get_supabase_client() -> Client:
-    """Placeholder -- wire this to whatever dependency already provides
-    your Supabase client elsewhere in main.py."""
-    raise NotImplementedError("Wire this to your existing Supabase client dependency")
+def get_supabase_client(request: Request) -> Client:
+    """
+    Wired to the same service-role Supabase client main.py builds once at
+    startup (see _supabase_client in the lifespan handler), rather than
+    creating a second client here -- reviews and predictions belong in
+    the same audit trail and should go through one connection, not two
+    independently configured ones that could drift apart.
+    """
+    supabase_client = request.app.state.supabase_client
+    if supabase_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase is not configured on this server.",
+        )
+    return supabase_client
 
 
-def get_current_technician_id() -> str:
-    """Placeholder -- wire this to your existing Supabase auth dependency."""
-    raise NotImplementedError("Wire this to your existing auth dependency")
+async def get_current_technician_id(request: Request) -> str:
+    """
+    Wired to the same Supabase JWT check main.py's /predict endpoint
+    uses, so a review submission requires the same login a prediction
+    does -- there is no separate reviewer role yet, any authenticated
+    technician can review any pending prediction.
+    """
+    from main import verify_supabase_token  # deferred to avoid a circular import at module load
+
+    user = await verify_supabase_token(request)
+    return user["id"]
 
 
 @router.post("/{prediction_id}/review", response_model=ReviewResponse)
-def submit_review(
+async def submit_review(
     prediction_id: str,
     submission: ReviewSubmission,
     supabase_client: Client = Depends(get_supabase_client),
