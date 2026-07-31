@@ -7,6 +7,7 @@ import os
 import time
 import hmac
 import hashlib
+import json
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -16,16 +17,21 @@ load_dotenv()
 import httpx
 import numpy as np
 from fastapi import (
-    FastAPI, File, UploadFile, HTTPException,
+    FastAPI, File, Form, UploadFile, HTTPException,
     Depends, Request, status,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from supabase import create_client, Client
 from image_quality import assess_image_quality, should_block_inference
 from shape_screening import run_shape_screening
 from preprocess import preprocess_image
 from model import AidePointONNX
+from cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
+from morphology_explanations import build_explanation, classify_confidence
+from audit_trail import build_prediction_record, persist_prediction_record
+from human_review import router as human_review_router
 
 # Logging 
 logging.basicConfig(
@@ -36,6 +42,7 @@ log = logging.getLogger("aidepoint")
 
 #  Config from environment variables 
 ONNX_MODEL_PATH    = os.getenv("ONNX_MODEL_PATH", "AidePoint.onnx")
+MODEL_VERSION       = os.getenv("MODEL_VERSION", "unversioned")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")# your project URL
 SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "")   # public anon key
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")  # service role — payments write
@@ -44,6 +51,11 @@ ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/jpg"}
 
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_BASE_URL   = "https://api.paystack.co"
+
+EVAL_REPORT_PATH = os.getenv(
+    "EVAL_REPORT_PATH",
+    os.path.join(os.path.dirname(__file__), "eval_report.json"),
+)
 
 # Prices live here, not in the client. The app sends a plan_id; the server
 # decides what that plan actually costs. Trusting a client-sent amount
@@ -59,14 +71,56 @@ PLAN_PRICES_GHS = {
 # Loaded once at startup, reused for every request. Thread-safe.
 _model: AidePointONNX | None = None
 
+# CBC per-field mean absolute error, loaded once at startup from the same
+# eval_report.json model.py reads. model.py only exposes the *derived*
+# confidence labels (CBC_CONFIDENCE_LABELS), not this raw MAE dict, and
+# build_cbc_pattern_summary needs the raw numbers to compute its own
+# per-field reliability tier -- so this is read independently here rather
+# than importing a private value out of model.py.
+_cbc_mean_absolute_errors: dict[str, float] = {}
+
+# Supabase client for writes that need to bypass row-level security
+# (prediction record inserts, subscription tier updates). Auth
+# verification still goes through the raw httpx call against
+# /auth/v1/user below -- that only needs the user's own token, not a
+# service-role client, so it's left as-is rather than routed through this
+# client for no reason.
+_supabase_client: Client | None = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load model at startup, release at shutdown."""
-    global _model
+    """Load model, eval report stats, and Supabase client at startup."""
+    global _model, _cbc_mean_absolute_errors, _supabase_client
+
     log.info("Loading ONNX model ...")
     _model = AidePointONNX(ONNX_MODEL_PATH)
     log.info("Model ready")
+
+    if os.path.exists(EVAL_REPORT_PATH):
+        with open(EVAL_REPORT_PATH) as eval_report_file:
+            eval_report = json.load(eval_report_file)
+        _cbc_mean_absolute_errors = eval_report.get("cbc_mae_per_field", {})
+    else:
+        log.warning(
+            "%s not found -- CBC pattern summaries will mark every field "
+            "as not_estimable until this file is present.", EVAL_REPORT_PATH,
+        )
+
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    else:
+        log.error(
+            "SUPABASE_URL or SUPABASE_SERVICE_KEY not set -- prediction "
+            "records will fail to persist."
+        )
+
+    # human_review.py's get_supabase_client dependency reads this off
+    # app.state rather than importing _supabase_client directly, since
+    # that module needs a client that reflects whatever got created here
+    # at startup, including the "not configured" None case.
+    app.state.supabase_client = _supabase_client
+
     yield
     log.info("Shutting down.")
 
@@ -80,10 +134,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten to your domain in production
+    # Defaults to "*" only because no production domain has been set yet
+    # -- once the app has a real deployed frontend URL, set
+    # ALLOWED_ORIGINS as a comma-separated env var (e.g.
+    # "https://aidepoint.app,https://staging.aidepoint.app") rather than
+    # leaving this open to any origin on a service handling patient data.
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.include_router(human_review_router)
 
 
 # Auth: verify Supabase JWT 
@@ -154,6 +215,46 @@ async def _update_subscription_tier(user_id: str, plan_id: str) -> None:
                    user_id, resp.status_code, resp.text)
 
 
+def _extract_image_quality_fields(quality_result) -> tuple[str, dict]:
+    """
+    Pulls the fields audit_trail.py's build_prediction_record needs out
+    of assess_image_quality's ImageQualityResult. That dataclass is flat
+    (quality_score alongside blur/brightness/contrast/etc, not nested
+    under its own "breakdown" key), so the breakdown stored in the audit
+    record is everything except quality_score itself -- the individual
+    measurements that explain how that score was reached.
+    """
+    quality_score = quality_result.quality_score
+    breakdown = {
+        "blur_score": quality_result.blur_score,
+        "brightness_score": quality_result.brightness_score,
+        "contrast_score": quality_result.contrast_score,
+        "cells_detected": quality_result.cells_detected,
+        "staining_quality": quality_result.staining_quality,
+        "failure_reasons": quality_result.failure_reasons,
+    }
+    return quality_score, breakdown
+
+
+def _build_morphology_findings(morphology_probs: dict[str, float]) -> dict[str, dict]:
+    """
+    Full per-flag record for storage -- all 9 flags with their raw
+    probability and whether they cleared the reporting threshold used in
+    morphology_explanations.py, not just the subset surfaced in
+    observed_indicators. The stored audit record should retain what the
+    model actually output, independent of what a report chooses to
+    display.
+    """
+    reporting_threshold = 0.5
+    return {
+        flag_name: {
+            "probability": probability,
+            "flagged": probability >= reporting_threshold,
+        }
+        for flag_name, probability in morphology_probs.items()
+    }
+
+
 #  Routes 
 
 @app.get("/health")
@@ -167,6 +268,7 @@ async def health():
 @app.post("/predict")
 async def predict(
     file: UploadFile = File(...),
+    patient_sample_id: str = Form(...),
     user: dict = Depends(verify_supabase_token),
 ):
     """
@@ -181,11 +283,19 @@ async def predict(
     Non-functional:
       - Inference time logged for monitoring
       - All errors return structured JSON, never raw Python tracebacks
+      - Every completed prediction is persisted to prediction_records for
+        audit purposes, independent of the response returned to the app
     """
     if _model is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded yet. Try again in a few seconds.",
+        )
+
+    if not patient_sample_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="patient_sample_id is required and cannot be blank.",
         )
 
     # Validate file type 
@@ -259,6 +369,29 @@ async def predict(
         )
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
 
+    # Uncertainty-relabeled CBC pattern summary, replacing raw regression
+    # values with directional estimates + confidence tiers -- see
+    # cbc_uncertainty.py for why presenting the raw numbers alone is a
+    # patient safety issue, not just a display preference.
+    cbc_pattern_summary = serialize_pattern_summary(
+        build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
+    )
+
+    # Human-readable explanation of which morphology indicators and
+    # cell-level findings support this prediction.
+    explanation = build_explanation(
+        anemia_probability=result["anemia_probability"],
+        decision_threshold=result["decision_threshold"],
+        morphology_probabilities=result["morphology_probs"],
+        cell_overlay=result["cell_overlay"].get("cells", []),
+    )
+    prediction_confidence = explanation["confidence"]
+
+    # Same shape used for the audit trail record below -- built once here
+    # and reused, rather than computed twice, so the API response and the
+    # persisted record can never silently drift apart from each other.
+    morphology_findings = _build_morphology_findings(result["morphology_probs"])
+
     # Logs whether the reliability gate flagged this request, so
     # unreliable-result rates are visible in Railway logs rather than only
     # showing up as a silent field in the JSON response.
@@ -268,8 +401,61 @@ async def predict(
         result["is_unreliable"], elapsed_ms,
     )
 
+    # Persist the audit trail record. This happens after inference
+    # succeeds but before the response is returned -- a prediction that
+    # was shown to a technician and not logged is worse than one that
+    # failed outright, since it leaves no trace to investigate later.
+    prediction_id = None
+    if _supabase_client is not None:
+        try:
+            quality_score, quality_breakdown = _extract_image_quality_fields(quality_result)
+            record = build_prediction_record(
+                patient_sample_id=patient_sample_id,
+                technician_id=user["id"],
+                original_image_bytes=image_bytes,
+                analyzed_image_bytes=preprocessed["raw_resized_image"].tobytes(),
+                was_cropped=preprocessed["was_cropped"],
+                model_name="AidePointONNX",
+                model_version=MODEL_VERSION,
+                decision_threshold=result["decision_threshold"],
+                image_quality_result={
+                    "quality_score": quality_score,
+                    "breakdown": quality_breakdown,
+                },
+                prediction_result={
+                    "anemia_probability": result["anemia_probability"],
+                    "is_anemic": result["is_anemic"],
+                    "prediction_confidence": prediction_confidence,
+                    "is_unreliable": result["is_unreliable"],
+                    "unreliable_reasons": result["unreliable_reasons"],
+                    "morphology_findings": morphology_findings,
+                    "cbc_pattern_summary": cbc_pattern_summary,
+                },
+                explanation=explanation,
+            )
+            prediction_id = persist_prediction_record(_supabase_client, record)
+        except Exception as exc:
+            # A failed audit write should not block the technician from
+            # seeing a result they're waiting on in a clinical setting --
+            # but it must be loud in the logs, since this is the one
+            # failure mode that leaves no other trace.
+            log.error(
+                "Failed to persist prediction record for user=%s sample=%s: %s",
+                user.get("id"), patient_sample_id, exc,
+            )
+    else:
+        log.error(
+            "Supabase client not configured -- prediction for user=%s "
+            "sample=%s was not persisted.", user.get("id"), patient_sample_id,
+        )
+
     return JSONResponse(content={
         **result,
+        "cbc_pattern_summary": cbc_pattern_summary,
+        "morphology_findings": morphology_findings,
+        "explanation": explanation,
+        "prediction_confidence": prediction_confidence,
+        "prediction_id": prediction_id,
         "inference_ms": elapsed_ms,
         "was_cropped": preprocessed["was_cropped"],
         "original_preview_base64": preprocessed["original_preview_base64"],

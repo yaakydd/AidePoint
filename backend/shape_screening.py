@@ -30,6 +30,20 @@ CIRCULARITY_FLOOR = 0.55
 FLAGGED_FRACTION_THRESHOLD = 0.25
 MINIMUM_CONTOUR_AREA = 40  # square pixels at 260x260 -- filters out noise/debris specks
 
+# FIXED: raised from 5 to 15, matching MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS
+# in image_quality.py. Confirmed on a real test image: with only 7 cells
+# detected on a low-contrast, under-stained smear, every detected
+# "cell" measured circularity 0.22-0.43 -- far below what a single real
+# RBC produces. These were not 7 real cells with unusual shape; they were
+# clumps of several overlapping cells that watershed failed to separate,
+# because low contrast weakens the distance-transform peaks the split
+# depends on. image_quality.py already independently flags this same
+# image as needing at least 15 cells for reliable analysis -- below that
+# count, detect_cell_contours' own segmentation is the unreliable part,
+# not the cells it's measuring, so reporting a confident shape verdict
+# from it is misleading rather than merely cautious.
+MINIMUM_CELLS_FOR_SHAPE_VERDICT = 15
+
 
 def detect_cell_contours(image_bgr):
     """
@@ -138,6 +152,16 @@ def run_shape_screening(image_bgr):
     shown with confidence. This is the fix for the sickle-cell-called-
     healthy case, and stays conservative (fails toward "needs review")
     when too few cells can be separated to judge at all.
+
+    FIXED: the "too few cells" bar is now MINIMUM_CELLS_FOR_SHAPE_VERDICT
+    (15), not 5. Below 15, detect_cell_contours' watershed segmentation
+    itself becomes unreliable on real low-contrast smears -- it returns
+    a handful of merged multi-cell blobs rather than individual cells,
+    and those blobs measure as low-circularity/high-eccentricity purely
+    because they're clumps, not because the underlying cells are
+    abnormally shaped. Below this bar, the function reports that shape
+    could not be assessed, rather than asserting a specific -- and
+    likely wrong -- shape verdict built on broken segmentation.
     """
     contours = detect_cell_contours(image_bgr)
     cell_measurements = [
@@ -145,13 +169,18 @@ def run_shape_screening(image_bgr):
         if measurement is not None
     ]
 
-    if len(cell_measurements) < 5:
+    if len(cell_measurements) < MINIMUM_CELLS_FOR_SHAPE_VERDICT:
         return {
             "needs_review": True,
             "flagged_fraction": None,
             "mean_eccentricity": None,
             "cells_detected": len(cell_measurements),
-            "reason": "too few distinct cells detected to assess shape",
+            "reason": (
+                f"only {len(cell_measurements)} cells could be separated for "
+                f"shape assessment (need at least {MINIMUM_CELLS_FOR_SHAPE_VERDICT}) "
+                f"-- likely due to low contrast or overlapping cells preventing "
+                f"reliable segmentation, not a specific shape finding"
+            ),
         }
 
     flagged_cells = [
