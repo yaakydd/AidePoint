@@ -89,7 +89,13 @@ def detect_cell_contours(image_bgr):
         ndimage.maximum_filter(distance_map, size=neighborhood_size) == distance_map
     ) & (distance_map > 3)
 
-    cell_markers, _ = ndimage.label(is_local_peak)
+    # ndimage.label always returns a 2-tuple (labeled_array, num_features)
+    # at runtime -- confirmed by scipy's own docs and by this code running
+    # correctly against real test images. The type: ignore here is for a
+    # known scipy-stubs overload-resolution gap (Pylance picks an overload
+    # that returns a bare int and then flags this unpacking as invalid),
+    # not a real bug in this line.
+    cell_markers, _ = ndimage.label(is_local_peak)  # type: ignore[misc]
     # cv2.watershed's convention: 0 = unknown (to be filled in), 1 =
     # background, 2 and above = distinct foreground regions to grow.
     cell_markers = cell_markers + 1
@@ -108,7 +114,14 @@ def detect_cell_contours(image_bgr):
     for region_label in np.unique(cell_markers):
         if region_label <= 1:  # 1 = background, -1 = watershed boundary lines
             continue
-        single_region_mask = np.uint8(cell_markers == region_label) * 255
+        # np.uint8(...) * 255 produces a numpy scalar-typed array that
+        # cv2's type stubs don't recognize as Mat-compatible, even though
+        # OpenCV accepts it fine at runtime -- np.ascontiguousarray with
+        # an explicit dtype gives the stub checker a concrete ndarray
+        # type it can actually match against findContours' overloads.
+        single_region_mask = np.ascontiguousarray(
+            (cell_markers == region_label).astype(np.uint8) * 255
+        )
         region_contours, _ = cv2.findContours(
             single_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )

@@ -119,10 +119,37 @@ async def submit_review(
     ).eq("prediction_id", prediction_id).execute()
 
     saved_review = review_insert.data[0]
+    # supabase-py types .data broadly (bool | int | float | dict | list |
+    # None) since the client is generic over arbitrary Postgrest
+    # responses -- this isinstance check is what actually narrows it to a
+    # dict for both the type checker and real malformed-response safety,
+    # rather than assuming the shape and indexing into it blind.
+    if not isinstance(saved_review, dict):
+        raise HTTPException(
+            status_code=500,
+            detail="Unexpected response shape from Supabase while saving review",
+        )
+
+    # Even narrowed to a dict, supabase-py types each value as the broad
+    # JSON union (str | int | float | bool | dict | list | None), since
+    # it has no way to know this particular table's real column types.
+    # ReviewResponse declares review_id as str and reviewed_at as
+    # datetime, so both need an explicit, concrete conversion here --
+    # str() for the UUID, and parsing the ISO timestamp Postgres actually
+    # returns into a real datetime, rather than passing the raw JSON
+    # value through and hoping pydantic's runtime coercion covers it.
+    review_id_value = saved_review["review_id"]
+    reviewed_at_value = saved_review["reviewed_at"]
+    if not isinstance(review_id_value, str) or not isinstance(reviewed_at_value, str):
+        raise HTTPException(
+            status_code=500,
+            detail="Unexpected field types in Supabase response while saving review",
+        )
+
     return ReviewResponse(
-        review_id=saved_review["review_id"],
+        review_id=review_id_value,
         prediction_id=prediction_id,
-        reviewed_at=saved_review["reviewed_at"], # type ignore
+        reviewed_at=datetime.fromisoformat(reviewed_at_value),
     )
 
 
