@@ -67,6 +67,33 @@ EVAL_REPORT_PATH = os.getenv(
     os.path.join(os.path.dirname(__file__), "eval_report.json"),
 )
 
+# Below this F1 score, a morphology flag's own held-out validation
+# performance is too close to guessing to report as a specific finding.
+# macrocytosis (F1 0.0) and dimorphic_picture (F1 0.044) in the real
+# eval_report.json both fall well under this -- the model was never able
+# to learn these two flags reliably, most likely from too few positive
+# training examples, the same root cause already documented for the CBC
+# fields RDW_CV/WBC/platelets. Flags below this bar are suppressed from
+# morphology_findings/observed_indicators regardless of their raw
+# probability on a given image, the same way cbc_uncertainty.py
+# suppresses CBC fields whose MAE is too large relative to their range --
+# a confident-looking probability is not the same as a flag the model
+# has actually demonstrated it can detect.
+MORPHOLOGY_F1_SUPPRESSION_THRESHOLD = 0.30
+
+
+def _load_eval_report():
+    if not os.path.exists(EVAL_REPORT_PATH):
+        print(f"[AidePoint] WARNING: {EVAL_REPORT_PATH} not found -- "
+              f"per-field CBC confidence, morphology reliability, and the "
+              f"validated decision threshold will fall back to defaults.")
+        return {}
+    with open(EVAL_REPORT_PATH) as eval_report_file:
+        return json.load(eval_report_file)
+
+
+_EVAL_REPORT = _load_eval_report()
+
 
 def build_cbc_confidence_labels():
     """
@@ -79,17 +106,9 @@ def build_cbc_confidence_labels():
     Falls back to "unknown" for every field if eval_report.json isn't
     present, rather than failing startup over a non-critical feature.
     """
-    if not os.path.exists(EVAL_REPORT_PATH):
-        print(f"[AidePoint] WARNING: {EVAL_REPORT_PATH} not found -- "
-              f"per-field CBC confidence will be omitted from responses.")
+    cbc_mean_absolute_errors = _EVAL_REPORT.get("cbc_mae_per_field", {})
+    if not cbc_mean_absolute_errors:
         return {key: "unknown" for key in CBC_KEYS}
-
-    with open(EVAL_REPORT_PATH) as eval_report_file:
-        eval_report = json.load(eval_report_file)
-    # FIXED: Cell 6 now saves this under "cbc_mae_per_field", not "cbc_mae" --
-    # the old key name here meant this always silently fell through to
-    # "unknown" for every field, even when a real eval_report.json existed.
-    cbc_mean_absolute_errors = eval_report.get("cbc_mae_per_field", {})
 
     confidence_labels = {}
     for key in CBC_KEYS:
@@ -109,14 +128,47 @@ def build_cbc_confidence_labels():
     return confidence_labels
 
 
-CBC_CONFIDENCE_LABELS = build_cbc_confidence_labels()
+def build_morphology_reliability_flags():
+    """
+    Mirrors build_cbc_confidence_labels() for morphology: reads each
+    flag's held-out F1 score from eval_report.json's
+    "morphology_f1_per_flag" and marks any flag below
+    MORPHOLOGY_F1_SUPPRESSION_THRESHOLD as unreliable, so predict() can
+    suppress it from the finding list regardless of what probability the
+    model outputs for it on a given image.
 
-# FIXED: default fallback updated to match the retrained model's real
-# F1-optimal threshold (confirm this exact value against your latest
-# eval_report.json's "optimal_threshold" before deploying -- update the
-# ANEMIA_DECISION_THRESHOLD environment variable in production rather
-# than relying on this fallback).
-ANEMIA_DECISION_THRESHOLD = float(os.getenv("ANEMIA_DECISION_THRESHOLD", "0.50"))
+    Falls back to treating every flag as reliable if eval_report.json is
+    missing -- consistent with build_cbc_confidence_labels()'s "unknown"
+    fallback, this degrades to the old (less safe) behavior rather than
+    failing startup over a non-critical file.
+    """
+    morphology_f1_scores = _EVAL_REPORT.get("morphology_f1_per_flag", {})
+    if not morphology_f1_scores:
+        return {key: True for key in MORPHOLOGY_KEYS}
+
+    return {
+        key: morphology_f1_scores.get(key, 1.0) >= MORPHOLOGY_F1_SUPPRESSION_THRESHOLD
+        for key in MORPHOLOGY_KEYS
+    }
+
+
+CBC_CONFIDENCE_LABELS = build_cbc_confidence_labels()
+MORPHOLOGY_FLAG_IS_RELIABLE = build_morphology_reliability_flags()
+
+# Decision threshold: prefer the F1-optimal value validated in
+# eval_report.json's "binary.optimal_threshold" (0.51 on the real
+# retrained model) over the environment variable/hardcoded fallback --
+# a value that was actually swept and validated against real held-out
+# data should win over a guess, but the environment variable still lets
+# a deployment override it deliberately (e.g. shifting toward higher
+# recall) without editing code.
+_VALIDATED_THRESHOLD = _EVAL_REPORT.get("binary", {}).get("optimal_threshold")
+ANEMIA_DECISION_THRESHOLD = float(
+    os.getenv(
+        "ANEMIA_DECISION_THRESHOLD",
+        str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.50",
+    )
+)
 
 # Fixed scope statement returned on every single response, not just
 # unreliable ones. The point isn't to hedge on individual bad predictions
@@ -168,6 +220,21 @@ def flag_cbc_values(cbc_values):
         else:
             flags[key] = 'NORMAL'
     return flags
+
+
+def filter_unreliable_morphology_flags(morphology_result):
+    """
+    Zeroes out probabilities for flags whose held-out F1 fell below
+    MORPHOLOGY_F1_SUPPRESSION_THRESHOLD, rather than removing the key
+    entirely -- downstream consumers (morphology_explanations.py,
+    audit_trail.py) still expect all 9 keys present, so a suppressed
+    flag is reported as effectively "not detected" instead of vanishing
+    from the response shape.
+    """
+    return {
+        key: (probability if MORPHOLOGY_FLAG_IS_RELIABLE.get(key, True) else 0.0)
+        for key, probability in morphology_result.items()
+    }
 
 
 class AidePointONNX:
@@ -240,6 +307,8 @@ class AidePointONNX:
         print(f"[AidePoint] ONNX model loaded from {model_path} "
               f"(decision threshold: {ANEMIA_DECISION_THRESHOLD}, "
               f"cbc fields: {len(CBC_KEYS)}, morphology flags: {len(MORPHOLOGY_KEYS)}, "
+              f"suppressed morphology flags: "
+              f"{[key for key, reliable in MORPHOLOGY_FLAG_IS_RELIABLE.items() if not reliable]}, "
               f"reliability gate: active, shape screening + cell overlay: active)")
 
     def predict(self, model_input, raw_resized_image):
@@ -267,6 +336,10 @@ class AidePointONNX:
             key: round(float(morphology_probabilities[index]), 4)
             for index, key in enumerate(MORPHOLOGY_KEYS)
         }
+        # Suppresses flags the model has not demonstrated it can actually
+        # detect (see MORPHOLOGY_F1_SUPPRESSION_THRESHOLD above) before
+        # this ever reaches morphology_explanations.py or the audit trail.
+        morphology_result = filter_unreliable_morphology_flags(morphology_result)
 
         is_unreliable, unreliable_reasons = run_reliability_gate(
             image_embedding, raw_resized_image, self.out_of_distribution_stats
@@ -309,6 +382,7 @@ class AidePointONNX:
             "cbc_flags": cbc_flags,
             "cbc_confidence": CBC_CONFIDENCE_LABELS,
             "morphology_probs": morphology_result,
+            "morphology_flag_reliability": MORPHOLOGY_FLAG_IS_RELIABLE,
             "is_unreliable": is_unreliable,
             "unreliable_reasons": unreliable_reasons,
             "shape_screening": shape_screening_result,
