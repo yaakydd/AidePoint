@@ -36,11 +36,19 @@ const CONFIDENCE_LABELS = {
   low:      { text: 'Low confidence',      color: '#B91C1C' },
 };
 
-function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay }) {
+function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop }) {
   const { width: screenWidth } = useWindowDimensions();
   const displaySize = screenWidth - SPACING['2xl'] * 2;
 
   if (!imageBase64) return null;
+
+  // cell_overlay's coordinates are normalized against the cropped image
+  // the model actually analyzed (preprocess.py's auto_crop_microscope_field
+  // output), not the original uncropped photo -- overlaying them on the
+  // original photo would draw every circle in the wrong place, since the
+  // two images can have different framing once cropped. Only draw the
+  // overlay when the image currently on screen is the analyzed crop.
+  const canShowOverlay = showOverlay && cellOverlay && isShowingAnalyzedCrop;
 
   return (
     <View style={{ width: displaySize, height: displaySize }}>
@@ -49,7 +57,7 @@ function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay }) {
         style={{ width: displaySize, height: displaySize, borderRadius: RADIUS.md }}
         resizeMode="cover"
       />
-      {showOverlay && cellOverlay && (
+      {canShowOverlay && (
         <CellOverlay
           cellOverlay={cellOverlay}
           displayWidth={displaySize}
@@ -132,6 +140,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport }) => {
                 imageBase64={displayedImageBase64}
                 cellOverlay={prediction.cell_overlay}
                 showOverlay={showOverlay}
+                isShowingAnalyzedCrop={!showBeforeCrop}
               />
               <View style={styles.imageControls}>
                 {prediction.was_cropped && (
@@ -148,18 +157,44 @@ const  TransparencyTrail = ({ data, onClose, onViewReport }) => {
                 <TouchableOpacity
                   style={styles.toggleChip}
                   onPress={() => setShowOverlay(v => !v)}
+                  disabled={showBeforeCrop}
                 >
-                  <MaterialIcons name={showOverlay ? 'visibility-off' : 'visibility'} size={16} color={COLORS.primary} />
-                  <Text style={styles.toggleChipText}>
+                  <MaterialIcons name={showOverlay ? 'visibility-off' : 'visibility'} size={16} color={showBeforeCrop ? COLORS.textMuted : COLORS.primary} />
+                  <Text style={[styles.toggleChipText, showBeforeCrop && { color: COLORS.textMuted }]}>
                     {showOverlay ? 'Hide cell overlay' : 'Show cell overlay'}
                   </Text>
                 </TouchableOpacity>
               </View>
               {prediction.cell_overlay && (
                 <Text style={styles.overlayCaption}>
-                  {prediction.cell_overlay.cell_count} cells detected,{' '}
-                  {prediction.cell_overlay.flagged_count} flagged for unusual shape
+                  {showBeforeCrop
+                    ? 'Cell overlay is only available on the analyzed crop'
+                    : `${prediction.cell_overlay.cell_count} cells detected, ${prediction.cell_overlay.flagged_count} flagged for unusual shape`}
                 </Text>
+              )}
+
+              {/* Legend for the overlay's color gradient -- only shown
+                  when the overlay is actually visible, since it's
+                  meaningless otherwise. Swatch colors match the exact
+                  hex values compute_severity_color() in shape_screening.py
+                  produces at severity 0.0 / 0.5 / 1.0, so the legend is
+                  a real reflection of the gradient on screen rather than
+                  an approximate illustration. */}
+              {prediction.cell_overlay && showOverlay && !showBeforeCrop && (
+                <View style={styles.legendRow}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendSwatch, { backgroundColor: '#16A34A' }]} />
+                    <Text style={styles.legendText}>Normal shape</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendSwatch, { backgroundColor: '#EAB308' }]} />
+                    <Text style={styles.legendText}>Mild variation</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendSwatch, { backgroundColor: '#DC2626' }]} />
+                    <Text style={styles.legendText}>Unusual shape</Text>
+                  </View>
+                </View>
               )}
             </View>
 
