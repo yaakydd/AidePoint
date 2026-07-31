@@ -59,6 +59,14 @@ def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> dict[str, Any]
     """
     Reduces the per-cell overlay data (already computed for the frontend
     drawing feature) into summary statistics for the explanation text.
+
+    FIXED: was reading cell.get("severity_score", ...), but
+    get_cell_overlay() in shape_screening.py names this field "severity",
+    not "severity_score". That mismatch meant every cell silently fell
+    through to the 0.0 default here, regardless of its real severity --
+    percent_abnormal always came out 0.0% no matter what the actual
+    per-cell data showed, confirmed on a real response where cell_overlay
+    reported 31/54 flagged cells but this function's output claimed 0.
     """
     if not cell_overlay:
         return {
@@ -70,7 +78,7 @@ def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> dict[str, Any]
     severity_flag_threshold = 0.5
     flagged_cells = [
         cell for cell in cell_overlay
-        if cell.get("severity_score", 0.0) >= severity_flag_threshold
+        if cell.get("severity", 0.0) >= severity_flag_threshold
     ]
 
     return {

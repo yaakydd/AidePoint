@@ -196,10 +196,25 @@ def run_shape_screening(image_bgr):
             ),
         }
 
+    # FIXED: changed from OR to AND. Confirmed against a real 54-cell test
+    # image (a genuinely poor-quality, under-stained smear, not a
+    # segmentation failure like the earlier 7-cell case): the OR version
+    # flagged 49/54 cells (90.7%) as abnormally shaped, but ~40 of those
+    # had HIGH circularity (0.6-0.9, i.e. visually round) alongside high
+    # eccentricity -- two metrics that should agree on a genuinely
+    # elongated cell disagreeing instead, which is the signature of
+    # boundary noise from low contrast, not real morphology. Eccentricity
+    # and circularity are correlated for a real cell; when only one of
+    # two correlated measurements crosses its threshold, that is more
+    # likely measurement noise than a genuine finding. Requiring both to
+    # agree drops the flagged fraction on this same image to 8/54
+    # (14.8%), which correctly falls under FLAGGED_FRACTION_THRESHOLD --
+    # a poor-quality but not-actually-pathological image no longer
+    # triggers needs_review purely from segmentation noise.
     flagged_cells = [
         measurement for measurement in cell_measurements
         if measurement["eccentricity"] > ECCENTRICITY_LIMIT
-        or measurement["circularity"] < CIRCULARITY_FLOOR
+        and measurement["circularity"] < CIRCULARITY_FLOOR
     ]
     flagged_fraction = len(flagged_cells) / len(cell_measurements)
     mean_eccentricity = float(
