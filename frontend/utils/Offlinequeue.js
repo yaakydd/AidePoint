@@ -1,5 +1,3 @@
-// utils/offlineQueue.js
-//
 // Local-first offline queue for AidePoint.
 //
 // Every completed scan is saved locally FIRST (to AsyncStorage + local image

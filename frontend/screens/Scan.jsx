@@ -1,9 +1,9 @@
-// screens/Scan.js
+// screens/Scan.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   Image, Alert, Modal, ActivityIndicator, Platform,
-  StyleSheet, Animated,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -18,7 +18,7 @@ import { compressImage } from '../utils/Offlinequeue';
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
 import { getPlan }       from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale } from '../assets/theme';
+import { COLORS, SPACING } from '../assets/theme';
 
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
@@ -58,7 +58,6 @@ const Scan = ({ navigation, route }) => {
   const [resultModal,  setResultModal]  = useState(null);
   const tipOpacity = useRef(new Animated.Value(0)).current;
 
-
   useEffect(() => {
     setScanId(generateScanId());
     loadRemaining();
@@ -70,7 +69,6 @@ const Scan = ({ navigation, route }) => {
     setRemaining(r);
   }
 
-  // picks up the photo CameraScreen hands back when it navigates here
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const photo = route.params?.capturedPhoto;
@@ -91,7 +89,6 @@ const Scan = ({ navigation, route }) => {
     bloodPressure.trim()!== '' &&
     image !== null;
 
-  // ScanStackNavigator registers this screen as 'Camera', not 'CameraScreen'
   function openCamera() {
     navigation.navigate('Camera', {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
@@ -186,11 +183,6 @@ const Scan = ({ navigation, route }) => {
         .single();
       if (patientErr) throw patientErr;
 
-      // patientRow.id is the same identifier that ends up in the
-      // backend's prediction_records.patient_sample_id -- passing it
-      // here is what lets a prediction record and a patients row
-      // eventually be joined back together, and is now a required field
-      // on /predict (400 if omitted).
       const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
 
       const report = buildReport({
@@ -335,7 +327,7 @@ const Scan = ({ navigation, route }) => {
         />
 
         <View style={styles.row}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Age</Text>
             <TextInput
               placeholder="e.g. 34"
@@ -347,13 +339,13 @@ const Scan = ({ navigation, route }) => {
               style={[styles.input, styles.half]}
             />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Gender</Text>
-            <View style={genderStyles.pillRow}>
+            <View style={styles.genderPillRow}>
               {GENDERS.map(g => (
                 <TouchableOpacity
                   key={g}
-                  style={[genderStyles.pill, patientGender === g && genderStyles.pillActive]}
+                  style={[styles.genderPill, patientGender === g && styles.genderPillActive]}
                   onPress={() => setPatientGender(g)}
                   activeOpacity={0.8}
                 >
@@ -361,9 +353,9 @@ const Scan = ({ navigation, route }) => {
                     name={g === 'Male' ? 'gender-male' : 'gender-female'}
                     size={15}
                     color={patientGender === g ? '#fff' : COLORS.textMuted}
-                    style={{ marginRight: 4 }}
+                    style={{ marginRight: SPACING.xs }}
                   />
-                  <Text style={[genderStyles.pillText, patientGender === g && genderStyles.pillTextActive]}>{g}</Text>
+                  <Text style={[styles.genderPillText, patientGender === g && styles.genderPillTextActive]}>{g}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -371,7 +363,7 @@ const Scan = ({ navigation, route }) => {
         </View>
 
         <View style={styles.row}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Temperature (°C)</Text>
             <TextInput
               placeholder="e.g. 36.5"
@@ -382,7 +374,7 @@ const Scan = ({ navigation, route }) => {
               style={[styles.input, styles.half]}
             />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Blood Pressure</Text>
             <TextInput
               placeholder="120/80"
@@ -448,9 +440,15 @@ const Scan = ({ navigation, route }) => {
           onPress={handleStartAnalysis}
         >
           {isAnalysing ? (
-            <><ActivityIndicator size="small" color="#fff" /><Text style={styles.buttonText}>  Analysing…</Text></>
+            <>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={styles.buttonText}>  Analysing…</Text>
+            </>
           ) : (
-            <><MaterialIcons name="analytics" size={20} color="#fff" /><Text style={styles.buttonText}>  Start Analysis</Text></>
+            <>
+              <MaterialIcons name="analytics" size={20} color="#fff" />
+              <Text style={styles.buttonText}>  Start Analysis</Text>
+            </>
           )}
         </TouchableOpacity>
 
@@ -486,15 +484,3 @@ const Scan = ({ navigation, route }) => {
 };
 
 export default Scan;
-
-const genderStyles = StyleSheet.create({
-  pillRow:         { flexDirection: 'row', gap: SPACING.sm, marginTop: 2 },
-  pill:            {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: SPACING.md - 1, borderRadius: RADIUS.sm + 2,
-    borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surfaceAlt,
-  },
-  pillActive:      { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  pillText:        { fontSize: FONTS.sm, fontWeight: FONTS.medium, color: COLORS.textMuted },
-  pillTextActive:  { color: COLORS.white },
-});

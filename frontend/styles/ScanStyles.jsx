@@ -691,12 +691,120 @@ export const scanStyles = StyleSheet.create({
     width: '100%',
     height: '80%',
   },
-
   closeViewer: {
-    position: 'absolute',
-    top: layout.topInset ? layout.topInset + SPACING.xl : SPACING.xl,
-    right: SPACING.xl,
-    zIndex: 99,
-  },
+  position: 'absolute',
+  top: layout.statusBarHeight + SPACING.xl,   // was layout.topInset (undefined)
+  right: SPACING.xl,
+  zIndex: 99,
+},
+
+
+resetWrapper: {
+  position: 'relative',
+  alignItems: 'flex-end',
+},
+
+resetIconBtn: {
+  width: scale(36),
+  height: scale(36),
+  borderRadius: RADIUS.full,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+scanIdRight: {
+  alignItems: 'flex-end',
+},
+
+remainingPill: {
+  marginTop: SPACING.xs,
+  paddingHorizontal: SPACING.sm,
+  paddingVertical: 2,
+  borderRadius: RADIUS.full,
+  backgroundColor: COLORS.primaryLight,
+},
+
+remainingPillDanger: {
+  backgroundColor: COLORS.dangerBg,
+},
+
+remainingText: {
+  fontSize: FONTS.xs,
+  fontWeight: FONTS.semibold,
+  color: COLORS.primaryDark,
+},
+
+remainingTextDanger: {
+  color: COLORS.danger,
+},
+
+previewZoomHint: {
+  position: 'absolute',
+  bottom: SPACING.sm,
+  right: SPACING.sm,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  backgroundColor: 'rgba(0,0,0,0.55)',
+  paddingHorizontal: SPACING.sm,
+  paddingVertical: 4,
+  borderRadius: RADIUS.full,
+},
+
+previewZoomText: {
+  color: COLORS.white,
+  fontSize: FONTS.xs,
+  fontWeight: FONTS.medium,
+},
+
+retakeBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: SPACING.xs,
+  marginTop: SPACING.md,
+  paddingVertical: SPACING.sm,
+},
+  // add into scanStyles in ScanStyles.js
+genderPillRow: {
+  flexDirection: 'row',
+  gap: SPACING.sm,
+  marginTop: 2,
+},
+genderPill: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: SPACING.md - 1,
+  borderRadius: RADIUS.sm + 2,
+  borderWidth: 1.5,
+  borderColor: COLORS.border,
+  backgroundColor: COLORS.surfaceAlt,
+},
+genderPillActive: {
+  backgroundColor: COLORS.primary,
+  borderColor: COLORS.primary,
+},
+genderPillText: {
+  fontSize: FONTS.sm,
+  fontWeight: FONTS.medium,
+  color: COLORS.textMuted,
+},
+genderPillTextActive: {
+  color: COLORS.white,
+},
+row: {
+  flexDirection: 'row',
+  gap: SPACING.md,
+},
+
+rowItem: {
+  flex: 1,
+},
+
+half: {
+  flex: 1,
+},
 
 });
