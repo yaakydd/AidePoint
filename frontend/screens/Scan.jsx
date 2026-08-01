@@ -71,7 +71,6 @@ const Scan = ({ navigation, route }) => {
   }
 
   // picks up the photo CameraScreen hands back when it navigates here
-  // picks up the photo CameraScreen hands back when it navigates here
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const photo = route.params?.capturedPhoto;
@@ -92,7 +91,6 @@ const Scan = ({ navigation, route }) => {
     bloodPressure.trim()!== '' &&
     image !== null;
 
-  // ScanStackNavigator registers this screen as 'Camera', not 'CameraScreen'
   // ScanStackNavigator registers this screen as 'Camera', not 'CameraScreen'
   function openCamera() {
     navigation.navigate('Camera', {
@@ -188,7 +186,12 @@ const Scan = ({ navigation, route }) => {
         .single();
       if (patientErr) throw patientErr;
 
-      const prediction = await analyzeBloodSmear(compressedUri);
+      // patientRow.id is the same identifier that ends up in the
+      // backend's prediction_records.patient_sample_id -- passing it
+      // here is what lets a prediction record and a patients row
+      // eventually be joined back together, and is now a required field
+      // on /predict (400 if omitted).
+      const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
 
       const report = buildReport({
         patientName:   patientName.trim(),
@@ -231,7 +234,7 @@ const Scan = ({ navigation, route }) => {
         .single();
       if (scanErr) throw scanErr;
       report.id = scanRow.id;
-      
+
       await saveReport(report);
 
       const usage = await recordScan(user.id, plan);
@@ -481,15 +484,6 @@ const Scan = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-
-
-const SEVERITY_COLORS = {
-  red:    { bg: '#FEE2E2', text: '#B91C1C', icon: 'alert-circle' },
-  yellow: { bg: '#FEF3C7', text: '#92400E', icon: 'alert' },
-  green:  { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
-};
-
 
 export default Scan;
 
