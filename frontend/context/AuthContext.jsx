@@ -135,6 +135,7 @@ export function AuthProvider({ children }) {
       role:        profile?.role             || 'lab_technician',
       hospitalLab: profile?.hospital_lab     || null,
       storeImages: profile?.store_images     ?? false,
+      avatarUrl:   profile?.avatar_url       || null,
       consentDone: profile?.consent_required === false,
       token:       session.access_token,
     };
@@ -302,16 +303,18 @@ async function register({ name, email, password, hospitalLab }) {
   async function updateProfile(changes) {
     if (!user) return { success: false, error: 'Not logged in' };
 
-    const dbChanges = {};
+const dbChanges = {};
     if (changes.storeImages !== undefined) dbChanges.store_images = changes.storeImages;
     if (changes.hospitalLab !== undefined) dbChanges.hospital_lab = changes.hospitalLab;
     if (changes.name        !== undefined) dbChanges.name         = changes.name;
+    if (changes.avatarUrl   !== undefined) dbChanges.avatar_url   = changes.avatarUrl;
 
     const updated = {
       ...user,
       ...(changes.storeImages !== undefined && { storeImages: changes.storeImages }),
       ...(changes.hospitalLab !== undefined && { hospitalLab: changes.hospitalLab }),
       ...(changes.name        !== undefined && { name:        changes.name }),
+      ...(changes.avatarUrl   !== undefined && { avatarUrl:   changes.avatarUrl }),
     };
 
     // Optimistic update — save locally first so UI responds instantly

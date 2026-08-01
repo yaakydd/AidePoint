@@ -83,6 +83,24 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
+  // FIXED: Scan.jsx wraps the reset button + its tooltip in
+  // styles.resetWrapper and uses styles.resetIconBtn for the button
+  // itself -- neither existed before, only the unused resetButton below,
+  // so the reset icon and its "Tap again to reset" tooltip were
+  // rendering with zero positioning/sizing.
+  resetWrapper: {
+    position: 'relative',
+  },
+
+  resetIconBtn: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.dangerBg,
+  },
+
   resetButton: {
     width: scale(40),
     height: scale(40),
@@ -140,10 +158,46 @@ export const scanStyles = StyleSheet.create({
     letterSpacing: 1,
   },
 
+  // FIXED: scanIdValue (the ID itself) and the remaining-scans pill sit
+  // side by side inside this card -- scanIdRight is the right-hand
+  // column that groups and right-aligns both, and needed a maxWidth so
+  // a long UUID-style scan ID can ellipsize instead of pushing the pill
+  // off-screen.
+  scanIdRight: {
+    alignItems: 'flex-end',
+    flexShrink: 1,
+    maxWidth: '55%',
+  },
+
   scanIdValue: {
     fontSize: FONTS.md,
     fontWeight: FONTS.bold,
     color: COLORS.primary,
+  },
+
+  // FIXED: the little "N scans remaining today" badge next to the scan
+  // ID -- referenced in Scan.jsx but never defined. Danger variant kicks
+  // in at remaining === 0.
+  remainingPill: {
+    marginTop: 4,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.successBg,
+  },
+
+  remainingPillDanger: {
+    backgroundColor: COLORS.dangerBg,
+  },
+
+  remainingText: {
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.semibold,
+    color: COLORS.success,
+  },
+
+  remainingTextDanger: {
+    color: COLORS.danger,
   },
 
   // ─────────────────────────────────────────────
@@ -225,8 +279,53 @@ export const scanStyles = StyleSheet.create({
     gap: SPACING.md,
   },
 
+  // FIXED: Scan.jsx wraps each Age/Gender and Temperature/Blood-Pressure
+  // field in styles.rowItem (flex: 1) -- previously this layout was
+  // inlined as {{ flex: 1 }} directly in Scan.js, but the newer Scan.jsx
+  // references it as a named style that didn't exist here.
+  rowItem: {
+    flex: 1,
+  },
+
   half: {
     flex: 1,
+  },
+
+  // FIXED: gender pill selector styles -- previously lived in a
+  // component-local StyleSheet inside Scan.js (genderStyles); Scan.jsx
+  // now references these directly off the shared scanStyles instead,
+  // so they need to live here to actually apply.
+  genderPillRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: 2,
+  },
+
+  genderPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md - 1,
+    borderRadius: RADIUS.sm + 2,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceAlt,
+  },
+
+  genderPillActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+
+  genderPillText: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.medium,
+    color: COLORS.textMuted,
+  },
+
+  genderPillTextActive: {
+    color: COLORS.white,
   },
 
   // ─────────────────────────────────────────────
@@ -297,8 +396,40 @@ export const scanStyles = StyleSheet.create({
     height: vScale(220),
   },
 
-  retakeText: {
+  // FIXED: the "Tap to enlarge" pill overlaid on the image preview --
+  // referenced in Scan.jsx but never defined, so it was rendering
+  // unstyled and unpositioned directly on top of the photo.
+  previewZoomHint: {
+    position: 'absolute',
+    bottom: SPACING.sm,
+    right: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 4,
+  },
+
+  previewZoomText: {
+    color: COLORS.white,
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.medium,
+  },
+
+  // FIXED: wraps the "Retake Photo" icon + text as a single pressable
+  // row -- previously only retakeText (just the label) existed, so the
+  // icon and text had no shared layout/press target sizing.
+  retakeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
     marginTop: SPACING.md,
+  },
+
+  retakeText: {
     textAlign: 'center',
     color: COLORS.primary,
     fontSize: FONTS.md,
@@ -691,120 +822,12 @@ export const scanStyles = StyleSheet.create({
     width: '100%',
     height: '80%',
   },
+
   closeViewer: {
-  position: 'absolute',
-  top: layout.statusBarHeight + SPACING.xl,   // was layout.topInset (undefined)
-  right: SPACING.xl,
-  zIndex: 99,
-},
-
-
-resetWrapper: {
-  position: 'relative',
-  alignItems: 'flex-end',
-},
-
-resetIconBtn: {
-  width: scale(36),
-  height: scale(36),
-  borderRadius: RADIUS.full,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-scanIdRight: {
-  alignItems: 'flex-end',
-},
-
-remainingPill: {
-  marginTop: SPACING.xs,
-  paddingHorizontal: SPACING.sm,
-  paddingVertical: 2,
-  borderRadius: RADIUS.full,
-  backgroundColor: COLORS.primaryLight,
-},
-
-remainingPillDanger: {
-  backgroundColor: COLORS.dangerBg,
-},
-
-remainingText: {
-  fontSize: FONTS.xs,
-  fontWeight: FONTS.semibold,
-  color: COLORS.primaryDark,
-},
-
-remainingTextDanger: {
-  color: COLORS.danger,
-},
-
-previewZoomHint: {
-  position: 'absolute',
-  bottom: SPACING.sm,
-  right: SPACING.sm,
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 4,
-  backgroundColor: 'rgba(0,0,0,0.55)',
-  paddingHorizontal: SPACING.sm,
-  paddingVertical: 4,
-  borderRadius: RADIUS.full,
-},
-
-previewZoomText: {
-  color: COLORS.white,
-  fontSize: FONTS.xs,
-  fontWeight: FONTS.medium,
-},
-
-retakeBtn: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: SPACING.xs,
-  marginTop: SPACING.md,
-  paddingVertical: SPACING.sm,
-},
-  // add into scanStyles in ScanStyles.js
-genderPillRow: {
-  flexDirection: 'row',
-  gap: SPACING.sm,
-  marginTop: 2,
-},
-genderPill: {
-  flex: 1,
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingVertical: SPACING.md - 1,
-  borderRadius: RADIUS.sm + 2,
-  borderWidth: 1.5,
-  borderColor: COLORS.border,
-  backgroundColor: COLORS.surfaceAlt,
-},
-genderPillActive: {
-  backgroundColor: COLORS.primary,
-  borderColor: COLORS.primary,
-},
-genderPillText: {
-  fontSize: FONTS.sm,
-  fontWeight: FONTS.medium,
-  color: COLORS.textMuted,
-},
-genderPillTextActive: {
-  color: COLORS.white,
-},
-row: {
-  flexDirection: 'row',
-  gap: SPACING.md,
-},
-
-rowItem: {
-  flex: 1,
-},
-
-half: {
-  flex: 1,
-},
+    position: 'absolute',
+    top: layout.topInset ? layout.topInset + SPACING.xl : SPACING.xl,
+    right: SPACING.xl,
+    zIndex: 99,
+  },
 
 });

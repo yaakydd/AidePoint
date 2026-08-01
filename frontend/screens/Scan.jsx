@@ -104,6 +104,7 @@ const Scan = ({ navigation, route }) => {
   }
 
   async function handlePickFile() {
+    console.log('>>> handlePickFile CALLED');
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/png', 'image/jpeg'],
@@ -153,23 +154,34 @@ const Scan = ({ navigation, route }) => {
       },
     ]);
   }
-
   async function handleStartAnalysis() {
-    if (!isFormValid || isAnalysing) return;
+  if (!isFormValid || isAnalysing) return;
 
-    const rem = await getRemainingScans(user.id, plan);
-    if (rem !== Infinity && rem <= 0) {
-      Alert.alert('Scan Limit Reached', getUpgradeMessage(plan), [
-        { text: 'Maybe Later', style: 'cancel' },
-        { text: 'View Plans', onPress: () => navigation.navigate('Subscription') },
-      ]);
-      return;
-    }
+  console.log('>>> ABOUT TO CALL getRemainingScans');
+  let rem;
+  try {
+    rem = await getRemainingScans(user.id, plan);
+    console.log('>>> getRemainingScans returned:', rem);
+  } catch (err) {
+    console.error('>>> getRemainingScans THREW:', err);
+    Alert.alert('Error', 'Could not check scan limit: ' + err.message);
+    return;
+  }
 
-    setIsAnalysing(true);
+  if (rem !== Infinity && rem <= 0) {
+    Alert.alert('Scan Limit Reached', getUpgradeMessage(plan), [
+      { text: 'Maybe Later', style: 'cancel' },
+      { text: 'View Plans', onPress: () => navigation.navigate('Subscription') },
+    ]);
+    return;
+  }
 
-    try {
-      const compressedUri = await compressImage(image);
+  setIsAnalysing(true);
+  console.log('>>> STEP 1: starting analysis, image =', image);
+  try {
+    const compressedUri = await compressImage(image);
+    console.log('>>> STEP 2: compressImage done ->', compressedUri);
+
 
       const { data: patientRow, error: patientErr } = await supabase
         .from('patients')
@@ -181,9 +193,12 @@ const Scan = ({ navigation, route }) => {
         })
         .select('id')
         .single();
+      console.log('>>> STEP 3: patient insert ->', { patientRow, patientErr });
       if (patientErr) throw patientErr;
+      
 
       const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
+      console.log('>>> STEP 4: prediction ->', prediction);
 
       const report = buildReport({
         patientName:   patientName.trim(),

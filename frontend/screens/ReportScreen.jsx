@@ -106,18 +106,40 @@ const ReportScreen = ({ navigation, route }) => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // FIXED: extracted so both useFocusEffect (below) and the plain
+  // useEffect further down can share it. Previously this logic lived
+  // only inside useFocusEffect, which -- per react-navigation's actual
+  // behavior -- only re-runs on a real focus/blur transition, NOT
+  // whenever pinUnlocked or user?.id change while the screen is already
+  // focused. If AuthContext's `user` was still hydrating (from
+  // AsyncStorage/SecureStore) at the moment this screen first gained
+  // focus, `!user?.id` would bail out silently, pinModalMode would stay
+  // at its initial null, and nothing would ever re-trigger the check
+  // once `user.id` became available a moment later -- there's no second
+  // focus event to fire useFocusEffect again. The result: the report
+  // list renders completely unlocked, with the PIN prompt never
+  // appearing at all.
+  const runPinCheck = useCallback(async () => {
+    if (!user?.id) return;
+    if (!pinUnlocked || isSessionExpired()) {
+      const created = await isPinCreated(user.id);
+      setPinModalMode(created ? 'enter' : 'create');
+      setPinUnlocked(false);
+    }
+  }, [pinUnlocked, user?.id]);
+
   useFocusEffect(
     useCallback(() => {
-      if (!user?.id) return;
-      (async () => {
-        if (!pinUnlocked || isSessionExpired()) {
-          const created = await isPinCreated(user.id);
-          setPinModalMode(created ? 'enter' : 'create');
-          setPinUnlocked(false);
-        }
-      })();
-    }, [pinUnlocked, user?.id])
+      runPinCheck();
+    }, [runPinCheck])
   );
+
+  // Safety net for the race condition described above: reacts to
+  // user?.id actually changing (e.g. auth finishing hydration after this
+  // screen already had focus), which useFocusEffect alone cannot do.
+  useEffect(() => {
+    runPinCheck();
+  }, [user?.id]);
 
   useEffect(() => {
     (async () => {
@@ -175,6 +197,19 @@ const ReportScreen = ({ navigation, route }) => {
     offset: 90 * index,
     index,
   }), []);
+
+  // Gate the entire screen, including the loading state, behind the PIN
+  // check -- previously the loading spinner (and its underlying report
+  // fetch) could render before pinModalMode was ever set, which is a
+  // narrower version of the same race condition: showing app content
+  // for a beat before the lock kicks in, rather than locking first.
+  if (!user?.id) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <ActivityIndicator size="large" />
+      </SafeAreaView>
+    );
+  }
 
   if (pinModalMode) {
     return (

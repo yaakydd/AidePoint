@@ -15,8 +15,17 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-// import * as ImageManipulator from 'expo-image-manipulator';
-// import NetInfo from '@react-native-community/netinfo';
+// FIXED: both of these were commented out, but compressImage() and
+// processPendingQueue() call them directly -- this is exactly the
+// "Property 'ImageManipulator' doesn't exist" warning seen in testing.
+// NetInfo was equally broken but hadn't been hit yet in testing since
+// nothing had called processPendingQueue() during that session -- it
+// would have thrown the same way the moment connectivity was restored
+// or the app came back to foreground.
+// Run `npx expo install expo-image-manipulator @react-native-community/netinfo`
+// if either package isn't already in package.json.
+import * as ImageManipulator from 'expo-image-manipulator';
+import NetInfo from '@react-native-community/netinfo';
 import { supabase } from './supabase';
 
 const QUEUE_KEY = 'aidepoint:upload_queue_v1';

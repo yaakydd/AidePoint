@@ -58,6 +58,7 @@ export async function analyzeBloodSmear(imageUri, patientSampleId) {
 
       let json = null;
       try { json = await response.json(); } catch {}
+      console.log('>>> /predict response:', response.status, JSON.stringify(json));
 
       if (!response.ok) {
         const detail = json?.detail;
