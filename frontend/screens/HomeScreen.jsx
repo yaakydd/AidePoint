@@ -286,7 +286,7 @@ const HomeScreen = () => {
     : 0;
 
   function handleScanPress(scan) {
-    navigation.navigate('Reports', { scanId: scan.id });
+    navigation.navigate('ReportScreen', { scanId: scan.id });
   }
 
   // "View All" next to Recent Scans sends the user to start a new scan
