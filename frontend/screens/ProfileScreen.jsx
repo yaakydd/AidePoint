@@ -287,15 +287,19 @@ export default function ProfileScreen() {
           <Divider />
           <Row
             icon="file-document-outline" iconColor="#F43F5E" iconBg="#FFF1F2"
-            label="Privacy Policy" onPress={() => {}}
+            label="Privacy Policy" oonPress={() => navigation.navigate('HelpCenter')}
           />
         </Section>
 
-        <TouchableOpacity style={styles.signOutRow} onPress={handleLogout} activeOpacity={0.6}>
-          <Text style={styles.signOutText}>Sign out of AidePoint</Text>
-        </TouchableOpacity>
+<Section title="ACCOUNT ACTIONS">
+  <Row
+    icon="logout" iconColor="#F43F5E" iconBg="#FFF1F2"
+    label="Sign out of AidePoint"
+    onPress={handleLogout}
+  />
+</Section>
 
-        <Text style={styles.version}>AIDEPOINT V2.4.1</Text>
+<Text style={styles.version}>AIDEPOINT V2.4.1</Text>
       </ScrollView>
     </SafeAreaView>
   );

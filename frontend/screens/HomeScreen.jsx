@@ -286,12 +286,12 @@ const HomeScreen = () => {
     : 0;
 
   function handleScanPress(scan) {
-    navigation.navigate('ReportScreen', { scanId: scan.id });
+    navigation.navigate('Scan');
   }
 
   // "View All" next to Recent Scans sends the user to start a new scan
   function handleViewAllPress() {
-    navigation.navigate('ReportScreen', { scanId: null });
+    navigation.navigate('Report');
   }
 
   const selectedDay = selectedDayIdx != null ? stats?.weeklyData[selectedDayIdx] : null;
