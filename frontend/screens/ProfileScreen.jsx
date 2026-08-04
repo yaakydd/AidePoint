@@ -20,7 +20,6 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
 import { MaterialIcons } from '@expo/vector-icons';
-import ForgotPassword from '../auth/ForgotPassword';
 
 // must match whatever key reportPin.js uses
 const PIN_KEY = 'aidepoint_report_pin';
@@ -282,24 +281,24 @@ export default function ProfileScreen() {
         <Section title="SUPPORT">
           <Row
             icon="help-circle-outline" iconColor="#22C55E" iconBg="#F0FDF4"
-            label="Help Center" onPress={() => {}}
+            label="Help Center" onPress={() => navigation.navigate('HelpCenter')}
           />
           <Divider />
           <Row
             icon="file-document-outline" iconColor="#F43F5E" iconBg="#FFF1F2"
-            label="Privacy Policy" oonPress={() => navigation.navigate('HelpCenter')}
+            label="Privacy Policy" onPress={() => navigation.navigate('PrivacyPolicy')}
           />
         </Section>
 
-<Section title="ACCOUNT ACTIONS">
-  <Row
-    icon="logout" iconColor="#F43F5E" iconBg="#FFF1F2"
-    label="Sign out of AidePoint"
-    onPress={handleLogout}
-  />
-</Section>
+        <Section title="ACCOUNT ACTIONS">
+          <Row
+            icon="logout" iconColor="#F43F5E" iconBg="#FFF1F2"
+            label="Sign out of AidePoint"
+            onPress={handleLogout}
+          />
+        </Section>
 
-<Text style={styles.version}>AIDEPOINT V2.4.1</Text>
+        <Text style={styles.version}>AIDEPOINT V1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

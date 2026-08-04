@@ -1,4 +1,4 @@
-// screens/HelpCenterScreen.js
+// screens/HelpCenter.js
 //
 // Bug reporting here follows the same pattern as Chatbot.js's bug report
 // modal: a description field, sent via mailto: to support. Chatbot's
@@ -6,12 +6,11 @@
 // equivalent transcript here, so this instead attaches basic account
 // context (name, email, role) so support isn't starting from nothing.
 //
-// Beyond that single row this screen had before, a real help center
-// needs more than one dead-end link -- added an FAQ accordion (the most
-// common "why did my scan say X" / "is this a diagnosis" questions,
-// since that's exactly the kind of thing a lab tech would search for
-// first before ever contacting support), a resources row, and an app
-// info footer so the version number isn't orphaned on ProfileScreen only.
+// FIXED: Resources section (Privacy Policy row) removed -- Privacy
+// Policy already lives in ProfileScreen.js's SUPPORT section, so having
+// it here too was two paths to the same destination for no reason.
+// This screen is now just GET HELP + FAQ, which is what it was really
+// for in the first place.
 
 import React, { useState } from 'react';
 import {
@@ -178,22 +177,6 @@ const HelpCenter = () => {
               </View>
             );
           })}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>RESOURCES</Text>
-
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => navigation.navigate('PrivacyPolicy')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.iconBox, { backgroundColor: COLORS.primaryLight }]}>
-              <MaterialCommunityIcons name="file-document-outline" size={19} color={COLORS.primaryDark} />
-            </View>
-            <Text style={styles.rowLabel}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={17} color={COLORS.border} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.footerBlock}>

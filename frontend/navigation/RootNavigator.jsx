@@ -12,7 +12,7 @@ import SubscriptionScreen from "../screens/SubscriptionScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ForgotPassword from "../auth/ForgotPassword";
 import HelpCenterScreen from "../screens/HelpCenter";
-// import PrivacyPolicyScreen from "../screens/PrivacyPolicyScreen";
+import PrivacyPolicyScreen from "../screens/PrivacyPolicy";
 // import LanguageScreen from "../screens/LanguageScreen";
 
 const Stack = createNativeStackNavigator();
@@ -73,13 +73,13 @@ const RootNavigator = () => {
                     />
                     {<Stack.Screen
                         name="HelpCenter"
-                        component={HelpCenter}
+                        component={HelpCenterScreen}
                     /> }
 
-                    {/*<Stack.Screen
+                    {<Stack.Screen
                         name="PrivacyPolicy"
                         component={PrivacyPolicyScreen}
-                    /> */}
+                    /> }
                 </>
 
             )}
