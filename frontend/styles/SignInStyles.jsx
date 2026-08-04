@@ -1,120 +1,191 @@
+// styles/SignInStyles.js
 import { StyleSheet } from 'react-native';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../assets/theme';
 
 export const signInStyles = StyleSheet.create({
-  safe: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
+  safe: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
   },
 
-  container:  { 
-    padding: 24, 
-    paddingBottom: 48, 
-    flexGrow: 1 
+  container: {
+    flexGrow: 1,
   },
-  scrollContent: {
-    paddingHorizontal: 30,
-    paddingVertical: 150,
+
+  // ── Curved color header (holds the logo) ──
+  headerSection: {
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
+    paddingTop: SPACING['3xl'],
+    paddingBottom: SPACING['4xl'],
   },
-  header: {
+
+  // FIXED PLACEHOLDER: swap this View for your real logo Image once you
+  // have the asset, e.g.:
+  //   <Image source={require('../assets/logo.png')} style={signInStyles.logoImage} />
+  // Keeping logoCircle's dimensions/shape on the Image style will match
+  // the layout below exactly -- just delete logoCircle's icon child.
+  logoCircle: {
+    width: scale(76),
+    height: scale(76),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
-    marginBottom: 25,
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+    ...SHADOWS.md,
   },
+
+  logoImage: {
+    width: scale(76),
+    height: scale(76),
+    borderRadius: RADIUS.full,
+  },
+
   brandTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginBottom: 4,
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+    color: COLORS.white,
+    letterSpacing: 1,
   },
-  brandSubtitle: {
-    fontSize: 15,
-    color: '#94A3B8',
-    marginBottom: 20,
+
+  // ── White card, rounded top corners, overlaps the header ──
+  card: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS['2xl'],
+    borderTopRightRadius: RADIUS['2xl'],
+    marginTop: -SPACING['2xl'],
+    paddingHorizontal: SPACING.pagePad,
+    paddingTop: SPACING['2xl'],
+    paddingBottom: SPACING['3xl'],
   },
-  mainTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    fontFamily: 'Plus Jakarta Sans',
-    color: '#00CFE8',
+
+  greetingTitle: {
+    fontSize: FONTS['2xl'],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
   },
+
+  greetingSubtitle: {
+    fontSize: FONTS.sm,
+    color: COLORS.textMuted,
+    marginBottom: SPACING['2xl'],
+  },
+
+  // ── Server error ──
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.dangerBg,
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+
+  errorText: {
+    color: COLORS.danger,
+    fontSize: FONTS.sm,
+    flex: 1,
+  },
+
   form: {
     width: '100%',
   },
+
   inputLabel: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#475569',
-    marginBottom: 10,
-    marginTop: 10,
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    marginTop: SPACING.md,
   },
+
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    height: 56,
-  },
-  textInput: {
-    flex: 1,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: '#1E293B',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.md,
+    height: scale(54),
   },
 
-  forgotBtn: {
-        alignSelf: 'flex-end',
-    marginTop: 15,
+  inputBoxError: {
+    borderColor: COLORS.danger,
+  },
+
+  inputIcon: {
+    marginRight: SPACING.sm,
+  },
+
+  textInput: {
+    flex: 1,
+    fontSize: FONTS.md,
+    color: COLORS.textPrimary,
+  },
+
+  eyeBtn: {
+    padding: SPACING.xs,
+  },
+
+  fieldError: {
+    color: COLORS.danger,
+    fontSize: FONTS.xs,
+    marginTop: SPACING.xs,
+  },
+
+  passwordHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
   forgotText: {
-    color: '#00CFE8',
-    fontWeight: '500',
-    fontSize: 15,
-    display: 'flex',
-
+    fontSize: FONTS.sm,
+    color: COLORS.primary,
+    fontWeight: FONTS.semibold,
+    marginTop: SPACING.md,
   },
+
+  // ── Pill-shaped submit button with shadow ──
   signInBtn: {
-    backgroundColor: '#00CFE8',
-    height: 56,
-    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
-    // Shadow for button
-    shadowColor: "#00CFE8",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: COLORS.primary,
+    height: scale(56),
+    borderRadius: RADIUS.full,
+    marginTop: SPACING['2xl'],
+    ...SHADOWS.md,
   },
+
+  signInBtnDisabled: {
+    opacity: 0.5,
+  },
+
   signInBtnText: {
-    color: '#FFF',
-    fontSize: 19,
-    fontWeight: 'bold',
-    marginRight: 10,
+    color: COLORS.white,
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
+    marginRight: SPACING.sm,
+  },
+
+  signUpRow: {
+    marginTop: SPACING.xl,
     alignItems: 'center',
   },
 
-  signUpLink: {
-    display: 'flex',
-    alignSelf: 'flex-end',
-    gap: 12,
+  signUpText: {
+    fontSize: FONTS.sm,
+    color: COLORS.textMuted,
+  },
 
-  },
-  BaseText: {
-    color: '#64748B',
-    marginTop: 35,
-    fontSize: 15,
-    textAlign: 'center',
-  },
-  SignUpLinkText: {
-    color: '#00CFE8',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginLeft: 12,
+  signUpLink: {
+    color: COLORS.primary,
+    fontWeight: FONTS.bold,
   },
 });
