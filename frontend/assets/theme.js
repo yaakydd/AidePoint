@@ -192,4 +192,7 @@ export const CONDITION_STYLES = {
   aplastic: { label: '! APLASTIC — CRITICAL', color: COLORS.danger, bg: COLORS.dangerBg },
   hemolytic: { label: 'HAEMOLYTIC', color: COLORS.warning, bg: COLORS.warningBg },
   normal: { label: 'NORMAL', color: COLORS.success, bg: COLORS.successBg },
+  
+  no_anemia: { label: 'NO ANEMIA INDICATED', color: '#3182CE', bg: '#EBF8FF' },
+
 };

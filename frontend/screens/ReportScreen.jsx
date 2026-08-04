@@ -30,16 +30,24 @@ import { isPinCreated, startSession, isSessionExpired } from '../utils/reportPin
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import PinModal from '../components/PinModal';
 import DetailModal from '../components/DetailModal';
-import { ReportStyles as styles } from '../styles/ReportStyles';
+import { ReportStyles as styles, REPORT_LIST_BOTTOM_CLEARANCE } from '../styles/ReportStyles';
 import { COLORS } from '../assets/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
+// FIXED: label changed from 'Healthy' to 'No Anemia' -- the model only
+// screens for anemia (see scope_disclaimer in the backend response), so
+// a sample with something else going on entirely (e.g. malaria) but no
+// anemia still correctly lands in this bucket. Calling that tab
+// "Healthy" implies a general clean bill of health the app never
+// actually confirmed. The `key` stays 'healthy' unchanged -- that's the
+// internal condition value wired to is_anemic on the backend and to
+// CONDITION_CONFIG in ReportUtils.js, only the user-facing label changes.
 const FILTERS = [
   { label: 'All', key: null },
   { label: 'Anemic', key: 'anemic' },
   { label: 'Healthy', key: 'healthy' },
+  { label: 'No Anemia', key: 'no_anemia' },
 ];
 
 const getRelativeTime = (iso) => {
@@ -57,6 +65,17 @@ const getRelativeTime = (iso) => {
   if (days < 2) return 'Yesterday';
 
   return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// Full UUIDs (e.g. "396ba0a3-3adb-429a-a2b4-69a56bb24a55") are too long
+// to display on a card without wrapping to two lines -- confirmed on a
+// real device screenshot. Truncating to the first 8 characters keeps
+// enough of the ID to be useful for a quick visual match while staying
+// on one line; the full ID is still visible in the report detail sheet.
+const formatShortId = (id) => {
+  if (!id) return '';
+  const str = String(id);
+  return str.length > 8 ? `${str.slice(0, 8)}…` : str;
 };
 
 const ReportCard = React.memo(({ report, onPress }) => {
@@ -77,7 +96,7 @@ const ReportCard = React.memo(({ report, onPress }) => {
 
         <View style={styles.cardBody}>
           <Text style={styles.cardName} numberOfLines={1}>{report.patientName}</Text>
-          <Text style={styles.cardId}>#{report.patientId}</Text>
+          <Text style={styles.cardId} numberOfLines={1}>#{formatShortId(report.patientId)}</Text>
           <ConditionBadge condition={report.condition} />
         </View>
 
@@ -235,7 +254,23 @@ const ReportScreen = ({ navigation, route }) => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={styles.screen}>
+      {/* edges excludes 'top' deliberately -- SafeAreaView's automatic
+          top inset was stacking with header's own paddingTop below,
+          producing the visible gap between the status bar and "Medical
+          Reports" seen in testing. The header now owns its own top
+          spacing via layout.statusBarHeight instead, so the white
+          background sits flush against the status bar with just enough
+          clearance not to overlap the clock/battery icons. */}
+      {/* FIXED: 'top' restored. It was previously excluded on the
+          theory that the header's own paddingTop (layout.statusBarHeight)
+          handled the notch/status bar -- but layout.statusBarHeight is
+          hardcoded to 0 on iOS specifically because SafeAreaView was
+          supposed to own that inset. With 'top' excluded, nothing
+          accounted for the notch on iOS, so the header rendered
+          underneath the status bar/tray. SafeAreaView now owns the top
+          inset again, and the header's paddingTop is just a small fixed
+          gap (see ReportStyles.js) instead of double-counting it. */}
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
         <FlatList
@@ -251,7 +286,7 @@ const ReportScreen = ({ navigation, route }) => {
           updateCellsBatchingPeriod={50}
 
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.listContent, { paddingBottom: TAB_BAR_CLEARANCE }]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: REPORT_LIST_BOTTOM_CLEARANCE }]}
 
           ListHeaderComponent={
             <View>

@@ -41,11 +41,22 @@ const NormalIcon = ({ size = 56 }) => (
     <Circle cx="39" cy="23" r="4.5" fill="#D1FAE5" opacity="0.9" />
   </Svg>
 );
+const NoAnemiaIcon = ({ size = 56 }) => (
+  <Svg width={size} height={size} viewBox="0 0 56 56">
+    <Rect width="56" height="56" rx="14" fill="#EBF8FF" />
+    <Circle cx="20" cy="30" r="12" fill="#BEE3F8" stroke="#3182CE" strokeWidth="1.5" />
+    <Circle cx="20" cy="30" r="5.5" fill="#EBF8FF" />
+    <Circle cx="39" cy="23" r="10" fill="#90CDF4" stroke="#3182CE" strokeWidth="1.5" opacity="0.9" />
+    <Circle cx="39" cy="23" r="4.5" fill="#EBF8FF" opacity="0.9" />
+  </Svg>
+);
 
 const CONDITION_ICONS = {
   anemic: AnemicCellIcon,
   healthy: NormalIcon,
+  no_anemia: NoAnemiaIcon,
 };
+
 
 export const ConditionIcon = ({ condition, size = 56 }) => {
   const Icon = CONDITION_ICONS[condition] ?? NormalIcon;

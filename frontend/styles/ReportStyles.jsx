@@ -1,26 +1,30 @@
 import { StyleSheet, Platform } from 'react-native';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale } from '../assets/theme';
 
-const TAB_BAR_CLEARANCE = layout.tabBarHeight + SPACING.lg;
+// Shared, theme-derived bottom clearance for the report list, so it
+// scales with the actual tab bar height on this device rather than a
+// hardcoded guess -- exported so ReportScreen.js can use the same value
+// instead of keeping its own separate hardcoded constant.
+export const REPORT_LIST_BOTTOM_CLEARANCE = layout.tabBarHeight + SPACING.lg;
 
 export const ReportStyles = StyleSheet.create({
-
-  // ─── SCREEN
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
 
-  // ─── HEADER — white background to match the rest of the app's screens
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.pagePad,
-    paddingTop: SPACING.md,
+    // 'top' is now back in SafeAreaView's edges, so it already pushes
+    // this below the notch/status bar -- no need to add
+    // layout.statusBarHeight on top of that (that was double-counting
+    // on Android and doing nothing on iOS since 'top' was excluded).
+    paddingTop: SPACING.sm,
     paddingBottom: SPACING.md,
-    marginBottom: SPACING.sm,
     ...SHADOWS.sm,
   },
 
@@ -30,7 +34,6 @@ export const ReportStyles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // Visible, branded total count instead of a near-invisible muted grey
   headerCount: {
     fontSize: FONTS.sm,
     color: COLORS.primaryDark,
@@ -42,7 +45,6 @@ export const ReportStyles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // ─── SEARCH (by patient name or ID)
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -53,6 +55,12 @@ export const ReportStyles = StyleSheet.create({
     marginHorizontal: SPACING.pagePad,
     paddingHorizontal: SPACING.md,
     paddingVertical: Platform.OS === 'ios' ? SPACING.md : SPACING.sm,
+    // FIXED: was SPACING.md -- with the header now sitting flush
+    // against the status bar with its own shadow, SPACING.md read as
+    // barely any gap at all. Bumped up so there's clear breathing room
+    // between the header and the search bar, matching the visual
+    // rhythm most apps use between a title bar and the next control.
+    marginTop: SPACING.lg,
     marginBottom: SPACING.md,
   },
 
@@ -63,7 +71,6 @@ export const ReportStyles = StyleSheet.create({
     marginLeft: SPACING.sm,
   },
 
-  // ─── FILTER STRIP — plain row, no boxed/bordered wrapper
   filterWrapper: {
     backgroundColor: 'transparent',
     paddingBottom: SPACING.md,
@@ -85,11 +92,10 @@ export const ReportStyles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    height: 40,
+    height: scale(40),
     marginRight: SPACING.sm,
   },
 
-  // Clearer "selected" state: filled with the app's brand cyan
   filterPillActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
@@ -106,19 +112,24 @@ export const ReportStyles = StyleSheet.create({
     fontWeight: FONTS.semibold,
   },
 
-  // ─── LIST
+  // FIXED: paddingHorizontal removed from here. This is the FlatList's
+  // contentContainerStyle, which wraps ListHeaderComponent too -- so
+  // the old paddingHorizontal was insetting the header/search bar
+  // along with the cards, which is exactly why they weren't spanning
+  // edge to edge. Horizontal inset now lives on the card itself
+  // (marginHorizontal below), so the header/search can stay full-bleed
+  // while cards keep their inset.
   listContent: {
-    paddingHorizontal: SPACING.pagePad,
     paddingTop: SPACING.xs,
   },
 
-  // ─── CARD
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    marginHorizontal: SPACING.pagePad,
     marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.divider,
@@ -126,45 +137,14 @@ export const ReportStyles = StyleSheet.create({
     ...SHADOWS.sm,
   },
 
-  cardBody: {
-    flex: 1,
-    gap: 4,
-  },
+  cardBody: { flex: 1, gap: 4 },
+  cardName: { fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
+  cardId: { fontSize: FONTS.xs, color: COLORS.textMuted },
+  cardRight: { alignItems: 'flex-end', gap: 6 },
+  cardTime: { fontSize: FONTS.xs, color: COLORS.textMuted, fontWeight: FONTS.medium },
+  verifyRow: { flexDirection: 'row', gap: 4 },
+  verifyDot: { width: scale(7), height: scale(7), borderRadius: 999 },
 
-  cardName: {
-    fontSize: FONTS.md,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-
-  cardId: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-  },
-
-  cardRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-
-  cardTime: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    fontWeight: FONTS.medium,
-  },
-
-  verifyRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-
-  verifyDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-  },
-
-  // ─── BADGE
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -175,36 +155,35 @@ export const ReportStyles = StyleSheet.create({
     gap: 6,
     maxWidth: SCREEN.WIDTH * 0.5,
   },
-
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  badgeDot: { 
+    width: scale(6), 
+    height: scale(6), 
+    borderRadius: 3 },
+  badgeLabel: { 
+    fontSize: FONTS.xs, 
+    fontWeight: FONTS.semibold 
   },
 
-  badgeLabel: {
-    fontSize: FONTS.xs,
-    fontWeight: FONTS.semibold,
-  },
-
-  // ─── EMPTY STATE
+  // FIXED: needs its own horizontal padding now that listContent no
+  // longer provides it, otherwise the empty-state text would run edge
+  // to edge with no inset.
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: SPACING['4xl'],
+    paddingHorizontal: SPACING.pagePad,
     gap: SPACING.sm,
   },
 
-  emptyTitle: {
-    fontSize: FONTS.lg,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textSecondary,
+  emptyTitle: { 
+    fontSize: FONTS.lg, 
+    fontWeight: FONTS.semibold, 
+    color: COLORS.textSecondary 
   },
-
-  emptySubtitle: {
-    fontSize: FONTS.sm,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
+  emptySubtitle: { 
+    fontSize: FONTS.sm, 
+    color: COLORS.textMuted, 
+    textAlign: 'center', 
+    lineHeight: 20 
   },
 
   // ─── MODAL / DETAIL SHEET
@@ -227,8 +206,8 @@ export const ReportStyles = StyleSheet.create({
 
   handle: {
     alignSelf: 'center',
-    width: 42,
-    height: 4,
+    width: scale(42),
+    height: scale(4),
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.border,
     marginBottom: SPACING.md,
@@ -252,8 +231,8 @@ export const ReportStyles = StyleSheet.create({
   },
 
   reportBrandLogo: {
-    width: 36,
-    height: 36,
+    width: scale(36),
+    height: scale(36),
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     alignItems: 'center',

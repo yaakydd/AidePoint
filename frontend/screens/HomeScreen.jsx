@@ -291,7 +291,7 @@ const HomeScreen = () => {
 
   // "View All" next to Recent Scans sends the user to start a new scan
   function handleViewAllPress() {
-    navigation.navigate('Scan');
+    navigation.navigate('ReportScreen', { scanId: null });
   }
 
   const selectedDay = selectedDayIdx != null ? stats?.weeklyData[selectedDayIdx] : null;
