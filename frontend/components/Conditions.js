@@ -8,17 +8,18 @@
 
 import React from 'react';
 import { View, Text } from 'react-native';
-import Svg, { Circle, Rect } from 'react-native-svg';
+import Svg, { Circle, Rect, Path } from 'react-native-svg';
 import { CONDITION_CONFIG } from '../utils/ReportUtils';
 import { ReportStyles as styles } from '../styles/ReportStyles';
 
-// This app reports a binary anemia screening result (anemic vs healthy),
-// not a specific disease type -- the earlier anemia-type classifier
-// (sickle cell, malaria, thalassemia, etc.) was removed from the backend
-// after its training data turned out to be threshold-derived rather than
-// independently diagnosed. These two icons are a generic visual for
-// "abnormal red cell appearance" and "normal red cell appearance," not a
-// diagnosis of any specific condition.
+// This app reports a binary anemia screening result (anemic vs not
+// anemic), not a specific disease type -- the earlier anemia-type
+// classifier (sickle cell, malaria, thalassemia, etc.) was removed from
+// the backend after its training data turned out to be threshold-derived
+// rather than independently diagnosed. These icons are a generic visual
+// for "abnormal red cell appearance," "normal red cell appearance," and
+// "not anemic but something else was noted" -- not a diagnosis of any
+// specific condition.
 
 const AnemicCellIcon = ({ size = 56 }) => (
   <Svg width={size} height={size} viewBox="0 0 56 56">
@@ -41,13 +42,23 @@ const NormalIcon = ({ size = 56 }) => (
     <Circle cx="39" cy="23" r="4.5" fill="#D1FAE5" opacity="0.9" />
   </Svg>
 );
+
+// Same round, non-alarming cell shapes as NormalIcon (this is still a
+// "not anemic" result, not a red flag), but in the app's blue/info
+// palette instead of green, plus a small info marker -- visually says
+// "worth a second look" without borrowing red's "danger" association or
+// green's "all clear" association.
 const NoAnemiaIcon = ({ size = 56 }) => (
   <Svg width={size} height={size} viewBox="0 0 56 56">
     <Rect width="56" height="56" rx="14" fill="#EBF8FF" />
-    <Circle cx="20" cy="30" r="12" fill="#BEE3F8" stroke="#3182CE" strokeWidth="1.5" />
-    <Circle cx="20" cy="30" r="5.5" fill="#EBF8FF" />
-    <Circle cx="39" cy="23" r="10" fill="#90CDF4" stroke="#3182CE" strokeWidth="1.5" opacity="0.9" />
-    <Circle cx="39" cy="23" r="4.5" fill="#EBF8FF" opacity="0.9" />
+    <Circle cx="20" cy="30" r="12" fill="#BFDBFE" stroke="#3182CE" strokeWidth="1.5" />
+    <Circle cx="20" cy="30" r="5.5" fill="#DBEAFE" />
+    <Circle cx="39" cy="23" r="10" fill="#93C5FD" stroke="#3182CE" strokeWidth="1.5" opacity="0.9" />
+    <Circle cx="39" cy="23" r="4.5" fill="#DBEAFE" opacity="0.9" />
+    {/* small "i" info marker, top-right, signals "see findings" without
+        implying a diagnosis or an alarm */}
+    <Circle cx="45" cy="12" r="7" fill="#3182CE" />
+    <Path d="M45 8.5 v0.01 M45 11 v5.5" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" />
   </Svg>
 );
 
@@ -56,7 +67,6 @@ const CONDITION_ICONS = {
   healthy: NormalIcon,
   no_anemia: NoAnemiaIcon,
 };
-
 
 export const ConditionIcon = ({ condition, size = 56 }) => {
   const Icon = CONDITION_ICONS[condition] ?? NormalIcon;

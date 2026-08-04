@@ -21,13 +21,19 @@ import {
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
 import CellOverlay from './CellOverlay';
-import { CONDITION_CONFIG } from '../utils/ReportUtils';
+import { CONDITION_CONFIG, resolveConditionKey } from '../utils/ReportUtils';
 import { COLORS, FONTS, SPACING, RADIUS, scale } from '../assets/theme';
 
 const SEVERITY_COLORS = {
   red:    { bg: '#FEE2E2', text: '#B91C1C', icon: 'alert-circle' },
   yellow: { bg: '#FEF3C7', text: '#92400E', icon: 'alert' },
   green:  { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
+  // FIXED: CONDITION_CONFIG.no_anemia (in ReportUtils.js) uses
+  // severity: 'blue' -- without this entry it fell back to the default
+  // yellow, visually lumping "not anemic, something else noted" in with
+  // an actual warning color instead of the app's existing blue/info
+  // semantic (COLORS.info / COLORS.infoBg in theme.js).
+  blue:   { bg: '#EBF8FF', text: '#1D4ED8', icon: 'information' },
 };
 
 const CONFIDENCE_LABELS = {
@@ -73,8 +79,12 @@ const  TransparencyTrail = ({ data, onClose, onViewReport }) => {
   const [showBeforeCrop, setShowBeforeCrop] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
 
-  const conditionKey = prediction.is_anemic ? 'anemic' : 'healthy';
-  const cfg = CONDITION_CONFIG[conditionKey] ?? CONDITION_CONFIG.normal;
+  const conditionKey = resolveConditionKey(
+    prediction.is_anemic,
+    prediction.morphology_findings,
+    prediction.is_unreliable
+  );
+  const cfg = CONDITION_CONFIG[conditionKey] ?? CONDITION_CONFIG.healthy;
   const sevStyle = SEVERITY_COLORS[cfg.severity] ?? SEVERITY_COLORS.yellow;
 
   const confidenceInfo =

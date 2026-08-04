@@ -8,23 +8,32 @@ import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale } from '
 export const REPORT_LIST_BOTTOM_CLEARANCE = layout.tabBarHeight + SPACING.lg;
 
 export const ReportStyles = StyleSheet.create({
+
+  // ─── SCREEN
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
 
+  // ─── HEADER — white background to match the rest of the app's screens
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.pagePad,
-    // 'top' is now back in SafeAreaView's edges, so it already pushes
-    // this below the notch/status bar -- no need to add
-    // layout.statusBarHeight on top of that (that was double-counting
-    // on Android and doing nothing on iOS since 'top' was excluded).
+    // FIXED: back to a small fixed gap. The previous layout.statusBarHeight
+    // approach assumed SafeAreaView's top edge was excluded, but
+    // layout.statusBarHeight is hardcoded to 0 on iOS specifically
+    // because SafeAreaView is supposed to own that inset -- with 'top'
+    // excluded, nothing accounted for the notch on iOS and the header
+    // rendered underneath the status bar. SafeAreaView now handles the
+    // real per-device top inset (edges includes 'top' again in
+    // ReportScreen.js); this is just the small breathing-room gap below
+    // that inset, not a substitute for it.
     paddingTop: SPACING.sm,
     paddingBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     ...SHADOWS.sm,
   },
 
@@ -34,6 +43,7 @@ export const ReportStyles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
+  // Visible, branded total count instead of a near-invisible muted grey
   headerCount: {
     fontSize: FONTS.sm,
     color: COLORS.primaryDark,
@@ -45,6 +55,7 @@ export const ReportStyles = StyleSheet.create({
     overflow: 'hidden',
   },
 
+  // ─── SEARCH (by patient name or ID)
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -55,12 +66,7 @@ export const ReportStyles = StyleSheet.create({
     marginHorizontal: SPACING.pagePad,
     paddingHorizontal: SPACING.md,
     paddingVertical: Platform.OS === 'ios' ? SPACING.md : SPACING.sm,
-    // FIXED: was SPACING.md -- with the header now sitting flush
-    // against the status bar with its own shadow, SPACING.md read as
-    // barely any gap at all. Bumped up so there's clear breathing room
-    // between the header and the search bar, matching the visual
-    // rhythm most apps use between a title bar and the next control.
-    marginTop: SPACING.lg,
+    marginTop: SPACING.md,
     marginBottom: SPACING.md,
   },
 
@@ -71,6 +77,7 @@ export const ReportStyles = StyleSheet.create({
     marginLeft: SPACING.sm,
   },
 
+  // ─── FILTER STRIP — plain row, no boxed/bordered wrapper
   filterWrapper: {
     backgroundColor: 'transparent',
     paddingBottom: SPACING.md,
@@ -96,6 +103,7 @@ export const ReportStyles = StyleSheet.create({
     marginRight: SPACING.sm,
   },
 
+  // Clearer "selected" state: filled with the app's brand cyan
   filterPillActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
@@ -112,17 +120,26 @@ export const ReportStyles = StyleSheet.create({
     fontWeight: FONTS.semibold,
   },
 
-  // FIXED: paddingHorizontal removed from here. This is the FlatList's
-  // contentContainerStyle, which wraps ListHeaderComponent too -- so
-  // the old paddingHorizontal was insetting the header/search bar
-  // along with the cards, which is exactly why they weren't spanning
-  // edge to edge. Horizontal inset now lives on the card itself
-  // (marginHorizontal below), so the header/search can stay full-bleed
-  // while cards keep their inset.
+  // ─── LIST
+  // FIXED: paddingHorizontal removed. This container wraps everything
+  // inside the FlatList -- header, search bar, filters, AND every card
+  // -- so its own horizontal padding was adding an extra inset on top
+  // of whatever the header's own paddingHorizontal already applied,
+  // which is why the header's white background could never actually
+  // reach the true left/right screen edges no matter what the header
+  // style itself said. Horizontal spacing now lives only on the things
+  // that should actually be inset (card, below) -- the header and
+  // search bar each control their own spacing directly and are no
+  // longer nested inside a second padded box.
   listContent: {
     paddingTop: SPACING.xs,
   },
 
+  // ─── CARD
+  // FIXED: marginHorizontal added -- previously this inset came for
+  // free from listContent's paddingHorizontal (now removed, see above),
+  // so cards need to carry their own spacing now that the shared
+  // container is edge-to-edge.
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -137,14 +154,50 @@ export const ReportStyles = StyleSheet.create({
     ...SHADOWS.sm,
   },
 
-  cardBody: { flex: 1, gap: 4 },
-  cardName: { fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
-  cardId: { fontSize: FONTS.xs, color: COLORS.textMuted },
-  cardRight: { alignItems: 'flex-end', gap: 6 },
-  cardTime: { fontSize: FONTS.xs, color: COLORS.textMuted, fontWeight: FONTS.medium },
-  verifyRow: { flexDirection: 'row', gap: 4 },
-  verifyDot: { width: scale(7), height: scale(7), borderRadius: 999 },
+  cardBody: {
+    flex: 1,
+    gap: 4,
+  },
 
+  cardName: {
+    fontSize: FONTS.md,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textPrimary,
+  },
+
+  cardId: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+  },
+
+  cardRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+
+  cardTime: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+    fontWeight: FONTS.medium,
+  },
+
+  verifyRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+
+  // FIXED: wrapped in scale() -- these were the last hardcoded raw
+  // pixel dimensions left in this file (everything else already used
+  // SPACING/FONTS/RADIUS, which are themselves scale()-derived), so
+  // small UI elements like this dot were the one thing not actually
+  // scaling with screen size across different devices.
+  verifyDot: {
+    width: scale(7),
+    height: scale(7),
+    borderRadius: 999,
+  },
+
+  // ─── BADGE
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -155,18 +208,21 @@ export const ReportStyles = StyleSheet.create({
     gap: 6,
     maxWidth: SCREEN.WIDTH * 0.5,
   },
-  badgeDot: { 
-    width: scale(6), 
-    height: scale(6), 
-    borderRadius: 3 },
-  badgeLabel: { 
-    fontSize: FONTS.xs, 
-    fontWeight: FONTS.semibold 
+
+  badgeDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: 3,
   },
 
-  // FIXED: needs its own horizontal padding now that listContent no
-  // longer provides it, otherwise the empty-state text would run edge
-  // to edge with no inset.
+  badgeLabel: {
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.semibold,
+  },
+
+  // ─── EMPTY STATE
+  // FIXED: paddingHorizontal added for the same reason as card above --
+  // this text is no longer automatically inset by listContent.
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: SPACING['4xl'],
@@ -174,16 +230,17 @@ export const ReportStyles = StyleSheet.create({
     gap: SPACING.sm,
   },
 
-  emptyTitle: { 
-    fontSize: FONTS.lg, 
-    fontWeight: FONTS.semibold, 
-    color: COLORS.textSecondary 
+  emptyTitle: {
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textSecondary,
   },
-  emptySubtitle: { 
-    fontSize: FONTS.sm, 
-    color: COLORS.textMuted, 
-    textAlign: 'center', 
-    lineHeight: 20 
+
+  emptySubtitle: {
+    fontSize: FONTS.sm,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 
   // ─── MODAL / DETAIL SHEET

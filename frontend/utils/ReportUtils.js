@@ -7,15 +7,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Exporting it prevents the key-mismatch bug where two files use different keys.
 export const REPORTS_STORAGE_KEY = 'aidepoint_reports_v1';
 
-// The backend performs a binary anemia screen (anemic vs healthy) --
+// The backend performs a binary anemia screen (anemic vs not anemic) --
 // it does not identify a specific disease type. An earlier version of
 // this app had a second-stage classifier that predicted a specific
 // condition (sickle cell, malaria, thalassemia, etc.), but that
 // classifier was removed after its training data turned out to be
 // threshold-derived rather than independently diagnosed, and because
 // "Leukemia" had been included in that dataset as an anemia type, which
-// it is not. Only these two keys are valid now; anything else falls
-// back to the "healthy" config below.
+// it is not.
+//
+// Three buckets now, not two -- 'healthy' and 'no_anemia' both mean "not
+// anemic," but they're not the same result to hand a technician:
+//   - healthy: not anemic, and nothing else was flagged either. A clean
+//     result.
+//   - no_anemia: not anemic, but the scan surfaced something else worth
+//     a second look -- a flagged morphology finding, or an unreliable-
+//     result warning. Confirmed necessary from a real test: a malaria-
+//     positive sample came back "not anemic," which is true, but
+//     grouping it under "Healthy" implied a clean bill of health the
+//     app never actually confirmed. See resolveConditionKey() below for
+//     exactly how a result lands in one bucket versus the other.
 export const CONDITION_CONFIG = {
 
   anemic: {
@@ -29,7 +40,7 @@ export const CONDITION_CONFIG = {
   },
 
   healthy: {
-    label:      'No Anemia Indicated',
+    label:      'Healthy',
     severity:   'green',
     badgeBg:    '#ECFDF5',
     badgeText:  '#065F46',
@@ -37,6 +48,40 @@ export const CONDITION_CONFIG = {
     urgency:    'None -- routine follow-up recommended',
     morphology: 'No significant abnormal cell morphology detected',
   },
+
+  // Blue/"info" rather than red or green -- deliberately not an alarm
+  // colour (this isn't a positive anemia result) and deliberately not
+  // the same green as a genuinely clean result either. COLORS.info /
+  // COLORS.infoBg from theme.js already exist for exactly this kind of
+  // "notable, not urgent" signal, so this reuses the app's existing
+  // semantic color rather than inventing a new one.
+  no_anemia: {
+    label:      'No Anemia Indicated',
+    severity:   'blue',
+    badgeBg:    '#EBF8FF',
+    badgeText:  '#1D4ED8',
+    badgeDot:   '#3182CE',
+    urgency:    'Anemia not indicated, but other findings were noted -- clinical correlation advised',
+    morphology: 'Non-anemia-related findings detected -- see report for details',
+  },
+};
+
+// resolveConditionKey
+// Decides which of the three CONDITION_CONFIG buckets a scan actually
+// belongs in. Anemic results are never ambiguous -- is_anemic is the
+// whole call there. Not-anemic results need one more check: did
+// anything else get flagged on this scan? If so, this is a "no_anemia"
+// result, not a plain "healthy" one.
+const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
+  if (isAnemic) return 'anemic';
+
+  const hasFlaggedMorphology = Object.values(morphologyFindings ?? {}).some(
+    (finding) => finding?.flagged === true
+  );
+
+  if (hasFlaggedMorphology || isUnreliable) return 'no_anemia';
+
+  return 'healthy';
 };
 
 // buildReport
@@ -49,11 +94,25 @@ export const buildReport = ({
   // fixed config-level text above -- morphologyFindings and
   // cbcPatternSummary vary per scan, so they need to be stored on the
   // report itself, not derived from CONDITION_CONFIG at display time.
+  // morphologyFindings and isUnreliable are also what resolveConditionKey
+  // uses to decide between 'healthy' and 'no_anemia' below.
   morphologyFindings, cbcPatternSummary,
   isUnreliable, unreliableReasons, imageQuality,
 }) => {
   const now = new Date();
-  const cfg = CONDITION_CONFIG[condition] ?? CONDITION_CONFIG.healthy;
+
+  // `condition` is still accepted as the caller's is_anemic-derived
+  // 'anemic' | 'healthy' guess (see Scan.js), but resolveConditionKey is
+  // the actual source of truth for the final bucket -- this is what
+  // upgrades a not-anemic-but-flagged result from 'healthy' to
+  // 'no_anemia' before anything gets saved or displayed.
+  const resolvedCondition = resolveConditionKey(
+    condition === 'anemic',
+    morphologyFindings,
+    isUnreliable
+  );
+
+  const cfg = CONDITION_CONFIG[resolvedCondition] ?? CONDITION_CONFIG.healthy;
 
   return {
     //  Identity
@@ -68,7 +127,7 @@ export const buildReport = ({
 
     // AI result : fixed config text (label/urgency/generic morphology
     // description) plus the real per-scan findings from this specific scan
-    condition,
+    condition:      resolvedCondition,
     conditionLabel: cfg.label,
     confidence,
     severity:       cfg.severity,
