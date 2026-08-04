@@ -1,172 +1,374 @@
-import { StyleSheet } from "react-native";
+// styles/SignUpStyles.js
+//
+// FIXED: removed dead styles from the original file -- ssoDivider/line/
+// ssoText/ssoRow/ssoButton/ssoBtnLabel (no SSO buttons anywhere in this
+// app), logoContainer/logoCircle/logoText (unused, SignUp never renders
+// a logo the way SignIn does), footerLegal (never rendered), and the
+// generic `error` style (superseded by fieldError, used consistently
+// with SignInStyles.js's naming). Every remaining style is referenced
+// by SignUp.js. All values now pull from theme.js instead of hardcoded
+// hex/px, per project convention.
 
-// Common shadow style for cards
-const cardShadow = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.1,
-  shadowRadius: 10,
-  elevation: 5,
-};
+import { StyleSheet } from 'react-native';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../assets/theme';
 
 export const signupStyle = StyleSheet.create({
-
-  // CONTAINERe
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.surface,
   },
+
   scrollContent: {
-    padding: 20,
-    alignItems: "center",
+    flexGrow: 1,
+    paddingHorizontal: SPACING.pagePad,
+    paddingBottom: SPACING['3xl'],
   },
 
-  // CARD
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 24,
-    width: "100%",
-    ...cardShadow,
+  // ── Step header: close/back button + progress dots ──
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.xl,
   },
 
-  // HEADER / LOGO
-  logoContainer: {
-    flexDirection: 'row',           // Icon and text side by side
-    alignItems: 'center',           // Vertically centered
-    justifyContent: 'flex-start',   // Start from left
-    marginBottom: 30,               // Space below logo
+  progressRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
   },
 
-  logoCircle: {
-    width: 50,                       // Circle width
-    height: 50,                      // Circle height
-    borderRadius: 25,                // Circle shape
-    backgroundColor: '#E0F7FA',      // Light background color
-    alignItems: 'center',            // Center icon horizontally
-    justifyContent: 'center',        // Center icon vertically
-    marginRight: 12,                 // Space between circle and text
+  progressDot: {
+    width: scale(22),
+    height: scale(4),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.border,
   },
 
-  logoText: {
-    fontSize: 24,                     // Logo text size
-    fontWeight: 'bold',               // Bold text
-    color: '#00CFE8',                 // Match your brand color
+  progressDotActive: {
+    backgroundColor: COLORS.primary,
   },
 
-  // TEXT
-  title: {
-    fontSize: 26,
-    color: "#00CFE8",
-    fontWeight: "bold",
-    textAlign: "center",
+  progressDotDone: {
+    backgroundColor: COLORS.primaryLight,
   },
-  subtitle: {
-    color: "#64748B",
-    textAlign: "center",
-    marginVertical: 10,
+
+  // ── Step title/subtitle ──
+  stepTitle: {
+    fontSize: FONTS['2xl'],
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
   },
+
+  stepSubtitle: {
+    fontSize: FONTS.sm,
+    color: COLORS.textMuted,
+    marginBottom: SPACING['2xl'],
+    lineHeight: FONTS.sm * FONTS.normal,
+  },
+
+  // ── Form ──
   label: {
-    fontSize: 14,
-    color: "#475569",
-    fontWeight: "600",
-    marginTop: 15,
-    marginBottom: 5,
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
 
-  // INPUTS
   inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.md,
+    height: scale(54),
   },
+
+  inputWrapperError: {
+    borderColor: COLORS.danger,
+  },
+
+  inputIcon: {
+    marginRight: SPACING.sm,
+  },
+
   input: {
     flex: 1,
-    paddingVertical: 12,
-    marginLeft: 10,
-    color: "#1E293B",
+    fontSize: FONTS.md,
+    color: COLORS.textPrimary,
   },
 
-  // BUTTONS
-  registerBtn: {
-    backgroundColor: "#00CFE8",
-    borderRadius: 30,
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 25,
-  },
-  registerBtnText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
-    marginRight: 10,
+  fieldError: {
+    color: COLORS.danger,
+    fontSize: FONTS.xs,
+    marginTop: SPACING.xs,
   },
 
-  // SSO / DIVIDER
-  ssoDivider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 25,
-  },
-  line: {
+  // ── Hospital field (tappable, opens modal) ──
+  hospitalInputText: {
     flex: 1,
+    fontSize: FONTS.md,
+    color: COLORS.textPrimary,
+  },
+
+  hospitalInputPlaceholder: {
+    color: COLORS.textMuted,
+  },
+
+  // ── Password strength (single bar + hint, matches reference image) ──
+  strengthBarTrack: {
+    height: scale(5),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.border,
+    marginTop: SPACING.md,
+    overflow: 'hidden',
+  },
+
+  strengthBarFill: {
+    height: '100%',
+    borderRadius: RADIUS.full,
+  },
+
+  strengthHint: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+    marginTop: SPACING.sm,
+  },
+
+  checkList: {
+    marginTop: SPACING.md,
+    gap: SPACING.xs,
+  },
+
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+
+  checkText: {
+    fontSize: FONTS.xs,
+  },
+
+  checkPass: {
+    color: COLORS.success,
+  },
+
+  checkFail: {
+    color: COLORS.textMuted,
+  },
+
+  // ── Next / submit button ──
+  nextBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    height: scale(56),
+    borderRadius: RADIUS.full,
+    marginTop: SPACING['2xl'],
+    ...SHADOWS.md,
+  },
+
+  nextBtnDisabled: {
+    backgroundColor: COLORS.border,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  nextBtnText: {
+    color: COLORS.white,
+    fontSize: FONTS.lg,
+    fontWeight: FONTS.bold,
+    marginRight: SPACING.sm,
+  },
+
+  nextBtnTextDisabled: {
+    color: COLORS.textMuted,
+  },
+
+  // ── Sign in link (final step only) ──
+  signinRow: {
+    marginTop: SPACING.xl,
+    alignItems: 'center',
+  },
+
+  signinText: {
+    fontSize: FONTS.sm,
+    color: COLORS.textMuted,
+  },
+
+  signinLink: {
+    color: COLORS.primary,
+    fontWeight: FONTS.bold,
+  },
+
+  // ── Auth error banner ──
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.dangerBg,
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+
+  errorText: {
+    color: COLORS.danger,
+    fontSize: FONTS.sm,
+    flex: 1,
+  },
+
+  // ── Hospital picker modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+  },
+
+  modalSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    maxHeight: '78%',
+    paddingBottom: layout.bottomInset + SPACING.md,
+    ...SHADOWS.lg,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+
+  modalTitle: {
+    fontSize: FONTS.md,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+  },
+
+  modalSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: SPACING.lg,
+    marginVertical: SPACING.md,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+
+  modalSearchInput: {
+    flex: 1,
+    fontSize: FONTS.md,
+    color: COLORS.textPrimary,
+  },
+
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+  },
+
+  listItemName: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.medium,
+    color: COLORS.textPrimary,
+  },
+
+  listItemCity: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+
+  separator: {
     height: 1,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.divider,
+    marginLeft: SPACING.xl,
   },
-  ssoText: {
-    marginHorizontal: 10,
-    color: "#94A3B8",
-    fontSize: 12,
+
+  emptyText: {
+    textAlign: 'center',
+    color: COLORS.textMuted,
+    fontSize: FONTS.sm,
+    marginTop: SPACING['3xl'],
   },
-  ssoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+
+  typePill: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
   },
-  ssoButton: {
-    flex: 0.48,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+
+  typePillText: {
+    fontSize: 10,
+    fontWeight: FONTS.semibold,
+    textTransform: 'capitalize',
+  },
+
+  customBox: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
-    padding: 12,
-  },
-  ssoBtnLabel: {
-    marginLeft: 8,
-    fontWeight: "600",
-    color: "#475569",
+    borderColor: COLORS.border,
   },
 
-  // LINKS / FOOTER
-  signInText: {
-    textAlign: "center",
-    marginTop: 25,
-    color: "#64748B",
-  },
-  signInLink: {
-    color: "#00CFE8",
-    fontWeight: "bold",
-  },
-  footerLegal: {
-    fontSize: 11,
-    color: "#94A3B8",
-    textAlign: "center",
-    marginTop: 30,
-    lineHeight: 18,
+  customLabel: {
+    fontSize: FONTS.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
   },
 
-  // ERRORS
-  error: {
-    color: "red",
-    fontSize: 12,
-    marginBottom: 10,
+  customRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+
+  customInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: FONTS.sm,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.surface,
+  },
+
+  customConfirmBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    justifyContent: 'center',
+  },
+
+  customConfirmBtnDisabled: {
+    opacity: 0.4,
+  },
+
+  customConfirmText: {
+    color: COLORS.white,
+    fontWeight: FONTS.semibold,
+    fontSize: FONTS.sm,
   },
 });

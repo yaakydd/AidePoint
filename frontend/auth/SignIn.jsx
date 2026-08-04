@@ -86,7 +86,7 @@ const SignIn = () => {
 
           {/* ── White card ── */}
           <View style={styles.card}>
-            <Text style={styles.greetingTitle}>Welcome back 👋</Text>
+            <Text style={styles.greetingTitle}>Welcome back </Text>
             <Text style={styles.greetingSubtitle}>Sign in to continue to AidePoint</Text>
 
             {!!authError && (
@@ -122,9 +122,7 @@ const SignIn = () => {
               {/* Password */}
               <View style={styles.passwordHeaderRow}>
                 <Text style={styles.inputLabel}>Password</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
-                </TouchableOpacity>
+
               </View>
               <View style={[styles.inputBox, errors.password && styles.inputBoxError]}>
                 <MaterialCommunityIcons
@@ -144,8 +142,13 @@ const SignIn = () => {
                 <TouchableOpacity onPress={() => setShowPass((p) => !p)} style={styles.eyeBtn}>
                   <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
                 </TouchableOpacity>
+                
               </View>
+                  <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                  <Text style={styles.forgotText}>Forgot password?</Text>
+                </TouchableOpacity>
               {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+              
 
               {/* Submit */}
               <TouchableOpacity
