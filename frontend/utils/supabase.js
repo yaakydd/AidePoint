@@ -14,5 +14,3 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-console.log('Supabase client initialized with URL:', SUPABASE_URL);
-console.log('Supabase client initialized with ANON KEY:', SUPABASE_ANON_KEY);

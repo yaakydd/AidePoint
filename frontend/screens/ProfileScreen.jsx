@@ -150,6 +150,48 @@ export default function ProfileScreen() {
     );
   }
 
+  function handleDeleteAccount() {
+  Alert.alert(
+    'Delete Account',
+    'This permanently deletes your AidePoint account, including your profile, saved reports, and chat history. This cannot be undone.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue',
+        style: 'destructive',
+        onPress: () => {
+          // Second confirmation -- this is destructive and irreversible,
+          // so a single tap shouldn't be enough to trigger it.
+          Alert.alert(
+            'Are you absolutely sure?',
+            'Type nothing needed -- tapping Delete below will erase your account immediately.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete My Account',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    const { error } = await supabase.functions.invoke('delete-account');
+                    if (error) throw error;
+                    // Edge function deletes the auth user + profile row;
+                    // AuthContext's session listener should pick up the
+                    // now-invalid session and route back to Auth on its own.
+                    // If it doesn't, fall back to an explicit logout:
+                    await logout();
+                  } catch (err) {
+                    Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
+                  }
+                },
+              },
+            ],
+          );
+        },
+      },
+    ],
+  );
+}
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -293,8 +335,14 @@ export default function ProfileScreen() {
         <Section title="ACCOUNT ACTIONS">
           <Row
             icon="logout" iconColor="#F43F5E" iconBg="#FFF1F2"
-            label="Sign out of AidePoint"
+            label="Sign Out"
             onPress={handleLogout}
+          />
+          <Divider />
+          <Row
+            icon="delete-outline" iconColor="#DC2626" iconBg="#FEF2F2"
+            label="Delete Account"
+            onPress={handleDeleteAccount}
           />
         </Section>
 
