@@ -4,16 +4,18 @@
 // I trust this" trail for one prediction:
 //   1. the original photo vs the auto-cropped version actually analyzed
 //   2. the cell-level overlay drawn on the analyzed photo
-//   3. whether the reliability gate or image quality check flagged anything
-//   4. the AI result itself, plus the CBC pattern summary and morphology
+//   3. the AI result itself, plus the CBC pattern summary and morphology
 //      findings, all labeled with their actual confidence -- never
 //      presented as lab-grade numbers.
-//   5. a recommendation for what to do next (deliberately the LAST
-//      content block before the footer note/buttons -- everything above
-//      it is "here's the evidence", this is "here's the takeaway", and
-//      it should read like a conclusion, not get lost above the findings)
-//   6. a free-text notes field for the lab technician, saved onto the
+//   4. a free-text notes field for the lab technician, saved onto the
 //      report so it shows up later in the Reports screen detail view.
+//   5. whether the reliability gate or image quality check flagged
+//      anything, immediately followed by a recommendation for what to
+//      do next -- both deliberately the LAST content block before the
+//      footer note/buttons. Everything above is "here's the evidence",
+//      this pair is "here's the takeaway", read as a conclusion rather
+//      than a mid-sheet interruption. Kept in this order to match
+//      DetailModal.js/the exported PDF, which reads the same way.
 //
 // prediction is the raw JSON returned by /predict (see utils/api.js).
 // report/bonusJustGranted/bonusRemaining/remaining come from the same
@@ -184,24 +186,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
 
-            {/* Reliability / quality warning banner, shown first since it
-                changes how much weight the technician should put on
-                everything below it */}
-            {(isUnreliable || imageQuality.quality_score === 'poor') && (
-              <View style={styles.warningBanner}>
-                <MaterialCommunityIcons name="alert-outline" size={20} color="#92400E" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.warningTitle}>Review recommended</Text>
-                  {(prediction.unreliable_reasons ?? []).map((reason, index) => (
-                    <Text key={index} style={styles.warningText}>• {reason}</Text>
-                  ))}
-                  {(imageQuality.failure_reasons ?? []).map((reason, index) => (
-                    <Text key={`q-${index}`} style={styles.warningText}>• {reason}</Text>
-                  ))}
-                </View>
-              </View>
-            )}
-
             <View style={[styles.iconCircle, { backgroundColor: sevStyle.bg }]}>
               <MaterialCommunityIcons name={sevStyle.icon} size={38} color={sevStyle.text} />
             </View>
@@ -365,6 +349,26 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* MOVED: "Review recommended" now sits just above the
+                Recommendation block instead of at the very top -- keeps
+                this screen's reading order consistent with
+                DetailModal.js/the exported PDF (evidence first, then
+                warning + recommendation as the closing takeaway). */}
+            {(isUnreliable || imageQuality.quality_score === 'poor') && (
+              <View style={[styles.warningBanner, { marginBottom: SPACING.sm }]}>
+                <MaterialCommunityIcons name="alert-outline" size={20} color="#92400E" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.warningTitle}>Review recommended</Text>
+                  {(prediction.unreliable_reasons ?? []).map((reason, index) => (
+                    <Text key={index} style={styles.warningText}>• {reason}</Text>
+                  ))}
+                  {(imageQuality.failure_reasons ?? []).map((reason, index) => (
+                    <Text key={`q-${index}`} style={styles.warningText}>• {reason}</Text>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Recommendation -- deliberately the LAST content block.
                 Everything above is evidence; this is the takeaway the

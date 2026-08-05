@@ -89,13 +89,19 @@ const Scan = ({ navigation, route }) => {
     bloodPressure.trim()!== '' &&
     image !== null;
 
+  // FIXED: every function below that mutates form state or navigates away
+  // now bails out while isAnalysing is true. Disabling the buttons in the
+  // JSX isn't enough on its own -- a fast double-tap can fire before React
+  // re-renders the disabled state, so the guard also lives here.
   function openCamera() {
+    if (isAnalysing) return;
     navigation.navigate('Camera', {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
     });
   }
 
   function retakePhoto() {
+    if (isAnalysing) return;
     setImage(null);
     setImageSourceType(null);
     navigation.navigate('Camera', {
@@ -104,6 +110,7 @@ const Scan = ({ navigation, route }) => {
   }
 
   async function handlePickFile() {
+    if (isAnalysing) return;
     console.log('>>> handlePickFile CALLED');
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -128,6 +135,7 @@ const Scan = ({ navigation, route }) => {
   }
 
   function handleResetPress() {
+    if (isAnalysing) return;
     if (showResetTip) {
       triggerReset();
       return;
@@ -303,14 +311,14 @@ const report = buildReport({
         contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_CLEARANCE }]}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} disabled={isAnalysing}>
             <MaterialIcons name="arrow-back-ios-new" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Scan</Text>
 
           <View style={styles.resetWrapper}>
-            <TouchableOpacity style={styles.resetIconBtn} onPress={handleResetPress}>
+            <TouchableOpacity style={styles.resetIconBtn} onPress={handleResetPress} disabled={isAnalysing}>
               <MaterialIcons name="restart-alt" size={22} color={COLORS.danger} />
             </TouchableOpacity>
             {showResetTip && (
@@ -353,6 +361,7 @@ const report = buildReport({
           value={patientName}
           onChangeText={setPatientName}
           style={styles.input}
+          editable={!isAnalysing}
         />
 
         <View style={styles.row}>
@@ -366,6 +375,7 @@ const report = buildReport({
               keyboardType="number-pad"
               maxLength={3}
               style={[styles.input, styles.half]}
+              editable={!isAnalysing}
             />
           </View>
           <View style={styles.rowItem}>
@@ -377,6 +387,7 @@ const report = buildReport({
                   style={[styles.genderPill, patientGender === g && styles.genderPillActive]}
                   onPress={() => setPatientGender(g)}
                   activeOpacity={0.8}
+                  disabled={isAnalysing}
                 >
                   <MaterialCommunityIcons
                     name={g === 'Male' ? 'gender-male' : 'gender-female'}
@@ -401,6 +412,7 @@ const report = buildReport({
               onChangeText={setTemperature}
               keyboardType="decimal-pad"
               style={[styles.input, styles.half]}
+              editable={!isAnalysing}
             />
           </View>
           <View style={styles.rowItem}>
@@ -411,6 +423,7 @@ const report = buildReport({
               value={bloodPressure}
               onChangeText={setBloodPressure}
               style={[styles.input, styles.half]}
+              editable={!isAnalysing}
             />
           </View>
         </View>
@@ -421,7 +434,7 @@ const report = buildReport({
         </View>
 
         {!image && (
-          <TouchableOpacity style={styles.takePictureBtn} onPress={openCamera}>
+          <TouchableOpacity style={styles.takePictureBtn} onPress={openCamera} disabled={isAnalysing}>
             <MaterialIcons name="photo-camera" size={22} color={COLORS.primary} />
             <Text style={styles.takePictureText}>Take Picture</Text>
           </TouchableOpacity>
@@ -429,14 +442,18 @@ const report = buildReport({
 
         {image && (
           <View style={styles.previewWrapper}>
-            <TouchableOpacity activeOpacity={0.9} style={styles.previewBox} onPress={() => setImageViewerOpen(true)}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.previewBox}
+              onPress={() => !isAnalysing && setImageViewerOpen(true)}
+            >
               <Image source={{ uri: image }} style={styles.previewImage} />
               <View style={styles.previewZoomHint}>
                 <MaterialIcons name="zoom-in" size={16} color="#fff" />
                 <Text style={styles.previewZoomText}>Tap to enlarge</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={retakePhoto} style={styles.retakeBtn}>
+            <TouchableOpacity onPress={retakePhoto} style={styles.retakeBtn} disabled={isAnalysing}>
               <MaterialIcons name="refresh" size={16} color={COLORS.primary} />
               <Text style={styles.retakeText}>Retake Photo</Text>
             </TouchableOpacity>
@@ -450,7 +467,7 @@ const report = buildReport({
             </View>
             <Text style={styles.uploadTitle}>Upload Blood Smear File</Text>
             <Text style={styles.uploadSub}>PNG or JPG images supported</Text>
-            <TouchableOpacity style={styles.browseBtn} onPress={handlePickFile}>
+            <TouchableOpacity style={styles.browseBtn} onPress={handlePickFile} disabled={isAnalysing}>
               <Text style={styles.browseBtnText}>Browse Files</Text>
             </TouchableOpacity>
           </View>
@@ -498,6 +515,7 @@ const report = buildReport({
       {resultModal && (
         <TransparencyTrail
           data={resultModal}
+          userId={user.id}
           onClose={() => {
             setResultModal(null);
             navigation.navigate('Report');
