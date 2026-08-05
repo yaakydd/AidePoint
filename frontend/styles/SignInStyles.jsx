@@ -1,6 +1,7 @@
-// styles/SignInStyles.js
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../assets/theme';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const signInStyles = StyleSheet.create({
   safe: {
@@ -12,19 +13,14 @@ export const signInStyles = StyleSheet.create({
     flexGrow: 1,
   },
 
-  // ── Curved color header (holds the logo) ──
+  // 40% of screen height for the logo/header section
   headerSection: {
+    height: SCREEN_HEIGHT * 0.4,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
-    paddingTop: SPACING['3xl'],
-    paddingBottom: SPACING['4xl'],
+    justifyContent: 'center',
   },
 
-  // FIXED PLACEHOLDER: swap this View for your real logo Image once you
-  // have the asset, e.g.:
-  //   <Image source={require('../assets/logo.png')} style={signInStyles.logoImage} />
-  // Keeping logoCircle's dimensions/shape on the Image style will match
-  // the layout below exactly -- just delete logoCircle's icon child.
   logoCircle: {
     width: scale(76),
     height: scale(76),
@@ -49,9 +45,10 @@ export const signInStyles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // ── White card, rounded top corners, overlaps the header ──
+  // 60% of screen height for the sign-in card (can still grow if content
+  // + keyboard needs more room, since it's inside a ScrollView)
   card: {
-    flex: 1,
+    minHeight: SCREEN_HEIGHT * 0.6,
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: RADIUS['2xl'],
     borderTopRightRadius: RADIUS['2xl'],
@@ -74,7 +71,6 @@ export const signInStyles = StyleSheet.create({
     marginBottom: SPACING['2xl'],
   },
 
-  // ── Server error ──
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -138,6 +134,10 @@ export const signInStyles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
 
+  // Password label + "Forgot password?" back on the same row, label
+  // left / link right (this row was left empty on the right before,
+  // and forgotText got pushed below the input as its own full-width
+  // TouchableOpacity instead of living here)
   passwordHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -145,13 +145,11 @@ export const signInStyles = StyleSheet.create({
   },
 
   forgotText: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.xs,
     color: COLORS.primary,
     fontWeight: FONTS.semibold,
-    marginTop: SPACING.md,
   },
 
-  // ── Pill-shaped submit button with shadow ──
   signInBtn: {
     flexDirection: 'row',
     justifyContent: 'center',

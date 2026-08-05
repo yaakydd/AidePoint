@@ -33,24 +33,67 @@ export const signupStyle = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
 
+// ── Step icons (replace progress dots) ──
   progressRow: {
     flexDirection: 'row',
-    gap: SPACING.xs,
+    gap: SPACING.md,
   },
 
-  progressDot: {
-    width: scale(22),
-    height: scale(4),
+  stepIconCircle: {
+    width: scale(34),
+    height: scale(34),
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
 
-  progressDotActive: {
+  stepIconCircleActive: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
 
-  progressDotDone: {
+  stepIconCircleDone: {
     backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
+  },
+
+  // ── Privacy policy checkbox (step 3) ──
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    marginTop: SPACING.xl,
+  },
+
+  checkbox: {
+    width: scale(20),
+    height: scale(20),
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+
+  privacyText: {
+    flex: 1,
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    lineHeight: FONTS.xs * FONTS.normal,
+  },
+
+  privacyLink: {
+    color: COLORS.primary,
+    fontWeight: FONTS.semibold,
   },
 
   // ── Step title/subtitle ──

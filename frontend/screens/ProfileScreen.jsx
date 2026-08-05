@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
+import { clearReports } from '../utils/ReportUtils';
 import { MaterialIcons } from '@expo/vector-icons';
 
 // must match whatever key reportPin.js uses
@@ -128,15 +129,24 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await SecureStore.deleteItemAsync(PIN_KEY);
-              Alert.alert('PIN Reset', 'Your report PIN has been cleared.');
-            } catch {
-              Alert.alert('Error', 'Could not reset PIN. Please try again.');
-            }
+                  const { error } = await supabase.functions.invoke('delete-account');
+                  if (error) throw error;
+
+                  // The edge function only deletes the Supabase-side account.
+                  // Reports live in local AsyncStorage (see ReportUtils.js), keyed
+                  // globally rather than per-user, so they survive account deletion
+                  // unless explicitly cleared here.
+                  await clearReports();
+
+                  await logout();
+                } catch (err) {
+                   Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
+                  }
+            },
+
           },
-        },
-      ],
-    );
+        ],
+      );
   }
 
   function handleLogout() {

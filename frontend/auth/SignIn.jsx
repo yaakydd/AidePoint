@@ -119,35 +119,33 @@ const SignIn = () => {
               </View>
               {errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
 
-              {/* Password */}
-              <View style={styles.passwordHeaderRow}>
-                <Text style={styles.inputLabel}>Password</Text>
-
-              </View>
-              <View style={[styles.inputBox, errors.password && styles.inputBoxError]}>
-                <MaterialCommunityIcons
-                  name="lock-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon}
-                />
-                <TextInput
-                  placeholder="Enter your password"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={password}
-                  onChangeText={(t) => {
-                    setPassword(t);
-                    setErrors((e) => ({ ...e, password: null }));
-                  }}
-                  secureTextEntry={!showPass}
-                  style={styles.textInput}
-                />
-                <TouchableOpacity onPress={() => setShowPass((p) => !p)} style={styles.eyeBtn}>
-                  <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
-                </TouchableOpacity>
-                
-              </View>
-                  <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
-                </TouchableOpacity>
-              {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+{/* Password */}
+<View style={styles.passwordHeaderRow}>
+  <Text style={styles.inputLabel}>Password</Text>
+  <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+    <Text style={styles.forgotText}>Forgot password?</Text>
+  </TouchableOpacity>
+</View>
+<View style={[styles.inputBox, errors.password && styles.inputBoxError]}>
+  <MaterialCommunityIcons
+    name="lock-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon}
+  />
+  <TextInput
+    placeholder="Enter your password"
+    placeholderTextColor={COLORS.textMuted}
+    value={password}
+    onChangeText={(t) => {
+      setPassword(t);
+      setErrors((e) => ({ ...e, password: null }));
+    }}
+    secureTextEntry={!showPass}
+    style={styles.textInput}
+  />
+  <TouchableOpacity onPress={() => setShowPass((p) => !p)} style={styles.eyeBtn}>
+    <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
+  </TouchableOpacity>
+</View>
+{errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
               
 
               {/* Submit */}

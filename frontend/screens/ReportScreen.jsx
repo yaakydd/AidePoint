@@ -47,7 +47,7 @@ const FILTERS = [
   { label: 'All', key: null },
   { label: 'Anemic', key: 'anemic' },
   { label: 'Healthy', key: 'healthy' },
-  { label: 'No Anemia', key: 'no_anemia' },
+  { label: 'Other Condition', key: 'other_condition' }
 ];
 
 const getRelativeTime = (iso) => {

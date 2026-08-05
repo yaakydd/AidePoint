@@ -35,6 +35,13 @@ const PASSWORD_CHECKS = [
   { key: 'special', label: 'At least one special character', test: (p) => /[@#!$%^&*()\-_=+]/.test(p) },
 ];
 
+
+const STEP_ICONS = {
+  start: 'account-outline',
+  hospital: 'hospital-building',
+  password: 'lock-outline',
+};
+
 const getStrength = (pwd) => {
   const passed = PASSWORD_CHECKS.filter((c) => c.test(pwd)).length;
   if (passed <= 1) return { label: 'Too weak: try adding more numbers', color: COLORS.danger, score: 1 };
@@ -77,6 +84,7 @@ const SignUp = () => {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customHospital, setCustomHospital] = useState('');
   const [hospitalsLoading, setHospitalsLoading] = useState(true);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   // Step 3 fields
   const [password, setPassword] = useState('');
@@ -194,19 +202,25 @@ const SignUp = () => {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
-
   const validatePassword = () => {
-    const e = {};
-    if (!password) e.password = 'Password is required';
-    else if (strength.score < 3) e.password = 'Password is too weak';
-    if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+  const e = {};
+  if (!password) e.password = 'Password is required';
+  else if (strength.score < 3) e.password = 'Password is too weak';
+  if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
+  if (!agreedToPrivacy) e.privacy = 'You must agree to the Privacy Policy to continue';
+  setErrors(e);
+  return Object.keys(e).length === 0;
+};
+
 
   const canProceedStart = name.trim().length > 0 && email.trim().length > 0;
   const canProceedHospital = !!hospitalSelected;
-  const canProceedPassword = strength.score >= 3 && password === confirmPassword && confirmPassword.length > 0;
+  const canProceedPassword =
+  strength.score >= 3 &&
+  password === confirmPassword &&
+  confirmPassword.length > 0 &&
+  agreedToPrivacy;
+  
 
   const handleBack = () => {
     if (stepIndex === 0) {
@@ -276,18 +290,23 @@ const SignUp = () => {
               />
             </TouchableOpacity>
             <View style={styles.progressRow}>
-              {STEPS.map((s, i) => (
-                <View
-                  key={s}
-                  style={[
-                    styles.progressDot,
-                    i === stepIndex && styles.progressDotActive,
-                    i < stepIndex && styles.progressDotDone,
-                  ]}
-                />
-              ))}
-            </View>
-            <View style={{ width: 24 }} />
+  {STEPS.map((s, i) => (
+    <View
+      key={s}
+      style={[
+        styles.stepIconCircle,
+        i === stepIndex && styles.stepIconCircleActive,
+        i < stepIndex && styles.stepIconCircleDone,
+      ]}
+    >
+      <MaterialCommunityIcons
+        name={STEP_ICONS[s]}
+        size={16}
+        color={i <= stepIndex ? COLORS.white : COLORS.textMuted}
+      />
+    </View>
+  ))}
+</View>
           </View>
 
           {!!authError && (
@@ -511,6 +530,27 @@ const SignUp = () => {
                 </>
               )}
               {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+
+
+              <TouchableOpacity
+  style={styles.privacyRow}
+  onPress={() => { setAgreedToPrivacy((p) => !p); clearField('privacy'); }}
+  activeOpacity={0.7}
+>
+  <View style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}>
+    {agreedToPrivacy && <MaterialCommunityIcons name="check" size={14} color={COLORS.white} />}
+  </View>
+  <Text style={styles.privacyText}>
+    I have read and fully understand the{' '}
+    <Text
+      style={styles.privacyLink}
+      onPress={() => navigation.navigate('PrivacyPolicy')}
+    >
+      Privacy Policy
+    </Text>
+  </Text>
+</TouchableOpacity>
+{errors.privacy && <Text style={styles.fieldError}>{errors.privacy}</Text>}
 
               <Text style={styles.label}>Confirm Password</Text>
               <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputWrapperError]}>

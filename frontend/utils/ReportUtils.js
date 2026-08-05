@@ -3,10 +3,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// One storage key used by BOTH this file and ReportScreen.
-// Exporting it prevents the key-mismatch bug where two files use different keys.
-export const REPORTS_STORAGE_KEY = 'aidepoint_reports_v1';
-
 // The backend performs a binary anemia screen (anemic vs not anemic) --
 // it does not identify a specific disease type. An earlier version of
 // this app had a second-stage classifier that predicted a specific
@@ -16,17 +12,18 @@ export const REPORTS_STORAGE_KEY = 'aidepoint_reports_v1';
 // "Leukemia" had been included in that dataset as an anemia type, which
 // it is not.
 //
-// Three buckets now, not two -- 'healthy' and 'no_anemia' both mean "not
-// anemic," but they're not the same result to hand a technician:
+// Three buckets now, not two -- 'healthy' and 'other_condition' both
+// mean "not anemic," but they're not the same result to hand a
+// technician:
 //   - healthy: not anemic, and nothing else was flagged either. A clean
 //     result.
-//   - no_anemia: not anemic, but the scan surfaced something else worth
-//     a second look -- a flagged morphology finding, or an unreliable-
-//     result warning. Confirmed necessary from a real test: a malaria-
-//     positive sample came back "not anemic," which is true, but
-//     grouping it under "Healthy" implied a clean bill of health the
-//     app never actually confirmed. See resolveConditionKey() below for
-//     exactly how a result lands in one bucket versus the other.
+//   - other_condition: not anemic, but the scan surfaced something else
+//     worth a second look -- a flagged morphology finding, or an
+//     unreliable-result warning. Confirmed necessary from a real test:
+//     a malaria-positive sample came back "not anemic," which is true,
+//     but grouping it under "Healthy" implied a clean bill of health
+//     the app never actually confirmed. See resolveConditionKey() below
+//     for exactly how a result lands in one bucket versus the other.
 export const CONDITION_CONFIG = {
 
   anemic: {
@@ -55,14 +52,14 @@ export const CONDITION_CONFIG = {
   // COLORS.infoBg from theme.js already exist for exactly this kind of
   // "notable, not urgent" signal, so this reuses the app's existing
   // semantic color rather than inventing a new one.
-  no_anemia: {
-    label:      'No Anemia Indicated',
+  other_condition: {
+    label:      'Other Condition Detected',
     severity:   'blue',
     badgeBg:    '#EBF8FF',
     badgeText:  '#1D4ED8',
     badgeDot:   '#3182CE',
-    urgency:    'Anemia not indicated, but other findings were noted -- clinical correlation advised',
-    morphology: 'Non-anemia-related findings detected -- see report for details',
+    urgency:    'Anemia not indicated, but other findings were noted, clinical correlation advised',
+    morphology: 'Non-anemia-related findings detected, see report for details',
   },
 };
 
@@ -70,13 +67,13 @@ export const CONDITION_CONFIG = {
 // Decides which of the three CONDITION_CONFIG buckets a scan actually
 // belongs in. Anemic results are never ambiguous -- is_anemic is the
 // whole call there. Not-anemic results need one more check: did
-// anything else get flagged on this scan? If so, this is a "no_anemia"
-// result, not a plain "healthy" one.
+// anything else get flagged on this scan? If so, this is an
+// "other_condition" result, not a plain "healthy" one.
 //
 // Exported so TransparencyTrail.js (the immediate post-scan result
 // modal) can use the exact same resolution buildReport() uses below --
 // without sharing this, the same scan could show "Healthy" in the
-// modal the instant it completes, then "No Anemia Indicated" once
+// modal the instant it completes, then "Other Condition Detected" once
 // saved and viewed again in Reports, which would look like a bug even
 // though both are technically derived from the same data.
 export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
@@ -86,7 +83,7 @@ export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) 
     (finding) => finding?.flagged === true
   );
 
-  if (hasFlaggedMorphology || isUnreliable) return 'no_anemia';
+  if (hasFlaggedMorphology || isUnreliable) return 'other_condition';
 
   return 'healthy';
 };
@@ -102,7 +99,7 @@ export const buildReport = ({
   // cbcPatternSummary vary per scan, so they need to be stored on the
   // report itself, not derived from CONDITION_CONFIG at display time.
   // morphologyFindings and isUnreliable are also what resolveConditionKey
-  // uses to decide between 'healthy' and 'no_anemia' below.
+  // uses to decide between 'healthy' and 'other_condition' below.
   morphologyFindings, cbcPatternSummary,
   isUnreliable, unreliableReasons, imageQuality,
 }) => {
@@ -112,7 +109,7 @@ export const buildReport = ({
   // 'anemic' | 'healthy' guess (see Scan.js), but resolveConditionKey is
   // the actual source of truth for the final bucket -- this is what
   // upgrades a not-anemic-but-flagged result from 'healthy' to
-  // 'no_anemia' before anything gets saved or displayed.
+  // 'other_condition' before anything gets saved or displayed.
   const resolvedCondition = resolveConditionKey(
     condition === 'anemic',
     morphologyFindings,
@@ -162,13 +159,23 @@ export const buildReport = ({
   };
 };
 
+// ── Report storage: scoped per-user ──
+// Each technician gets their own storage bucket, keyed by their user id,
+// so reports don't leak between accounts on a shared device (e.g. Tech
+// A logs out, Tech B logs in on the same phone -- Tech B should only
+// ever see their own reports, never Tech A's).
+const REPORTS_STORAGE_PREFIX = 'aidepoint_reports_v1';
+
+const getStorageKey = (userId) => `${REPORTS_STORAGE_PREFIX}:${userId}`;
+
 //  saveReport 
-export const saveReport = async (report) => {
+export const saveReport = async (report, userId) => {
   try {
-    const raw      = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
+    const key = getStorageKey(userId);
+    const raw = await AsyncStorage.getItem(key);
     const existing = raw ? JSON.parse(raw) : [];
-    const updated  = [report, ...existing]; // newest first
-    await AsyncStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(updated));
+    const updated = [report, ...existing]; // newest first
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
     return true;
   } catch (error) {
     console.error('[ReportUtils] saveReport failed:', error);
@@ -178,9 +185,10 @@ export const saveReport = async (report) => {
 
 //  loadReports 
 // Used by ReportScreen on mount instead of duplicating AsyncStorage logic.
-export const loadReports = async () => {
+export const loadReports = async (userId) => {
   try {
-    const raw = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
+    const key = getStorageKey(userId);
+    const raw = await AsyncStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch (error) {
     console.error('[ReportUtils] loadReports failed:', error);
@@ -188,8 +196,8 @@ export const loadReports = async () => {
   }
 };
 
-export const clearReports = async () => {
-  await AsyncStorage.removeItem(REPORTS_STORAGE_KEY);
+export const clearReports = async (userId) => {
+  await AsyncStorage.removeItem(getStorageKey(userId));
 };
 
 // updateReportNotes
@@ -199,16 +207,17 @@ export const clearReports = async () => {
 // to and would silently lose whatever the technician typed the moment
 // the modal closed. Returns the updated reports array so the caller
 // (ReportScreen) can refresh its in-memory list without a full re-fetch.
-export const updateReportNotes = async (reportId, notes) => {
+export const updateReportNotes = async (reportId, notes, userId) => {
   try {
-    const raw = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
+    const key = getStorageKey(userId);
+    const raw = await AsyncStorage.getItem(key);
     const existing = raw ? JSON.parse(raw) : [];
     const updated = existing.map((report) =>
       String(report.id) === String(reportId)
         ? { ...report, labTechNotes: notes }
         : report
     );
-    await AsyncStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
     return updated;
   } catch (error) {
     console.error('[ReportUtils] updateReportNotes failed:', error);
