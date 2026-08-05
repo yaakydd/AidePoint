@@ -341,7 +341,12 @@ const ReportScreen = ({ navigation, route }) => {
           }
         />
 
-        <DetailModal report={selectedReport} visible={modalVisible} onClose={closeModal} />
+        <DetailModal
+          report={selectedReport}
+          visible={modalVisible}
+          onClose={closeModal}
+          onNotesSaved={(updatedReports) => setReports(updatedReports)}
+        />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

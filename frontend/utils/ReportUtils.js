@@ -72,7 +72,14 @@ export const CONDITION_CONFIG = {
 // whole call there. Not-anemic results need one more check: did
 // anything else get flagged on this scan? If so, this is a "no_anemia"
 // result, not a plain "healthy" one.
-const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
+//
+// Exported so TransparencyTrail.js (the immediate post-scan result
+// modal) can use the exact same resolution buildReport() uses below --
+// without sharing this, the same scan could show "Healthy" in the
+// modal the instant it completes, then "No Anemia Indicated" once
+// saved and viewed again in Reports, which would look like a bug even
+// though both are technically derived from the same data.
+export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
   if (isAnemic) return 'anemic';
 
   const hasFlaggedMorphology = Object.values(morphologyFindings ?? {}).some(
@@ -143,8 +150,12 @@ export const buildReport = ({
     labTechName, imageUri,
     doctorId, doctorName,
 
-    //  Verification : updated when each party signs off
-    labTechVerified: false,
+    // FIXED: labTechVerified/doctorVerified were a pending/approved
+    // toggle the technician had no real reason to interact with --
+    // replaced with labTechNotes, a free-text field the technician can
+    // actually fill in. doctorVerified/doctorNotes/doctorSignature stay
+    // as-is; only the technician side of the workflow changes here.
+    labTechNotes:    '',
     doctorVerified:  false,
     doctorNotes:     '',
     doctorSignature: null,
@@ -179,4 +190,28 @@ export const loadReports = async () => {
 
 export const clearReports = async () => {
   await AsyncStorage.removeItem(REPORTS_STORAGE_KEY);
+};
+
+// updateReportNotes
+// Finds a saved report by id and persists a new labTechNotes value onto
+// it. This is the actual mechanism behind "add notes instead of verify"
+// -- without it, DetailModal's notes field would have nowhere to save
+// to and would silently lose whatever the technician typed the moment
+// the modal closed. Returns the updated reports array so the caller
+// (ReportScreen) can refresh its in-memory list without a full re-fetch.
+export const updateReportNotes = async (reportId, notes) => {
+  try {
+    const raw = await AsyncStorage.getItem(REPORTS_STORAGE_KEY);
+    const existing = raw ? JSON.parse(raw) : [];
+    const updated = existing.map((report) =>
+      String(report.id) === String(reportId)
+        ? { ...report, labTechNotes: notes }
+        : report
+    );
+    await AsyncStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(updated));
+    return updated;
+  } catch (error) {
+    console.error('[ReportUtils] updateReportNotes failed:', error);
+    throw error;
+  }
 };
