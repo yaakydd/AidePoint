@@ -35,10 +35,11 @@ export const scanStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#EEF2F5',
   },
-
   scroll: {
-    paddingHorizontal: SPACING.pagePad,
-    paddingTop: SPACING.lg,
+  paddingHorizontal: SPACING.pagePad,
+  // paddingTop removed — SafeAreaView's inset + header's own
+  // paddingVertical already provide top spacing; this was stacking
+  // a third gap on top of both.
   },
 
   // ─────────────────────────────────────────────
@@ -110,28 +111,42 @@ export const scanStyles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
 
-  resetTooltip: {
-    position: 'absolute',
-    top: scale(44),
-    right: 0,
-    backgroundColor: COLORS.textPrimary,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: RADIUS.sm,
-    zIndex: 20,
-    ...SHADOWS.md,
-  },
+ resetTooltip: {
+  position: 'absolute',
+  top: scale(44),
+  right: 0,
+  backgroundColor: COLORS.textPrimary,
+  paddingHorizontal: SPACING.md,
+  paddingVertical: SPACING.xs + 2,
+  borderRadius: RADIUS.md,
+  zIndex: 20,
+  alignItems: 'center',
+  justifyContent: 'center',
+  ...SHADOWS.md,
+},
 
-  resetTooltipText: {
-    color: COLORS.white,
-    fontSize: FONTS.xs,
-    fontWeight: FONTS.semibold,
-  },
+resetTooltipText: {
+  color: COLORS.white,
+  fontSize: FONTS.xs,
+  fontWeight: FONTS.medium,
+  textAlign: 'center',
+},
 
-  // ─────────────────────────────────────────────
-  // SCAN ID CARD
-  // ─────────────────────────────────────────────
-
+// Small triangle pointing up at the reset icon, so the tooltip reads
+// as attached to the button instead of floating on its own.
+resetTooltipCaret: {
+  position: 'absolute',
+  top: -6,
+  right: SPACING.md,
+  width: 0,
+  height: 0,
+  borderLeftWidth: 6,
+  borderRightWidth: 6,
+  borderBottomWidth: 6,
+  borderLeftColor: 'transparent',
+  borderRightColor: 'transparent',
+  borderBottomColor: COLORS.textPrimary,
+},
   scanIdCard: {
     backgroundColor: '#F4F6F8',
     borderRadius: RADIUS.lg,
@@ -149,6 +164,10 @@ export const scanStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  scanIdRight: {
+  alignItems: 'flex-end',
+  flexShrink: 1,
+},
 
   scanIdLabel: {
     marginLeft: SPACING.sm,
@@ -199,21 +218,16 @@ export const scanStyles = StyleSheet.create({
   remainingTextDanger: {
     color: COLORS.danger,
   },
-
-  // ─────────────────────────────────────────────
-  // SCAN USAGE BANNER (subscription-aware)
-  // ─────────────────────────────────────────────
-
   usageBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    marginBottom: SPACING.xl,
-  },
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  backgroundColor: COLORS.primaryLight,
+  borderRadius: RADIUS.lg,
+  paddingHorizontal: SPACING.lg,
+  paddingVertical: SPACING.md,   // bumped from SPACING.sm for a bit more presence as a lead banner
+  marginBottom: SPACING.lg,
+},
 
   usageBannerLabel: {
     fontSize: FONTS.xs,
@@ -229,7 +243,7 @@ export const scanStyles = StyleSheet.create({
   },
 
   usageBannerValueWarning: {
-    color: COLORS.warning,
+    color: COLORS.danger,
   },
 
   // ─────────────────────────────────────────────

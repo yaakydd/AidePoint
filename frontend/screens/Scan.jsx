@@ -310,22 +310,25 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        <View style={styles.scanIdCard}>
-          <View style={styles.scanIdLeft}>
-            <MaterialCommunityIcons name="fingerprint" size={18} color={COLORS.textMuted} />
-            <Text style={styles.scanIdLabel}>SCAN ID</Text>
-          </View>
-          <View style={styles.scanIdRight}>
-            <Text style={styles.scanIdValue}>{scanId}</Text>
-            {scanLimitLabel ? (
-              <View style={[styles.remainingPill, remaining === 0 && styles.remainingPillDanger]}>
-                <Text style={[styles.remainingText, remaining === 0 && styles.remainingTextDanger]}>
-                  {scanLimitLabel}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
+<View style={styles.usageBanner}>
+  <Text style={styles.usageBannerLabel}>SCANS TODAY</Text>
+  <Text style={[
+    styles.usageBannerValue,
+    remaining === 0 && styles.usageBannerValueWarning,
+  ]}>
+    {scanLimitLabel || '—'}
+  </Text>
+</View>
+
+<View style={styles.scanIdCard}>
+  <View style={styles.scanIdLeft}>
+    <MaterialCommunityIcons name="fingerprint" size={18} color={COLORS.textMuted} />
+    <Text style={styles.scanIdLabel}>SCAN ID</Text>
+  </View>
+  <View style={styles.scanIdRight}>
+    <Text style={styles.scanIdValue}>{scanId}</Text>
+  </View>
+</View>
 
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="account-outline" size={20} color={COLORS.primary} />
