@@ -17,9 +17,13 @@ import { ReportStyles as styles } from '../styles/ReportStyles';
 // classifier (sickle cell, malaria, thalassemia, etc.) was removed from
 // the backend after its training data turned out to be threshold-derived
 // rather than independently diagnosed. These icons are a generic visual
-// for "abnormal red cell appearance," "normal red cell appearance," and
-// "not anemic but something else was noted" -- not a diagnosis of any
-// specific condition.
+// for "abnormal red cell appearance" (anemic), "normal red cell
+// appearance, nothing else flagged" (healthy), and "not anemic, but
+// something else was noted -- flagged morphology or an unreliable-result
+// warning" (unknown) -- not a diagnosis of any specific condition.
+// Keys here must match CONDITION_CONFIG in utils/ReportUtils.js exactly
+// ('anemic' | 'healthy' | 'unknown') -- that file is the source of truth
+// for which buckets exist.
 
 const AnemicCellIcon = ({ size = 56 }) => (
   <Svg width={size} height={size} viewBox="0 0 56 56">
@@ -43,12 +47,13 @@ const NormalIcon = ({ size = 56 }) => (
   </Svg>
 );
 
-// Same round, non-alarming cell shapes as NormalIcon (this is still a
-// "not anemic" result, not a red flag), but in the app's blue/info
-// palette instead of green, plus a small info marker -- visually says
-// "worth a second look" without borrowing red's "danger" association or
-// green's "all clear" association.
-const NoAnemiaIcon = ({ size = 56 }) => (
+// Same round, non-alarming cell shapes as NormalIcon -- flagged morphology
+// or an unreliable result isn't a "danger" result the way anemic is, but
+// it's also not a clean "all clear" -- in the app's blue/info palette
+// instead of green, plus a small info marker, this visually says "worth a
+// second look" without borrowing red's danger association or green's
+// all-clear association.
+const UnknownIcon = ({ size = 56 }) => (
   <Svg width={size} height={size} viewBox="0 0 56 56">
     <Rect width="56" height="56" rx="14" fill="#EBF8FF" />
     <Circle cx="20" cy="30" r="12" fill="#BFDBFE" stroke="#3182CE" strokeWidth="1.5" />
@@ -65,7 +70,7 @@ const NoAnemiaIcon = ({ size = 56 }) => (
 const CONDITION_ICONS = {
   anemic: AnemicCellIcon,
   healthy: NormalIcon,
-  no_anemia: NoAnemiaIcon,
+  unknown: UnknownIcon,
 };
 
 export const ConditionIcon = ({ condition, size = 56 }) => {

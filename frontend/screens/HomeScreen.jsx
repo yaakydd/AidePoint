@@ -11,27 +11,12 @@ import { useNavigation } from '@react-navigation/native';
 
 import { AuthContext } from '../context/AuthContext';
 import OfflineBanner from '../components/OfflineBanner';
+import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import { supabase } from '../utils/supabase';
 import { homeStyles as styles } from '../styles/HomeStyles';
 import { COLORS } from '../assets/theme';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
-
-const CONDITION_LABELS = {
-  sickle_cell:     'Sickle Cell Anaemia',
-  iron_deficiency: 'Iron Deficiency Anaemia',
-  malaria:         'Malarial Anaemia',
-  thalassemia:     'Thalassemia',
-  pernicious:      'Pernicious Anaemia',
-  megaloblastic:   'Megaloblastic Anaemia',
-  aplastic:        'Aplastic Anaemia',
-  hemolytic:       'Haemolytic Anaemia',
-  normal:          'No Condition Detected',
-};
-
-const HIGH_SEVERITY_SET = new Set([
-  'sickle_cell', 'malaria', 'thalassemia', 'hemolytic', 'aplastic',
-]);
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -46,14 +31,6 @@ function getGreeting() {
 function getInitial(name) {
   if (!name?.trim()) return '?';
   return name.trim()[0].toUpperCase();
-}
-
-function getSeverityStyle(severity) {
-  switch (severity) {
-    case 'red':   return { bg: '#FEE2E2', color: '#EF4444', icon: 'alert-decagram-outline' };
-    case 'green': return { bg: '#D1FAE5', color: '#10B981', icon: 'check-circle-outline' };
-    default:      return { bg: '#FEF3C7', color: '#F59E0B', icon: 'clock-alert-outline' };
-  }
 }
 
 function getRelativeTime(iso) {
@@ -116,35 +93,48 @@ const WeeklyBarChart = ({ data, selectedIndex, onSelect }) => {
   );
 };
 
-// Scan Card 
-
-const ScanCard = ({ scan, onPress }) => {
-  const { bg, color, icon } = getSeverityStyle(scan.severity);
-  return (
-    <TouchableOpacity
-      style={styles.patientCard}
-      activeOpacity={0.75}
-      onPress={() => onPress?.(scan)}
-    >
-      <View style={styles.patientInfo}>
-        <View style={[styles.patientIcon, { backgroundColor: bg }]}>
-          <MaterialCommunityIcons name={icon} size={22} color={color} />
-        </View>
-        <View style={styles.patientTextContainer}>
-          <Text style={styles.patientName}>{scan.patientName}</Text>
-          <Text style={styles.patientTime}>
-            {scan.time} · #{scan.shortId}
-          </Text>
-        </View>
+// ── Scan Card ────────────────────────────────────────────────────────────
+// Display-only — no press action. Tapping a scan card does nothing; there
+// is intentionally no navigation or handler wired to it.
+//
+// Icon/badge come from the shared Conditions component for any scan that
+// has a result: anemic (red), healthy (green), unknown (blue — not
+// anemic, but something else was flagged: abnormal morphology or an
+// unreliable-result warning. A real result, not a pending state).
+//
+// A scan with NO result yet (rawCondition is null — not analyzed at all)
+// is a different state from CONDITION_CONFIG's 'unknown' bucket and is
+// shown locally as "Not Analyzed" rather than routed through
+// ConditionBadge — reusing the word "Unknown" here would make it
+// indistinguishable from the model's real 'unknown' result in the UI.
+const ScanCard = ({ scan }) => (
+  <View style={styles.patientCard}>
+    <View style={styles.patientInfo}>
+      <View style={styles.patientIcon}>
+        {scan.rawCondition ? (
+          <ConditionIcon condition={scan.rawCondition} size={40} />
+        ) : (
+          <MaterialCommunityIcons name="progress-clock" size={22} color="#6B7C93" />
+        )}
       </View>
-      <View style={[styles.statusBadge, { backgroundColor: bg }]}>
-        <Text style={[styles.statusText, { color }]} numberOfLines={1}>
-          {scan.condition}
+      <View style={styles.patientTextContainer}>
+        <Text style={styles.patientName}>{scan.patientName}</Text>
+        <Text style={styles.patientTime}>
+          {scan.time} · #{scan.shortId}
         </Text>
       </View>
-    </TouchableOpacity>
-  );
-};
+    </View>
+    {scan.rawCondition ? (
+      <ConditionBadge condition={scan.rawCondition} />
+    ) : (
+      <View style={[styles.statusBadge, { backgroundColor: '#F1F5F9' }]}>
+        <Text style={[styles.statusText, { color: '#6B7C93' }]} numberOfLines={1}>
+          Not Analyzed
+        </Text>
+      </View>
+    )}
+  </View>
+);
 
 // Main Screen 
 
@@ -238,27 +228,18 @@ const HomeScreen = () => {
 
       setRecentScans(recentRaw.map(s => {
         const patientName = s.patients?.name ?? 'Unknown Patient';
+        // Expected values: 'anemic' | 'healthy' | 'unknown' (per
+        // CONDITION_CONFIG in utils/ReportUtils.js — 'unknown' means not
+        // anemic but something else was flagged, not "no result yet"),
+        // or null if the scan hasn't been analyzed at all yet. Icon/label/
+        // color for a real condition come entirely from components/Conditions.js.
         const rawCondition = s.results?.condition ?? null;
-
-        const isPending =
-          !rawCondition ||
-          s.status === 'pending' ||
-          s.status === 'processing';
-
-        const severity = isPending
-          ? 'yellow'
-          : rawCondition === 'normal'
-          ? 'green'
-          : HIGH_SEVERITY_SET.has(rawCondition) ? 'red' : 'yellow';
 
         return {
           id:          s.id,
           shortId:     s.id.slice(-6).toUpperCase(),
           patientName,
-          condition:   isPending
-            ? 'Pending Analysis'
-            : (CONDITION_LABELS[rawCondition] ?? rawCondition),
-          severity,
+          rawCondition,
           time:        getRelativeTime(s.created_at),
         };
       }));
@@ -284,10 +265,6 @@ const HomeScreen = () => {
   const avgPerDay = stats
     ? Math.round(stats.thisWeek / 7)
     : 0;
-
-  function handleScanPress(scan) {
-    navigation.navigate('Scan');
-  }
 
   // "View All" next to Recent Scans sends the user to start a new scan
   function handleViewAllPress() {
@@ -447,7 +424,7 @@ const HomeScreen = () => {
           ))
         ) : recentScans.length > 0 ? (
           recentScans.map(scan => (
-            <ScanCard key={scan.id} scan={scan} onPress={handleScanPress} />
+            <ScanCard key={scan.id} scan={scan} />
           ))
         ) : (
           <View style={styles.emptyContainer}>
