@@ -495,11 +495,11 @@ const Scan = ({ navigation, route }) => {
           data={resultModal}
           onClose={() => {
             setResultModal(null);
-            navigation.navigate('ReportScreen');
+            navigation.navigate('Report');
           }}
           onViewReport={() => {
             setResultModal(null);
-            navigation.navigate('ReportScreen', { scanId: resultModal.report?.id });
+            navigation.navigate('Report', { scanId: resultModal.report?.id });
           }}
         />
       )}

@@ -78,14 +78,6 @@ export const CameraStyles = StyleSheet.create({
     borderStyle: 'dashed',
   },
 
-  guideCornerDot: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.primary,
-  },
-
   guideText: {
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
@@ -149,39 +141,6 @@ export const CameraStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     fontSize: FONTS.sm,
     lineHeight: 19,
-  },
-
-  // ── Status row (flash / focus indicators) ───────────────────────────────
-  statusRow: {
-    position: 'absolute',
-    bottom: 150,
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: SPACING.md,
-  },
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: RADIUS.full,
-  },
-
-  greenDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    marginRight: SPACING.sm,
-    backgroundColor: COLORS.success,
-  },
-
-  statusText: {
-    color: COLORS.white,
-    fontSize: FONTS.xs,
-    fontWeight: FONTS.medium,
   },
 
   // ── Bottom controls ──────────────────────────────────────────────────────
