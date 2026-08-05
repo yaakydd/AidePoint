@@ -27,13 +27,17 @@ import { ReportStyles as styles } from '../styles/ReportStyles';
 
 const AnemicCellIcon = ({ size = 56 }) => (
   <Svg width={size} height={size} viewBox="0 0 56 56">
-    <Rect width="56" height="56" rx="14" fill="#FFFBEB" />
+    <Rect width="56" height="56" rx="14" fill="#FEF2F2" />
     {/* Hypochromic cell -- ring of colour, enlarged pale centre, the
-        general visual pattern the model's morphology flags describe */}
-    <Circle cx="18" cy="25" r="11" fill="#FDE68A" stroke="#D97706" strokeWidth="1.5" />
-    <Circle cx="18" cy="25" r="6.5" fill="#FFFBEB" />
-    <Circle cx="38" cy="33" r="10" fill="#FCD34D" stroke="#D97706" strokeWidth="1.5" opacity="0.9" />
-    <Circle cx="38" cy="33" r="6" fill="#FFFBEB" />
+        general visual pattern the model's morphology flags describe.
+        FIXED: was using the amber/yellow palette ('info' colours),
+        which visually contradicted CONDITION_CONFIG.anemic's severity
+        of 'red' -- the badge text/dot next to this icon were already
+        correctly red, only the icon itself was mismatched. */}
+    <Circle cx="18" cy="25" r="11" fill="#FCA5A5" stroke="#B91C1C" strokeWidth="1.5" />
+    <Circle cx="18" cy="25" r="6.5" fill="#FEF2F2" />
+    <Circle cx="38" cy="33" r="10" fill="#F87171" stroke="#B91C1C" strokeWidth="1.5" opacity="0.9" />
+    <Circle cx="38" cy="33" r="6" fill="#FEF2F2" />
   </Svg>
 );
 

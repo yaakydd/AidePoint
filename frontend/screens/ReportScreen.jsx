@@ -159,14 +159,14 @@ const ReportScreen = ({ navigation, route }) => {
   useEffect(() => {
     runPinCheck();
   }, [user?.id]);
-
   useEffect(() => {
-    (async () => {
-      const stored = await loadReports();
-      setReports(stored);
-      setLoading(false);
-    })();
-  }, []);
+  if (!user?.id) return;
+  (async () => {
+    const stored = await loadReports(user.id);
+    setReports(stored);
+    setLoading(false);
+  })();
+}, [user?.id]);
 
   useEffect(() => {
     const newScanId = route?.params?.newScanId;
@@ -346,6 +346,7 @@ const ReportScreen = ({ navigation, route }) => {
           visible={modalVisible}
           onClose={closeModal}
           onNotesSaved={(updatedReports) => setReports(updatedReports)}
+          userId={user.id}  
         />
       </SafeAreaView>
     </KeyboardAvoidingView>

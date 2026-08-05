@@ -11,7 +11,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAuth }       from '../context/AuthContext';
 import { supabase }      from '../utils/supabase';
-import { buildReport, saveReport } from '../utils/ReportUtils';
+import { buildReport, saveReport, resolveConditionKey } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
 import { compressImage } from '../utils/Offlinequeue';
@@ -195,26 +195,30 @@ const Scan = ({ navigation, route }) => {
         .single();
       console.log('STEP 3: patient insert', { patientRow, patientErr });
       if (patientErr) throw patientErr;
-      
-
       const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
-      console.log('STEP 4: prediction ', prediction);
+console.log('STEP 4: prediction ', prediction);
 
-      const report = buildReport({
-          patientName:   patientName.trim(),
-          patientId:     patientRow.id,
-          condition:     prediction.is_anemic ? 'anemic' : 'healthy',
-          confidence:    prediction.explanation?.confidence ?? 'moderate',
-          labTechName,
-          imageUri:      compressedUri,
-          temperature:   temperature.trim(),
-          bloodPressure: bloodPressure.trim(),
-          morphologyFindings: prediction.morphology_findings,
-          cbcPatternSummary:  prediction.cbc_pattern_summary,
-          isUnreliable:       prediction.is_unreliable,
-          unreliableReasons:  prediction.unreliable_reasons,
-          imageQuality:       prediction.image_quality,
-      });
+const conditionKey = resolveConditionKey(
+  prediction.is_anemic,
+  prediction.morphology_findings,
+  prediction.is_unreliable
+);
+
+const report = buildReport({
+    patientName:   patientName.trim(),
+    patientId:     patientRow.id,
+    condition:     conditionKey,   // was: prediction.is_anemic ? 'anemic' : 'healthy'
+    confidence:    prediction.explanation?.confidence ?? 'moderate',
+    labTechName,
+    imageUri:      compressedUri,
+    temperature:   temperature.trim(),
+    bloodPressure: bloodPressure.trim(),
+    morphologyFindings: prediction.morphology_findings,
+    cbcPatternSummary:  prediction.cbc_pattern_summary,
+    isUnreliable:       prediction.is_unreliable,
+    unreliableReasons:  prediction.unreliable_reasons,
+    imageQuality:       prediction.image_quality,
+});
 
 
       const { data: scanRow, error: scanErr } = await supabase
@@ -226,6 +230,7 @@ const Scan = ({ navigation, route }) => {
           status:     'done',
           results: {
             is_anemic:           prediction.is_anemic,
+            condition:           conditionKey,
             anemia_probability:  prediction.anemia_probability,
             confidence:          prediction.explanation?.confidence,
             morphology_findings: prediction.morphology_findings,

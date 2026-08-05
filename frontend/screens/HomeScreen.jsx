@@ -13,6 +13,7 @@ import { AuthContext } from '../context/AuthContext';
 import OfflineBanner from '../components/OfflineBanner';
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import { supabase } from '../utils/supabase';
+import { resolveConditionKey } from '../utils/ReportUtils';
 import { homeStyles as styles } from '../styles/HomeStyles';
 import { COLORS } from '../assets/theme';
 
@@ -225,24 +226,31 @@ const HomeScreen = () => {
         thisWeek:   weekScans.length,
         weeklyData,
       });
-
       setRecentScans(recentRaw.map(s => {
-        const patientName = s.patients?.name ?? 'Unknown Patient';
-        // Expected values: 'anemic' | 'healthy' | 'unknown' (per
-        // CONDITION_CONFIG in utils/ReportUtils.js — 'unknown' means not
-        // anemic but something else was flagged, not "no result yet"),
-        // or null if the scan hasn't been analyzed at all yet. Icon/label/
-        // color for a real condition come entirely from components/Conditions.js.
-        const rawCondition = s.results?.condition ?? null;
+  const patientName = s.patients?.name ?? 'Unknown Patient';
 
-        return {
-          id:          s.id,
-          shortId:     s.id.slice(-6).toUpperCase(),
-          patientName,
-          rawCondition,
-          time:        getRelativeTime(s.created_at),
-        };
-      }));
+  // Prefer the stored `condition` (present on any scan saved after the
+  // Scan.jsx conditionKey fix). Fall back to deriving it from the raw
+  // fields for older rows saved before that fix, which have `is_anemic`
+  // etc. but no `condition` key -- without this fallback those scans
+  // are stuck showing "Not Analyzed" forever even though they were.
+  const rawCondition = s.results?.condition
+    ?? (s.results?.is_anemic !== undefined
+      ? resolveConditionKey(
+          s.results.is_anemic,
+          s.results.morphology_findings,
+          s.results.is_unreliable
+        )
+      : null);
+
+  return {
+    id:          s.id,
+    shortId:     s.id.slice(-6).toUpperCase(),
+    patientName,
+    rawCondition,
+    time:        getRelativeTime(s.created_at),
+  };
+}));
 
     } catch (err) {
       console.error('HomeScreen fetchDashboardData:', err.message);

@@ -1,265 +1,265 @@
-// components/DetailModal.js
+  // components/DetailModal.js
 
-import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Sharing from 'expo-sharing';
-import { ReportStyles as styles } from '../styles/ReportStyles';
-import { CONDITION_CONFIG, updateReportNotes } from '../utils/ReportUtils';
-import { exportReportAsPdf } from '../utils/ReportPDF';
-import { COLORS, SPACING, FONTS, RADIUS } from '../assets/theme';
+  import React, { useState } from 'react';
+  import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
+  import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+  import * as Sharing from 'expo-sharing';
+  import { ReportStyles as styles } from '../styles/ReportStyles';
+  import { CONDITION_CONFIG, updateReportNotes } from '../utils/ReportUtils';
+  import { exportReportAsPdf } from '../utils/ReportPDF';
+  import { COLORS, SPACING, FONTS, RADIUS } from '../assets/theme';
 
-export default function DetailModal({ report, visible, onClose, onNotesSaved }) {
-  const [exporting, setExporting] = useState(false);
-  const [notesDraft, setNotesDraft] = useState(report?.labTechNotes ?? '');
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [notesSavedAt, setNotesSavedAt] = useState(null);
+  export default function DetailModal({ report, visible, onClose, onNotesSaved }) {
+    const [exporting, setExporting] = useState(false);
+    const [notesDraft, setNotesDraft] = useState(report?.labTechNotes ?? '');
+    const [savingNotes, setSavingNotes] = useState(false);
+    const [notesSavedAt, setNotesSavedAt] = useState(null);
 
-  const [openedReportId, setOpenedReportId] = useState(report?.id ?? null);
-  if (report && report.id !== openedReportId) {
-    setOpenedReportId(report.id);
-    setNotesDraft(report.labTechNotes ?? '');
-    setNotesSavedAt(null);
-  }
-
-  if (!report) return null;
-
-  const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
-  const confidencePct = typeof report.confidence === 'number'
-    ? Math.round(report.confidence * 100) + '%'
-    : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
-
-  const morphologyEntries = Object.entries(report.morphologyFindings ?? {})
-    .filter(function (entry) { return entry[1] && entry[1].flagged === true; });
-  const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
-
-  async function handleExportPdf() {
-    setExporting(true);
-    try {
-      await exportReportAsPdf(report);
-    } catch (err) {
-      console.error('DetailModal export PDF:', err.message);
-      Alert.alert('Export Failed', 'Could not generate the PDF. Please try again.');
-    } finally {
-      setExporting(false);
+    const [openedReportId, setOpenedReportId] = useState(report?.id ?? null);
+    if (report && report.id !== openedReportId) {
+      setOpenedReportId(report.id);
+      setNotesDraft(report.labTechNotes ?? '');
+      setNotesSavedAt(null);
     }
-  }
 
-  async function handleShareImage() {
-    if (!report.imageUri) {
-      Alert.alert('No Image', 'No scan image was saved with this report.');
-      return;
-    }
-    try {
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(report.imageUri);
-      } else {
-        Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
+    if (!report) return null;
+
+    const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
+    const confidencePct = typeof report.confidence === 'number'
+      ? Math.round(report.confidence * 100) + '%'
+      : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
+
+    const morphologyEntries = Object.entries(report.morphologyFindings ?? {})
+      .filter(function (entry) { return entry[1] && entry[1].flagged === true; });
+    const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
+
+    async function handleExportPdf() {
+      setExporting(true);
+      try {
+        await exportReportAsPdf(report);
+      } catch (err) {
+        console.error('DetailModal export PDF:', err.message);
+        Alert.alert('Export Failed', 'Could not generate the PDF. Please try again.');
+      } finally {
+        setExporting(false);
       }
-    } catch (err) {
-      console.error('DetailModal share image:', err.message);
     }
-  }
 
-  async function handleSaveNotes() {
-    setSavingNotes(true);
-    try {
-      const updatedReports = await updateReportNotes(report.id, notesDraft);
-      setNotesSavedAt(new Date());
-      if (onNotesSaved) onNotesSaved(updatedReports);
-    } catch (err) {
-      console.error('DetailModal save notes:', err.message);
-      Alert.alert('Save Failed', 'Could not save your notes. Please try again.');
-    } finally {
-      setSavingNotes(false);
+    async function handleShareImage() {
+      if (!report.imageUri) {
+        Alert.alert('No Image', 'No scan image was saved with this report.');
+        return;
+      }
+      try {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(report.imageUri);
+        } else {
+          Alert.alert('Sharing unavailable', 'Sharing is not available on this device.');
+        }
+      } catch (err) {
+        console.error('DetailModal share image:', err.message);
+      }
     }
-  }
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
+    async function handleSaveNotes() {
+      setSavingNotes(true);
+      try {
+        const updatedReports = await updateReportNotes(report.id, notesDraft);
+        setNotesSavedAt(new Date());
+        if (onNotesSaved) onNotesSaved(updatedReports);
+      } catch (err) {
+        console.error('DetailModal save notes:', err.message);
+        Alert.alert('Save Failed', 'Could not save your notes. Please try again.');
+      } finally {
+        setSavingNotes(false);
+      }
+    }
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+    return (
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
 
-            <View style={styles.reportHeaderCard}>
-              <View style={styles.reportBrandRow}>
-                <View style={styles.reportBrandLogo}>
-                  <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 16 }}>A</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+
+              <View style={styles.reportHeaderCard}>
+                <View style={styles.reportBrandRow}>
+                  <View style={styles.reportBrandLogo}>
+                    <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 16 }}>A</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.reportBrandName}>AidePoint</Text>
+                    <Text style={styles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
+                  </View>
                 </View>
+                <View style={styles.reportMetaRight}>
+                  <Text style={styles.reportMetaLabel}>Scan ID</Text>
+                  <Text style={styles.reportMetaValue}>{report.id ?? '\u2014'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.sheetHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sheetName}>{report.patientName}</Text>
+                  <Text style={styles.sheetId}>
+                    #{report.patientId} - {report.dateDisplay} - {report.timeDisplay}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.resultBanner, { backgroundColor: cfg.badgeBg }]}>
+                <Text style={[styles.resultBannerLabel, { color: cfg.badgeText }]}>RESULT</Text>
+                <Text style={[styles.resultBannerValue, { color: cfg.badgeText }]}>{cfg.label}</Text>
+                <Text style={[styles.resultBannerMorphology, { color: cfg.badgeText }]}>{cfg.morphology}</Text>
+              </View>
+
+              {report.isUnreliable && (report.unreliableReasons ?? []).length > 0 ? (
+                <View style={[styles.resultBanner, { backgroundColor: '#FEF3C7', marginTop: -SPACING.xs }]}>
+                  <Text style={[styles.resultBannerLabel, { color: '#92400E' }]}>REVIEW RECOMMENDED</Text>
+                  {report.unreliableReasons.map(function (reason, index) {
+                    return (
+                      <Text key={index} style={{ fontSize: FONTS.xs, color: '#92400E', marginTop: 2 }}>
+                        {'\u2022 ' + reason}
+                      </Text>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              <Text style={styles.sectionHeading}>AI Analysis</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Confidence</Text>
+                <Text style={styles.detailValue}>{confidencePct}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Urgency</Text>
+                <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
+                  {cfg.urgency}
+                </Text>
+              </View>
+
+              {morphologyEntries.length > 0 ? (
                 <View>
-                  <Text style={styles.reportBrandName}>AidePoint</Text>
-                  <Text style={styles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
+                  <Text style={styles.sectionHeading}>Morphology Findings</Text>
+                  {morphologyEntries.map(function (entry) {
+                    const flagName = entry[0];
+                    return (
+                      <View key={flagName} style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>{flagName.replace(/_/g, ' ')}</Text>
+                        <Text style={styles.detailValue}>Flagged</Text>
+                      </View>
+                    );
+                  })}
                 </View>
+              ) : null}
+
+              {cbcPatternEntries.length > 0 ? (
+                <View>
+                  <Text style={styles.sectionHeading}>Estimated Hematological Pattern</Text>
+                  <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: SPACING.xs }}>
+                    Image-based estimates, not laboratory measurements
+                  </Text>
+                  {cbcPatternEntries.map(function (entry) {
+                    const fieldName = entry[0];
+                    const fieldData = entry[1];
+                    const direction = fieldData && fieldData.direction
+                      ? fieldData.direction.replace(/_/g, ' ')
+                      : '\u2014';
+                    return (
+                      <View key={fieldName} style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>{fieldName}</Text>
+                        <Text style={styles.detailValue}>{direction}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              <Text style={styles.sectionHeading}>Patient Vitals</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Temperature</Text>
+                <Text style={styles.detailValue}>{report.temperature ? report.temperature + ' \u00b0C' : '\u2014'}</Text>
               </View>
-              <View style={styles.reportMetaRight}>
-                <Text style={styles.reportMetaLabel}>Scan ID</Text>
-                <Text style={styles.reportMetaValue}>{report.id ?? '\u2014'}</Text>
+              <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.detailLabel}>Blood Pressure</Text>
+                <Text style={styles.detailValue}>{report.bloodPressure ?? '\u2014'}</Text>
               </View>
-            </View>
 
-            <View style={styles.sheetHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sheetName}>{report.patientName}</Text>
-                <Text style={styles.sheetId}>
-                  #{report.patientId} - {report.dateDisplay} - {report.timeDisplay}
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.resultBanner, { backgroundColor: cfg.badgeBg }]}>
-              <Text style={[styles.resultBannerLabel, { color: cfg.badgeText }]}>RESULT</Text>
-              <Text style={[styles.resultBannerValue, { color: cfg.badgeText }]}>{cfg.label}</Text>
-              <Text style={[styles.resultBannerMorphology, { color: cfg.badgeText }]}>{cfg.morphology}</Text>
-            </View>
-
-            {report.isUnreliable && (report.unreliableReasons ?? []).length > 0 ? (
-              <View style={[styles.resultBanner, { backgroundColor: '#FEF3C7', marginTop: -SPACING.xs }]}>
-                <Text style={[styles.resultBannerLabel, { color: '#92400E' }]}>REVIEW RECOMMENDED</Text>
-                {report.unreliableReasons.map(function (reason, index) {
-                  return (
-                    <Text key={index} style={{ fontSize: FONTS.xs, color: '#92400E', marginTop: 2 }}>
-                      {'\u2022 ' + reason}
-                    </Text>
-                  );
-                })}
-              </View>
-            ) : null}
-
-            <Text style={styles.sectionHeading}>AI Analysis</Text>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Confidence</Text>
-              <Text style={styles.detailValue}>{confidencePct}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Urgency</Text>
-              <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
-                {cfg.urgency}
-              </Text>
-            </View>
-
-            {morphologyEntries.length > 0 ? (
-              <View>
-                <Text style={styles.sectionHeading}>Morphology Findings</Text>
-                {morphologyEntries.map(function (entry) {
-                  const flagName = entry[0];
-                  return (
-                    <View key={flagName} style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>{flagName.replace(/_/g, ' ')}</Text>
-                      <Text style={styles.detailValue}>Flagged</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-
-            {cbcPatternEntries.length > 0 ? (
-              <View>
-                <Text style={styles.sectionHeading}>Estimated Hematological Pattern</Text>
-                <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: SPACING.xs }}>
-                  Image-based estimates, not laboratory measurements
-                </Text>
-                {cbcPatternEntries.map(function (entry) {
-                  const fieldName = entry[0];
-                  const fieldData = entry[1];
-                  const direction = fieldData && fieldData.direction
-                    ? fieldData.direction.replace(/_/g, ' ')
-                    : '\u2014';
-                  return (
-                    <View key={fieldName} style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>{fieldName}</Text>
-                      <Text style={styles.detailValue}>{direction}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-
-            <Text style={styles.sectionHeading}>Patient Vitals</Text>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Temperature</Text>
-              <Text style={styles.detailValue}>{report.temperature ? report.temperature + ' \u00b0C' : '\u2014'}</Text>
-            </View>
-            <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.detailLabel}>Blood Pressure</Text>
-              <Text style={styles.detailValue}>{report.bloodPressure ?? '\u2014'}</Text>
-            </View>
-
-            <Text style={styles.sectionHeading}>Technician Notes</Text>
-            <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                borderRadius: RADIUS.md,
-                padding: SPACING.md,
-                fontSize: FONTS.sm,
-                color: COLORS.textPrimary,
-                minHeight: 80,
-                textAlignVertical: 'top',
-                backgroundColor: COLORS.surfaceAlt,
-              }}
-              multiline
-              placeholder="Add any observations or context for this scan..."
-              placeholderTextColor={COLORS.textMuted}
-              value={notesDraft}
-              onChangeText={setNotesDraft}
-            />
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.sm, marginBottom: SPACING.md }}>
-              <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted }}>
-                {notesSavedAt ? ('Saved ' + notesSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ' '}
-              </Text>
-              <TouchableOpacity
+              <Text style={styles.sectionHeading}>Technician Notes</Text>
+              <TextInput
                 style={{
-                  backgroundColor: COLORS.primary,
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
                   borderRadius: RADIUS.md,
-                  paddingHorizontal: SPACING.lg,
-                  paddingVertical: SPACING.sm,
-                  opacity: savingNotes ? 0.6 : 1,
+                  padding: SPACING.md,
+                  fontSize: FONTS.sm,
+                  color: COLORS.textPrimary,
+                  minHeight: 80,
+                  textAlignVertical: 'top',
+                  backgroundColor: COLORS.surfaceAlt,
                 }}
-                onPress={handleSaveNotes}
-                disabled={savingNotes}
-              >
-                {savingNotes
-                  ? <ActivityIndicator size="small" color={COLORS.white} />
-                  : <Text style={{ color: COLORS.white, fontWeight: FONTS.bold, fontSize: FONTS.sm }}>Save Notes</Text>}
+                multiline
+                placeholder="Add any observations or context for this scan..."
+                placeholderTextColor={COLORS.textMuted}
+                value={notesDraft}
+                onChangeText={setNotesDraft}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: SPACING.sm, marginBottom: SPACING.md }}>
+                <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted }}>
+                  {notesSavedAt ? ('Saved ' + notesSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ' '}
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    borderRadius: RADIUS.md,
+                    paddingHorizontal: SPACING.lg,
+                    paddingVertical: SPACING.sm,
+                    opacity: savingNotes ? 0.6 : 1,
+                  }}
+                  onPress={handleSaveNotes}
+                  disabled={savingNotes}
+                >
+                  {savingNotes
+                    ? <ActivityIndicator size="small" color={COLORS.white} />
+                    : <Text style={{ color: COLORS.white, fontWeight: FONTS.bold, fontSize: FONTS.sm }}>Save Notes</Text>}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Lab Technician</Text>
+                <Text style={styles.detailValue}>{report.labTechName ?? '\u2014'}</Text>
+              </View>
+              <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.detailLabel}>Reviewing Doctor</Text>
+                <Text style={styles.detailValue}>{report.doctorName ?? 'Not yet assigned'}</Text>
+              </View>
+
+              <View style={styles.exportRow}>
+                <TouchableOpacity style={styles.exportBtn} onPress={handleExportPdf} disabled={exporting}>
+                  {exporting
+                    ? <ActivityIndicator size="small" color={COLORS.primaryDark} />
+                    : <MaterialCommunityIcons name="file-pdf-box" size={18} color={COLORS.primaryDark} />}
+                  <Text style={styles.exportBtnText}>{exporting ? 'Generating...' : 'Export PDF'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.exportBtn} onPress={handleShareImage}>
+                  <MaterialIcons name="ios-share" size={18} color={COLORS.primaryDark} />
+                  <Text style={styles.exportBtnText}>Share Image</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.disclaimerNote}>
+                This AI-assisted result is a screening aid only, it does not replace clinical
+                judgement. Confirm with a qualified physician before treatment decisions.
+              </Text>
+
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+                <Text style={styles.closeBtnText}>Close</Text>
               </TouchableOpacity>
-            </View>
-
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Lab Technician</Text>
-              <Text style={styles.detailValue}>{report.labTechName ?? '\u2014'}</Text>
-            </View>
-            <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.detailLabel}>Reviewing Doctor</Text>
-              <Text style={styles.detailValue}>{report.doctorName ?? 'Not yet assigned'}</Text>
-            </View>
-
-            <View style={styles.exportRow}>
-              <TouchableOpacity style={styles.exportBtn} onPress={handleExportPdf} disabled={exporting}>
-                {exporting
-                  ? <ActivityIndicator size="small" color={COLORS.primaryDark} />
-                  : <MaterialCommunityIcons name="file-pdf-box" size={18} color={COLORS.primaryDark} />}
-                <Text style={styles.exportBtnText}>{exporting ? 'Generating...' : 'Export PDF'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.exportBtn} onPress={handleShareImage}>
-                <MaterialIcons name="ios-share" size={18} color={COLORS.primaryDark} />
-                <Text style={styles.exportBtnText}>Share Image</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.disclaimerNote}>
-              This AI-assisted result is a screening aid only, it does not replace clinical
-              judgement. Confirm with a qualified physician before treatment decisions.
-            </Text>
-
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Text style={styles.closeBtnText}>Close</Text>
-            </TouchableOpacity>
-          </ScrollView>
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
-}
+      </Modal>
+    );
+  }

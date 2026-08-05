@@ -8,20 +8,31 @@
 //   4. the AI result itself, plus the CBC pattern summary and morphology
 //      findings, all labeled with their actual confidence -- never
 //      presented as lab-grade numbers.
+//   5. a recommendation for what to do next (deliberately the LAST
+//      content block before the footer note/buttons -- everything above
+//      it is "here's the evidence", this is "here's the takeaway", and
+//      it should read like a conclusion, not get lost above the findings)
+//   6. a free-text notes field for the lab technician, saved onto the
+//      report so it shows up later in the Reports screen detail view.
 //
 // prediction is the raw JSON returned by /predict (see utils/api.js).
 // report/bonusJustGranted/bonusRemaining/remaining come from the same
 // place the old ResultModal received them from in Scan.js.
+//
+// userId is required to persist technician notes via updateReportNotes
+// (reports are stored per-user, see ReportUtils.js) -- pass user.id from
+// Scan.jsx when rendering this component.
 
 import React, { useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, ScrollView,
-  Image, StyleSheet, useWindowDimensions,
+  Image, StyleSheet, useWindowDimensions, TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
 import CellOverlay from './CellOverlay';
-import { CONDITION_CONFIG, resolveConditionKey } from '../utils/ReportUtils';
+import { CONDITION_CONFIG, resolveConditionKey, updateReportNotes } from '../utils/ReportUtils';
 import { COLORS, FONTS, SPACING, RADIUS, scale } from '../assets/theme';
 
 const SEVERITY_COLORS = {
@@ -41,6 +52,49 @@ const CONFIDENCE_LABELS = {
   moderate: { text: 'Moderate confidence', color: '#92400E' },
   low:      { text: 'Low confidence',      color: '#B91C1C' },
 };
+
+// Recommendation copy, keyed by resolveConditionKey's three buckets plus
+// the reliability/quality flags -- those flags change what a technician
+// should actually tell the patient, so they're not just cosmetic here.
+// Kept as plain, non-diagnostic language: this app screens, it doesn't
+// diagnose, so the recommendation always routes toward a clinician
+// rather than asserting a conclusion.
+const getRecommendation = (conditionKey, isUnreliable, imageQualityWarning) => {
+  if (conditionKey === 'unknown' && isUnreliable) {
+    return {
+      icon: 'account-search-outline',
+      text:
+        "This sample falls outside the pattern the model was trained to recognize. It should not be read as a negative result. Recommend manual microscopic review by a hematologist before ruling anemia in or out, and correlate with the patient's clinical presentation.",
+    };
+  }
+
+  if (conditionKey === 'unknown') {
+    return {
+      icon: 'magnify-scan',
+      text:
+        'Abnormal red cell morphology was flagged. Recommend manual smear review to characterize the finding, and refer the patient to a physician for follow-up.',
+    };
+  }
+
+  if (conditionKey === 'anemic') {
+    return {
+      icon: 'doctor',
+      text:
+        'This screening indicates a pattern consistent with anemia. Advise the patient to see a doctor for confirmatory blood tests (e.g. full blood count, iron studies) and clinical evaluation. This result is a screening aid, not a diagnosis.',
+    };
+  }
+
+  return {
+    icon: 'check-decagram-outline',
+    text:
+      'No anemia pattern detected in this sample. No immediate action needed based on this screening alone; continue routine care and re-screen if the patient becomes symptomatic.',
+  };
+};
+
+const getQualityCaveat = (imageQualityWarning) =>
+  imageQualityWarning
+    ? 'Image quality issues were detected during analysis (see warning above). If this result is borderline or unexpected, consider re-scanning with better lighting and focus before acting on it.'
+    : null;
 
 function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -74,10 +128,13 @@ function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnal
   );
 }
 
-const  TransparencyTrail = ({ data, onClose, onViewReport }) => {
+const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const { prediction, report, bonusJustGranted, bonusRemaining, remaining } = data;
   const [showBeforeCrop, setShowBeforeCrop] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [notes, setNotes] = useState(report?.labTechNotes ?? '');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   const conditionKey = resolveConditionKey(
     prediction.is_anemic,
@@ -101,6 +158,23 @@ const  TransparencyTrail = ({ data, onClose, onViewReport }) => {
 
   const imageQuality = prediction.image_quality ?? {};
   const isUnreliable = prediction.is_unreliable ?? false;
+  const imageQualityWarning = prediction.image_quality_warning ?? false;
+
+  const recommendation = getRecommendation(conditionKey, isUnreliable, imageQualityWarning);
+  const qualityCaveat = getQualityCaveat(imageQualityWarning);
+
+  const handleSaveNotes = async () => {
+    if (!report?.id || !userId) return;
+    setSavingNotes(true);
+    try {
+      await updateReportNotes(report.id, notes, userId);
+      setNotesSaved(true);
+    } catch (err) {
+      console.error('TransparencyTrail handleSaveNotes:', err.message);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -255,6 +329,63 @@ const  TransparencyTrail = ({ data, onClose, onViewReport }) => {
               <Text style={styles.disclaimerText}>{prediction.scope_disclaimer}</Text>
             )}
 
+            {/* Lab technician notes -- free text, saved onto the report
+                (per-user storage, see ReportUtils.js) so it's visible
+                later in the Reports screen detail view. Placed before
+                the recommendation so the recommendation reads as the
+                final takeaway of the whole sheet. */}
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionHeading}>Lab Technician Notes</Text>
+              <TextInput
+                style={styles.notesInput}
+                placeholder="Add any observations for this sample…"
+                placeholderTextColor={COLORS.textMuted}
+                value={notes}
+                onChangeText={(t) => { setNotes(t); setNotesSaved(false); }}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              <TouchableOpacity
+                style={styles.saveNotesBtn}
+                onPress={handleSaveNotes}
+                disabled={savingNotes}
+              >
+                {savingNotes ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <MaterialIcons
+                    name={notesSaved ? 'check' : 'save'}
+                    size={16}
+                    color={COLORS.primary}
+                  />
+                )}
+                <Text style={styles.saveNotesBtnText}>
+                  {notesSaved ? 'Saved' : 'Save Note'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Recommendation -- deliberately the LAST content block.
+                Everything above is evidence; this is the takeaway the
+                technician relays to the patient. */}
+            <View style={[styles.sectionBlock, styles.recommendationBlock, { backgroundColor: sevStyle.bg }]}>
+              <View style={styles.recommendationHeader}>
+                <MaterialCommunityIcons name={recommendation.icon} size={20} color={sevStyle.text} />
+                <Text style={[styles.sectionHeading, { color: sevStyle.text, marginBottom: 0 }]}>
+                  Recommendation
+                </Text>
+              </View>
+              <Text style={[styles.recommendationText, { color: sevStyle.text }]}>
+                {recommendation.text}
+              </Text>
+              {qualityCaveat && (
+                <Text style={[styles.recommendationText, styles.recommendationCaveat, { color: sevStyle.text }]}>
+                  {qualityCaveat}
+                </Text>
+              )}
+            </View>
+
             {bonusJustGranted && (
               <View style={styles.bonusBanner}>
                 <MaterialCommunityIcons name="gift-outline" size={18} color={COLORS.primaryDark} />
@@ -328,6 +459,23 @@ const styles = StyleSheet.create({
   cbcFieldText: { fontSize: FONTS.sm, color: COLORS.textSecondary },
   explanationText: { fontSize: FONTS.sm, color: COLORS.textSecondary, lineHeight: 20 },
   disclaimerText: { fontSize: FONTS.xs, color: COLORS.textMuted, textAlign: 'center', marginBottom: SPACING.md, lineHeight: 16 },
+
+  notesInput: {
+    width: '100%', minHeight: scale(72), backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.sm + 2, padding: SPACING.sm + 2, fontSize: FONTS.sm,
+    color: COLORS.textPrimary, marginBottom: SPACING.sm,
+  },
+  saveNotesBtn: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+    backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm + 2, paddingVertical: 6,
+  },
+  saveNotesBtnText: { fontSize: FONTS.xs, color: COLORS.primary, fontWeight: FONTS.semibold },
+
+  recommendationBlock: { borderRadius: RADIUS.sm + 2, padding: SPACING.md },
+  recommendationHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, marginBottom: SPACING.xs },
+  recommendationText: { fontSize: FONTS.sm, lineHeight: 20 },
+  recommendationCaveat: { marginTop: SPACING.xs, fontStyle: 'italic', opacity: 0.9 },
 
   bonusBanner: {
     flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryLight,
