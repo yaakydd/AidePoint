@@ -46,14 +46,8 @@ export const CONDITION_CONFIG = {
     morphology: 'No significant abnormal cell morphology detected',
   },
 
-  // Blue/"info" rather than red or green -- deliberately not an alarm
-  // colour (this isn't a positive anemia result) and deliberately not
-  // the same green as a genuinely clean result either. COLORS.info /
-  // COLORS.infoBg from theme.js already exist for exactly this kind of
-  // "notable, not urgent" signal, so this reuses the app's existing
-  // semantic color rather than inventing a new one.
-  other_condition: {
-    label:      'Other Condition Detected',
+  unknown: {
+    label:      'Unknown',
     severity:   'blue',
     badgeBg:    '#EBF8FF',
     badgeText:  '#1D4ED8',
@@ -63,19 +57,6 @@ export const CONDITION_CONFIG = {
   },
 };
 
-// resolveConditionKey
-// Decides which of the three CONDITION_CONFIG buckets a scan actually
-// belongs in. Anemic results are never ambiguous -- is_anemic is the
-// whole call there. Not-anemic results need one more check: did
-// anything else get flagged on this scan? If so, this is an
-// "other_condition" result, not a plain "healthy" one.
-//
-// Exported so TransparencyTrail.js (the immediate post-scan result
-// modal) can use the exact same resolution buildReport() uses below --
-// without sharing this, the same scan could show "Healthy" in the
-// modal the instant it completes, then "Other Condition Detected" once
-// saved and viewed again in Reports, which would look like a bug even
-// though both are technically derived from the same data.
 export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
   if (isAnemic) return 'anemic';
 
@@ -83,7 +64,7 @@ export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) 
     (finding) => finding?.flagged === true
   );
 
-  if (hasFlaggedMorphology || isUnreliable) return 'other_condition';
+  if (hasFlaggedMorphology || isUnreliable) return 'unknown';
 
   return 'healthy';
 };

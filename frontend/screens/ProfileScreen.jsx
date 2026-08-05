@@ -117,37 +117,28 @@ export default function ProfileScreen() {
       setUploadingAvatar(false);
     }
   }
-
   function handleResetPin() {
-    Alert.alert(
-      'Reset Report PIN',
-      "You'll be asked to set a new 4-digit PIN the next time you open Reports.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset PIN',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-                  const { error } = await supabase.functions.invoke('delete-account');
-                  if (error) throw error;
+  Alert.alert(
+    'Reset Report PIN',
+    "You'll be asked to set a new 4-digit PIN the next time you open Reports.",
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset PIN',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await SecureStore.deleteItemAsync(PIN_KEY);
+          } catch (err) {
+            Alert.alert('Error', err.message ?? 'Could not reset PIN. Please try again.');
+          }
+        },
+      },
+    ],
+  );
+}
 
-                  // The edge function only deletes the Supabase-side account.
-                  // Reports live in local AsyncStorage (see ReportUtils.js), keyed
-                  // globally rather than per-user, so they survive account deletion
-                  // unless explicitly cleared here.
-                  await clearReports();
 
-                  await logout();
-                } catch (err) {
-                   Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
-                  }
-            },
-
-          },
-        ],
-      );
-  }
 
   function handleLogout() {
     Alert.alert(
@@ -180,19 +171,21 @@ export default function ProfileScreen() {
               {
                 text: 'Delete My Account',
                 style: 'destructive',
-                onPress: async () => {
-                  try {
-                    const { error } = await supabase.functions.invoke('delete-account');
-                    if (error) throw error;
-                    // Edge function deletes the auth user + profile row;
-                    // AuthContext's session listener should pick up the
-                    // now-invalid session and route back to Auth on its own.
-                    // If it doesn't, fall back to an explicit logout:
-                    await logout();
-                  } catch (err) {
-                    Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
-                  }
-                },
+          onPress: async () => {
+  try {
+    const { error } = await supabase.functions.invoke('delete-account');
+    if (error) throw error;
+
+    // Reports live locally in AsyncStorage, scoped per-user
+    // (aidepoint_reports_v1:<userId>) -- must clear before logout()
+    // invalidates access to user.id.
+    await clearReports(user.id);
+
+    await logout();
+  } catch (err) {
+    Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
+  }
+},
               },
             ],
           );

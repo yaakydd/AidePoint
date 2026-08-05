@@ -15,7 +15,7 @@ if not ACCESS_TOKEN:
         "Run: export AIDEPOINT_TEST_TOKEN='your_token_here'"
     )
 
-IMAGE_PATH = "/home/yaa_baby/Downloads/Testing_Images/ane1.jpg"
+IMAGE_PATH = "/home/yaa_baby/Downloads/Testing_Images/malaria.jpg"
 
 # /predict now requires patient_sample_id as a form field alongside the
 # file -- without it the request 400s before inference ever runs. Any
@@ -29,7 +29,7 @@ with open(IMAGE_PATH, "rb") as image_file:
         headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
         files={
             "file": (
-                "ane1.jpg",
+                "malaria.jpg",
                 image_file,
                 "image/jpg",
             )

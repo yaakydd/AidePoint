@@ -368,26 +368,21 @@ async def predict(
             detail="Inference failed. Please try again.",
         )
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
-
-    # Folds image_quality.py's own verdict into the same is_unreliable
-    # flag the reliability gate and shape screening already use, rather
-    # than leaving it as a separate signal a frontend has to remember to
-    # check independently. Confirmed on a real test image: a genuinely
-    # poor-quality photo (under-stained, low contrast, brightness out of
-    # range -- three real problems from assess_image_quality) came back
-    # with is_unreliable=False, because that flag never looked at
-    # quality_result at all. A lab technician checking only
-    # "is_unreliable" before trusting a result would have missed a photo
-    # image_quality.py had already flagged as poor on three separate
-    # measurements. should_block_inference() above is a hard stop (zero
-    # usable cells); this is the softer case -- cells were found, but the
-    # image itself is bad enough that the result should still carry a
-    # visible warning, not a silent "poor" tag off in a side field.
-    if quality_result.quality_score == "poor":
-        result["is_unreliable"] = True
-        result["unreliable_reasons"] = result["unreliable_reasons"] + [
-            f"image quality: {reason}" for reason in quality_result.failure_reasons
-        ]
+    # Photo quality is deliberately kept separate from is_unreliable.
+    # is_unreliable (from run_reliability_gate + shape_screening) answers
+    # "does this sample look like something the model wasn't trained to
+    # recognize" -- a genuine out-of-distribution signal, which is the
+    # closest honest proxy for "this might be a different disease
+    # entirely." Quality problems (blur, poor staining, bad lighting) are
+    # a completely different question -- "is this photo usable at all" --
+    # and mixing the two meant a blurry photo of a perfectly healthy
+    # sample and a well-photographed malaria smear both ended up tagged
+    # identically as "unreliable," with no way to tell them apart
+    # downstream.
+    result["image_quality_warning"] = quality_result.quality_score == "poor"
+    result["image_quality_reasons"] = (
+        list(quality_result.failure_reasons) if result["image_quality_warning"] else []
+    )
 
     # Uncertainty-relabeled CBC pattern summary, replacing raw regression
     # values with directional estimates + confidence tiers -- see

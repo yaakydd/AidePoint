@@ -177,10 +177,10 @@ const Scan = ({ navigation, route }) => {
   }
 
   setIsAnalysing(true);
-  console.log('>>> STEP 1: starting analysis, image =', image);
+  console.log('STEP 1: starting analysis, image =', image);
   try {
     const compressedUri = await compressImage(image);
-    console.log('>>> STEP 2: compressImage done ->', compressedUri);
+    console.log('STEP 2: compressImage done ', compressedUri);
 
 
       const { data: patientRow, error: patientErr } = await supabase
@@ -193,23 +193,29 @@ const Scan = ({ navigation, route }) => {
         })
         .select('id')
         .single();
-      console.log('>>> STEP 3: patient insert ->', { patientRow, patientErr });
+      console.log('STEP 3: patient insert', { patientRow, patientErr });
       if (patientErr) throw patientErr;
       
 
       const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
-      console.log('>>> STEP 4: prediction ->', prediction);
+      console.log('STEP 4: prediction ', prediction);
 
       const report = buildReport({
-        patientName:   patientName.trim(),
-        patientId:     patientRow.id,
-        condition:     prediction.is_anemic ? 'anemic' : 'healthy',
-        confidence:    prediction.explanation?.confidence ?? 'moderate',
-        labTechName,
-        imageUri:      compressedUri,
-        temperature:   temperature.trim(),
-        bloodPressure: bloodPressure.trim(),
+          patientName:   patientName.trim(),
+          patientId:     patientRow.id,
+          condition:     prediction.is_anemic ? 'anemic' : 'healthy',
+          confidence:    prediction.explanation?.confidence ?? 'moderate',
+          labTechName,
+          imageUri:      compressedUri,
+          temperature:   temperature.trim(),
+          bloodPressure: bloodPressure.trim(),
+          morphologyFindings: prediction.morphology_findings,
+          cbcPatternSummary:  prediction.cbc_pattern_summary,
+          isUnreliable:       prediction.is_unreliable,
+          unreliableReasons:  prediction.unreliable_reasons,
+          imageQuality:       prediction.image_quality,
       });
+
 
       const { data: scanRow, error: scanErr } = await supabase
         .from('scans')
@@ -242,7 +248,7 @@ const Scan = ({ navigation, route }) => {
       if (scanErr) throw scanErr;
       report.id = scanRow.id;
 
-      await saveReport(report);
+      await saveReport(report, user.id);
 
       const usage = await recordScan(user.id, plan);
       setRemaining(usage.remaining);
