@@ -3,8 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import SplashScreen from "../screens/SplashScreen";
 import ConsentScreen from "../screens/ConsentScreen";
-// TODO: point this at your actual PIN setup screen's real path/export name
-import PinSetupScreen from "../screens/PinSetupScreen";
+import PinSetup from "../screens/PinSetup";
 import AuthNavigator from "./AuthNavigator";
 import MainAppNavigator from "./MainAppNavigator";
 import SubscriptionScreen from "../screens/SubscriptionScreen";
@@ -44,7 +43,7 @@ const RootNavigator = () => {
             {authState === "PIN_SETUP" && (
                 <Stack.Screen
                     name="PinSetup"
-                    component={PinSetupScreen}
+                    component={PinSetup}
                 />
             )}
             {authState === "APP" && (

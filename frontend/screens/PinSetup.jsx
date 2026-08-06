@@ -1,5 +1,3 @@
-// screens/PinSetupScreen.js
-//
 // One-time PIN creation screen, shown between Consent and the main app
 // (see authState === 'PIN_SETUP' in AuthContext.js / RootNavigator.js).
 // Visually modelled on the reference flow: full-bleed brand-colour
@@ -34,7 +32,7 @@ const KEYS = [
   ['',  '0', BACKSPACE_KEY],
 ];
 
-const PinSetupScreen = () => {
+const PinSetup = () => {
   const { user, completePinSetup } = useAuth();
 
   const [pin,        setPin]        = useState('');
@@ -182,7 +180,7 @@ const PinSetupScreen = () => {
   );
 };
 
-export default PinSetupScreen;
+export default PinSetup;
 
 const styles = StyleSheet.create({
   safe: {
