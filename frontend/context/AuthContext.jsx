@@ -3,19 +3,16 @@ import React, {
   useState, useEffect, useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../utils/supabase';
+// Single source of truth for PIN storage — also used by PinSetup.js and
+// the Reports-screen PIN re-entry flow. Do not add a second PIN storage
+// mechanism here; resolvePostConsentState below only ever checks this one.
+import { isPinCreated } from '../utils/reportPin';
 
 export const AuthContext = createContext(null);
 
 // Key to store user profile locally on the device
 const USER_CACHE_KEY = 'aidepoint_user_cache';
-
-// PIN is scoped per user id, stored in SecureStore (not AsyncStorage) since
-// it's the device unlock credential, not display data — same reasoning as
-// keeping reports scoped per-user in ReportUtils, but with the stronger
-// storage mechanism this data actually calls for.
-const getPinKey = (uid) => `aidepoint_pin:${uid}`;
 
 export function AuthProvider({ children }) {
 
@@ -100,8 +97,8 @@ export function AuthProvider({ children }) {
   // and completeConsent can't drift out of sync on this check.
   async function resolvePostConsentState(uid) {
     try {
-      const pin = await SecureStore.getItemAsync(getPinKey(uid));
-      return pin ? 'APP' : 'PIN_SETUP';
+      const hasPin = await isPinCreated(uid);
+      return hasPin ? 'APP' : 'PIN_SETUP';
     } catch (err) {
       console.error('AuthContext resolvePostConsentState:', err.message);
       // Fail toward PIN_SETUP rather than skipping it — worse to let
@@ -331,34 +328,13 @@ async function register({ name, email, password, hospitalLab }) {
   }
 
   // ─── PIN SETUP ───────────────────────────────────────────
-  // Called by the PIN setup screen once the user has confirmed a PIN.
-  // Storage is handled here (not in the screen) so there's one place that
-  // decides where/how the PIN is persisted.
-  async function setPin(pin) {
-    if (!user) return { success: false, error: 'Not logged in' };
-
-    try {
-      await SecureStore.setItemAsync(getPinKey(user.id), pin);
-      setAuthState('APP');
-      return { success: true };
-    } catch (err) {
-      console.error('AuthContext setPin:', err.message);
-      return { success: false, error: 'Could not save PIN. Please try again.' };
-    }
-  }
-
-  // Used by a future app-lock / re-entry screen to check an entered PIN
-  // against the stored one. Not part of the PIN_SETUP flow itself, but
-  // lives next to setPin since they share the same storage key.
-  async function verifyPin(pin) {
-    if (!user) return false;
-    try {
-      const stored = await SecureStore.getItemAsync(getPinKey(user.id));
-      return stored != null && stored === pin;
-    } catch (err) {
-      console.error('AuthContext verifyPin:', err.message);
-      return false;
-    }
+  // Called by PinSetup.js after it has already saved the PIN itself via
+  // savePin() in utils/reportPin.js. This function only advances the
+  // navigation state — it does not touch PIN storage, since that's owned
+  // entirely by reportPin.js (single source of truth for both this screen
+  // and the Reports-screen PIN re-entry flow).
+  function completePinSetup() {
+    setAuthState('APP');
   }
 
   // ─── UPDATE PROFILE ──────────────────────────────────────
@@ -414,10 +390,10 @@ const dbChanges = {};
     setAuthError(null);
   }
 
-  // ─── PROVIDE ─────────────────────────────────────────────
+  // PROVIDE 
   return (
     <AuthContext.Provider value={{
-      authState,          // 'BOOTING', 'AUTH' , 'CONSENT' , 'PIN_SETUP' , 'APP'
+      authState,          // 'BOOTING' | 'AUTH' | 'CONSENT' | 'PIN_SETUP' | 'APP'
       user,               // { id, email, name, role, storeImages, consentDone, token }
       authError,          // string or null
       isOnline,           // boolean
