@@ -3,6 +3,7 @@ import React, {
   useState, useEffect, useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../utils/supabase';
 
 export const AuthContext = createContext(null);
@@ -10,15 +11,22 @@ export const AuthContext = createContext(null);
 // Key to store user profile locally on the device
 const USER_CACHE_KEY = 'aidepoint_user_cache';
 
+// PIN is scoped per user id, stored in SecureStore (not AsyncStorage) since
+// it's the device unlock credential, not display data — same reasoning as
+// keeping reports scoped per-user in ReportUtils, but with the stronger
+// storage mechanism this data actually calls for.
+const getPinKey = (uid) => `aidepoint_pin:${uid}`;
+
 export function AuthProvider({ children }) {
 
   // ─── STATE ───────────────────────────────────────────────
   //
   // authState drives the whole navigation tree:
-  //   'BOOTING'  → app just opened, show splash screen
-  //   'AUTH'     → no logged-in user, show SignIn / SignUp
-  //   'CONSENT'  → user logged in but hasn't set preferences yet
-  //   'APP'      → fully logged in and set up, show main screens
+  //   'BOOTING'    → app just opened, show splash screen
+  //   'AUTH'       → no logged-in user, show SignIn / SignUp
+  //   'CONSENT'    → user logged in but hasn't set preferences yet
+  //   'PIN_SETUP'  → consent done but no device PIN set yet
+  //   'APP'        → fully logged in and set up, show main screens
   //
   const [authState, setAuthState] = useState('BOOTING');
   const [user, setUser]           = useState(null);
@@ -87,6 +95,21 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Resolves whether a user should land on PIN_SETUP or APP, given that
+  // consent is already known to be done. Centralised here so hydrateUser
+  // and completeConsent can't drift out of sync on this check.
+  async function resolvePostConsentState(uid) {
+    try {
+      const pin = await SecureStore.getItemAsync(getPinKey(uid));
+      return pin ? 'APP' : 'PIN_SETUP';
+    } catch (err) {
+      console.error('AuthContext resolvePostConsentState:', err.message);
+      // Fail toward PIN_SETUP rather than skipping it — worse to let
+      // someone into the app with no PIN check than to ask again.
+      return 'PIN_SETUP';
+    }
+  }
+
   // ─── HYDRATE ─────────────────────────────────────────────
   // Takes a Supabase session → fetches profile → updates state.
   // If we're offline, falls back to the locally cached profile.
@@ -116,7 +139,11 @@ export function AuthProvider({ children }) {
       if (cached?.id === uid && alive) {
         // We have a cached profile for this user — let them in
         setUser(cached);
-        setAuthState(cached.consentDone ? 'APP' : 'CONSENT');
+        if (!cached.consentDone) {
+          setAuthState('CONSENT');
+        } else {
+          setAuthState(await resolvePostConsentState(uid));
+        }
       } else if (alive) {
         // Cache is empty or belongs to a different user
         setUser(null);
@@ -144,7 +171,11 @@ export function AuthProvider({ children }) {
     await cacheUser(userData);
 
     setUser(userData);
-    setAuthState(userData.consentDone ? 'APP' : 'CONSENT');
+    if (!userData.consentDone) {
+      setAuthState('CONSENT');
+    } else {
+      setAuthState(await resolvePostConsentState(uid));
+    }
   }
 
   // ─── CACHE HELPERS ───────────────────────────────────────
@@ -219,7 +250,7 @@ async function register({ name, email, password, hospitalLab }) {
   // ─── VERIFY EMAIL OTP ────────────────────────────────────
   // Called from the VerifyEmail screen with the 6-digit code the user types.
   // On success Supabase fires onAuthStateChange → hydrateUser runs →
-  // authState moves to 'CONSENT' or 'APP' automatically.
+  // authState moves to 'CONSENT', 'PIN_SETUP', or 'APP' automatically.
   async function verifyEmail(email, token) {
     setAuthError(null);
 
@@ -269,7 +300,7 @@ async function register({ name, email, password, hospitalLab }) {
     }
 
     // On success: onAuthStateChange listener fires → hydrateUser runs →
-    // authState changes to 'CONSENT' or 'APP'. No navigate() needed here.
+    // authState changes to 'CONSENT', 'PIN_SETUP', or 'APP'. No navigate() needed here.
     return { success: true };
   }
 
@@ -282,7 +313,7 @@ async function register({ name, email, password, hospitalLab }) {
     if (!isOnline) {
       await cacheUser({ ...updated, consentPending: true });
       setUser(updated);
-      setAuthState('APP');
+      setAuthState(await resolvePostConsentState(user.id));
       return { success: true };
     }
 
@@ -295,8 +326,39 @@ async function register({ name, email, password, hospitalLab }) {
 
     await cacheUser(updated);
     setUser(updated);
-    setAuthState('APP');
+    setAuthState(await resolvePostConsentState(user.id));
     return { success: true };
+  }
+
+  // ─── PIN SETUP ───────────────────────────────────────────
+  // Called by the PIN setup screen once the user has confirmed a PIN.
+  // Storage is handled here (not in the screen) so there's one place that
+  // decides where/how the PIN is persisted.
+  async function setPin(pin) {
+    if (!user) return { success: false, error: 'Not logged in' };
+
+    try {
+      await SecureStore.setItemAsync(getPinKey(user.id), pin);
+      setAuthState('APP');
+      return { success: true };
+    } catch (err) {
+      console.error('AuthContext setPin:', err.message);
+      return { success: false, error: 'Could not save PIN. Please try again.' };
+    }
+  }
+
+  // Used by a future app-lock / re-entry screen to check an entered PIN
+  // against the stored one. Not part of the PIN_SETUP flow itself, but
+  // lives next to setPin since they share the same storage key.
+  async function verifyPin(pin) {
+    if (!user) return false;
+    try {
+      const stored = await SecureStore.getItemAsync(getPinKey(user.id));
+      return stored != null && stored === pin;
+    } catch (err) {
+      console.error('AuthContext verifyPin:', err.message);
+      return false;
+    }
   }
 
   // ─── UPDATE PROFILE ──────────────────────────────────────
@@ -355,7 +417,7 @@ const dbChanges = {};
   // ─── PROVIDE ─────────────────────────────────────────────
   return (
     <AuthContext.Provider value={{
-      authState,          // 'BOOTING' | 'AUTH' | 'CONSENT' | 'APP'
+      authState,          // 'BOOTING', 'AUTH' , 'CONSENT' , 'PIN_SETUP' , 'APP'
       user,               // { id, email, name, role, storeImages, consentDone, token }
       authError,          // string or null
       isOnline,           // boolean
@@ -366,6 +428,8 @@ const dbChanges = {};
       login,
       logout,
       completeConsent,
+      setPin,
+      verifyPin,
       clearError,
     }}>
       {children}
