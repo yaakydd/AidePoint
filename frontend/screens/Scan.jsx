@@ -526,6 +526,18 @@ const report = buildReport({
           }}
         />
       )}
+
+          {isAnalysing && (
+      <View
+        pointerEvents="auto"
+        style={styles.analysisOverlay}
+      >
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={styles.analysisText}>
+          Analysing blood smear...
+        </Text>
+      </View>
+    )}
     </SafeAreaView>
   );
 };

@@ -404,8 +404,7 @@ const dbChanges = {};
       login,
       logout,
       completeConsent,
-      setPin,
-      verifyPin,
+      completePinSetup,
       clearError,
     }}>
       {children}

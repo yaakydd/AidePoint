@@ -52,8 +52,8 @@
 import * as SecureStore         from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 
-const PIN_KEY_PREFIX     = 'aidepoint:report_pin_v1:';
-const PIN_SET_KEY_PREFIX = 'aidepoint:report_pin_created:';
+const PIN_KEY_PREFIX     = 'aidepoint_report_pin_v1_';
+const PIN_SET_KEY_PREFIX = 'aidepoint_report_pin_created_';
 const LOCK_AFTER_MS      = 60 * 1000; // lock after 60 s in background
 
 // ── Storage ──────────────────────────────────────────────────────────────────

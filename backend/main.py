@@ -1,8 +1,3 @@
-# main.py
-# FastAPI backend for AidePoint.
-# Hosted on Railway. Receives blood smear images, runs ONNX inference,
-# returns structured clinical JSON to the React Native app. Also handles
-# Paystack subscription billing.
 import os
 import time
 import hmac
