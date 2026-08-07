@@ -1,7 +1,3 @@
-// components/TransparencyTrail.js
-//
-// [... header comment unchanged ...]
-
 import React, { useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, ScrollView,
@@ -223,22 +219,29 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 </Text>
               )}
 
-              {prediction.cell_overlay && showOverlay && !showBeforeCrop && (
-                <View style={styles.legendRow}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendSwatch, { backgroundColor: '#16A34A' }]} />
-                    <Text style={styles.legendText}>Normal shape</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendSwatch, { backgroundColor: '#EAB308' }]} />
-                    <Text style={styles.legendText}>Mild variation</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendSwatch, { backgroundColor: '#DC2626' }]} />
-                    <Text style={styles.legendText}>Unusual shape</Text>
-                  </View>
-                </View>
-              )}
+{prediction.cell_overlay && showOverlay && !showBeforeCrop && (
+  <View style={{ width: '100%' }}>
+    <Text style={styles.legendCaption}>
+      Each flagged cell is colored by how abnormal its shape looks. Green cells are
+      close to normal, red cells show the most unusual shape. Colors in between (like yellow and 
+      orange) fall between the two nearest categories which is normal and abnormal.
+    </Text>
+    <View style={styles.legendRow}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendSwatch, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#16A34A' }]} />
+        <Text style={styles.legendText}>Normal shape</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendSwatch, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EAB308' }]} />
+        <Text style={styles.legendText}>Mild variation</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendSwatch, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#DC2626' }]} />
+        <Text style={styles.legendText}>Unusual shape</Text>
+      </View>
+    </View>
+  </View>
+)}
             </View>
 
             {morphologyEntries.length > 0 && (
@@ -408,7 +411,30 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm + 2, paddingVertical: 6,
   },
   toggleChipText: { fontSize: FONTS.xs, color: COLORS.primary, fontWeight: FONTS.semibold },
-  overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
+overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
+
+  legendCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: 6, fontStyle: 'italic', lineHeight: 16 },
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.xs,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendSwatch: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+  },
 
   sectionBlock: { width: '100%', marginBottom: SPACING.md },
   sectionHeading: { fontSize: FONTS.sm, fontWeight: FONTS.bold, color: COLORS.textPrimary, marginBottom: 4 },
