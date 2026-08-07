@@ -98,9 +98,6 @@ const buildVerificationSection = (report) => {
   const rows = [
     row('Lab Technician', report.labTechName),
     row('Technician Notes', report.labTechNotes || 'No notes recorded'),
-    row('Reviewing Doctor', report.doctorName || 'Not yet assigned'),
-    row('Doctor Verified', report.doctorVerified ? 'Yes' : 'Pending'),
-    row('Doctor Notes', report.doctorNotes),
   ].join('');
 
   return `
@@ -133,7 +130,7 @@ const buildReportHtml = (report) => {
           font-size: 13px;
         }
 
-        /* ── Letterhead ──────────────────────────────────────────────
+        /* Letterhead
            Modelled on a standard clinical lab report letterhead: brand
            block on the left, facility contact details underneath, a
            requisition-style meta panel on the right giving this report
@@ -196,9 +193,9 @@ const buildReportHtml = (report) => {
         }
         .reliability-banner .finding-list li { color: #92400E; text-transform: none; }
 
-        /* ── Footer ───────────────────────────────────────────────────
+        /* Footer 
            Deliberately styled after a standard lab report's closing
-           disclaimer block -- the same honest-limits language the app
+           disclaimer block, the same honest-limits language the app
            shows elsewhere (scope_disclaimer / cbc_scope_disclaimer),
            just in report form.
            NOTE: intentionally not using CSS @page page-number counters
@@ -232,7 +229,7 @@ const buildReportHtml = (report) => {
           </div>
         </div>
         <div class="meta-right">
-          <div class="meta-line">Report ID<br/><strong>${report.id ?? '—'}</strong></div>
+          <div class="meta-line">Report ID<br/><strong>${report.scanId ?? '—'}</strong></div>
           <div class="meta-line">Scan Date<br/><strong>${report.dateDisplay ?? '—'} ${report.timeDisplay ?? ''}</strong></div>
           <div class="meta-line">Report Printed<br/><strong>${printedAtDisplay}</strong></div>
         </div>
