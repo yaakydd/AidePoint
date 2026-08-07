@@ -235,6 +235,7 @@ const report = buildReport({
     isUnreliable:       prediction.is_unreliable,
     unreliableReasons:  prediction.unreliable_reasons,
     imageQuality:       prediction.image_quality,
+    scanId, 
 });
 
 
