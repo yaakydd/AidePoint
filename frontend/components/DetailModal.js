@@ -88,10 +88,6 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
     }
     setSavingNotes(true);
     try {
-      // FIXED: was missing the userId arg -- updateReportNotes's real
-      // signature is (reportId, notes, userId). Without it, notes were
-      // being written to the "undefined" user bucket instead of this
-      // technician's own reports, so they never showed up again.
       const updatedReports = await updateReportNotes(report.id, notesDraft, userId);
       setNotesSavedAt(new Date());
       if (onNotesSaved) onNotesSaved(updatedReports);
@@ -123,7 +119,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
               </View>
               <View style={styles.reportMetaRight}>
                 <Text style={styles.reportMetaLabel}>Scan ID</Text>
-                <Text style={styles.reportMetaValue}>{report.id ?? '\u2014'}</Text>
+                <Text style={styles.reportMetaValue}>{report.scanId ?? '\u2014'}</Text>
               </View>
             </View>
 
@@ -131,7 +127,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
               <View style={{ flex: 1 }}>
                 <Text style={styles.sheetName}>{report.patientName}</Text>
                 <Text style={styles.sheetId}>
-                  #{report.patientId} - {report.dateDisplay} - {report.timeDisplay}
+                  {report.dateDisplay} - {report.timeDisplay}
                 </Text>
               </View>
             </View>
@@ -263,10 +259,6 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
               </TouchableOpacity>
             </View>
 
-            {/* MOVED: "Review recommended" now sits as the last content
-                block before the disclaimer, mirroring TransparencyTrail --
-                everything above is evidence, this + the recommendation
-                below are the takeaway the technician/doctor act on. */}
             {report.isUnreliable && (report.unreliableReasons ?? []).length > 0 ? (
               <View style={[styles.resultBanner, { backgroundColor: '#FEF3C7', marginTop: SPACING.md }]}>
                 <Text style={[styles.resultBannerLabel, { color: '#92400E' }]}>REVIEW RECOMMENDED</Text>
