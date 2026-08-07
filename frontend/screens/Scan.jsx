@@ -24,8 +24,17 @@ import { COLORS, SPACING } from '../assets/theme';
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 const GENDERS = ['Male', 'Female'];
 
+// Combines a time-changing component (base36 tail of Date.now(), changes
+// every call) with a 3-digit random suffix, so two scans -- even from
+// different technicians at the same moment -- are effectively guaranteed
+// not to collide. Previous version was AP-${year}-${4-digit random}, only
+// 9,000 possible values per year with no time component, so collisions
+// became realistic at scale.
 function generateScanId() {
-  return `AP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const year = new Date().getFullYear();
+  const timePart = Date.now().toString(36).toUpperCase().slice(-4);
+  const randomPart = Math.floor(100 + Math.random() * 900);
+  return `AP-${year}-${timePart}${randomPart}`;
 }
 
 function getUpgradeMessage(plan) {
