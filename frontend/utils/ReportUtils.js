@@ -75,22 +75,14 @@ export const buildReport = ({
   patientName, patientId, condition, confidence,
   labTechName, imageUri, temperature, bloodPressure,
   doctorId, doctorName,
-  // Real per-scan data from the backend response, distinct from the
-  // fixed config-level text above -- morphologyFindings and
-  // cbcPatternSummary vary per scan, so they need to be stored on the
-  // report itself, not derived from CONDITION_CONFIG at display time.
-  // morphologyFindings and isUnreliable are also what resolveConditionKey
-  // uses to decide between 'healthy' and 'other_condition' below.
   morphologyFindings, cbcPatternSummary,
   isUnreliable, unreliableReasons, imageQuality,
+  scanId,   // human-facing ID generated on the Scan screen (see Scan.jsx's
+            // generateScanId()) -- the only ID ever shown in the UI.
+            // `id` below stays as the internal/Supabase linkage key.
 }) => {
   const now = new Date();
 
-  // `condition` is still accepted as the caller's is_anemic-derived
-  // 'anemic' | 'healthy' guess (see Scan.js), but resolveConditionKey is
-  // the actual source of truth for the final bucket -- this is what
-  // upgrades a not-anemic-but-flagged result from 'healthy' to
-  // 'other_condition' before anything gets saved or displayed.
   const resolvedCondition = resolveConditionKey(
     condition === 'anemic',
     morphologyFindings,
@@ -101,17 +93,16 @@ export const buildReport = ({
 
   return {
     //  Identity
-    id:           patientId,
-    createdAt:    now.toISOString(),   // ISO string -- used for sorting and date display
+    id:           patientId,   // placeholder until Scan.jsx overwrites this with scanRow.id post-insert; never displayed
+    scanId:       scanId ?? null,   // short, human-facing scan identifier -- shown in DetailModal/TransparencyTrail headers
+    createdAt:    now.toISOString(),
     dateDisplay:  now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     timeDisplay:  now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
 
     // ── Patient vitals
-    patientName, patientId,
+    patientName, patientId,   // patientId retained for internal search/lookup only -- never displayed as an ID
     temperature, bloodPressure,
 
-    // AI result : fixed config text (label/urgency/generic morphology
-    // description) plus the real per-scan findings from this specific scan
     condition:      resolvedCondition,
     conditionLabel: cfg.label,
     confidence,
@@ -124,15 +115,9 @@ export const buildReport = ({
     unreliableReasons:  unreliableReasons ?? [],
     imageQuality:       imageQuality ?? null,
 
-    //  Personnel
     labTechName, imageUri,
     doctorId, doctorName,
 
-    // FIXED: labTechVerified/doctorVerified were a pending/approved
-    // toggle the technician had no real reason to interact with --
-    // replaced with labTechNotes, a free-text field the technician can
-    // actually fill in. doctorVerified/doctorNotes/doctorSignature stay
-    // as-is; only the technician side of the workflow changes here.
     labTechNotes:    '',
     doctorVerified:  false,
     doctorNotes:     '',
