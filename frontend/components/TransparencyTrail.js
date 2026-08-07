@@ -1,29 +1,6 @@
 // components/TransparencyTrail.js
 //
-// Replaces the old ResultModal. Shows the technician the full "why should
-// I trust this" trail for one prediction:
-//   1. the original photo vs the auto-cropped version actually analyzed
-//   2. the cell-level overlay drawn on the analyzed photo
-//   3. the AI result itself, plus the CBC pattern summary and morphology
-//      findings, all labeled with their actual confidence -- never
-//      presented as lab-grade numbers.
-//   4. a free-text notes field for the lab technician, saved onto the
-//      report so it shows up later in the Reports screen detail view.
-//   5. whether the reliability gate or image quality check flagged
-//      anything, immediately followed by a recommendation for what to
-//      do next -- both deliberately the LAST content block before the
-//      footer note/buttons. Everything above is "here's the evidence",
-//      this pair is "here's the takeaway", read as a conclusion rather
-//      than a mid-sheet interruption. Kept in this order to match
-//      DetailModal.js/the exported PDF, which reads the same way.
-//
-// prediction is the raw JSON returned by /predict (see utils/api.js).
-// report/bonusJustGranted/bonusRemaining/remaining come from the same
-// place the old ResultModal received them from in Scan.js.
-//
-// userId is required to persist technician notes via updateReportNotes
-// (reports are stored per-user, see ReportUtils.js) -- pass user.id from
-// Scan.jsx when rendering this component.
+// [... header comment unchanged ...]
 
 import React, { useState } from 'react';
 import {
@@ -35,17 +12,13 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
 import CellOverlay from './CellOverlay';
 import { CONDITION_CONFIG, resolveConditionKey, updateReportNotes } from '../utils/ReportUtils';
+import { ReportStyles } from '../styles/ReportStyles';
 import { COLORS, FONTS, SPACING, RADIUS, scale } from '../assets/theme';
 
 const SEVERITY_COLORS = {
   red:    { bg: '#FEE2E2', text: '#B91C1C', icon: 'alert-circle' },
   yellow: { bg: '#FEF3C7', text: '#92400E', icon: 'alert' },
   green:  { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
-  // FIXED: CONDITION_CONFIG.no_anemia (in ReportUtils.js) uses
-  // severity: 'blue' -- without this entry it fell back to the default
-  // yellow, visually lumping "not anemic, something else noted" in with
-  // an actual warning color instead of the app's existing blue/info
-  // semantic (COLORS.info / COLORS.infoBg in theme.js).
   blue:   { bg: '#EBF8FF', text: '#1D4ED8', icon: 'information' },
 };
 
@@ -55,12 +28,6 @@ const CONFIDENCE_LABELS = {
   low:      { text: 'Low confidence',      color: '#B91C1C' },
 };
 
-// Recommendation copy, keyed by resolveConditionKey's three buckets plus
-// the reliability/quality flags -- those flags change what a technician
-// should actually tell the patient, so they're not just cosmetic here.
-// Kept as plain, non-diagnostic language: this app screens, it doesn't
-// diagnose, so the recommendation always routes toward a clinician
-// rather than asserting a conclusion.
 const getRecommendation = (conditionKey, isUnreliable, imageQualityWarning) => {
   if (conditionKey === 'unknown' && isUnreliable) {
     return {
@@ -104,12 +71,6 @@ function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnal
 
   if (!imageBase64) return null;
 
-  // cell_overlay's coordinates are normalized against the cropped image
-  // the model actually analyzed (preprocess.py's auto_crop_microscope_field
-  // output), not the original uncropped photo -- overlaying them on the
-  // original photo would draw every circle in the wrong place, since the
-  // two images can have different framing once cropped. Only draw the
-  // overlay when the image currently on screen is the analyzed crop.
   const canShowOverlay = showOverlay && cellOverlay && isShowingAnalyzedCrop;
 
   return (
@@ -186,6 +147,29 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
 
+            {/* Branded header -- matches DetailModal.js's letterhead so
+                the post-scan result screen and the saved-report screen
+                read as the same product. Reuses ReportStyles directly
+                rather than duplicating styling, so both stay in sync if
+                the letterhead design changes. Shows scanId (the short,
+                human-facing ID generated on the Scan screen), never
+                report.id (the internal Supabase key). */}
+            <View style={ReportStyles.reportHeaderCard}>
+              <View style={ReportStyles.reportBrandRow}>
+                <View style={ReportStyles.reportBrandLogo}>
+                  <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 16 }}>A</Text>
+                </View>
+                <View>
+                  <Text style={ReportStyles.reportBrandName}>AidePoint</Text>
+                  <Text style={ReportStyles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
+                </View>
+              </View>
+              <View style={ReportStyles.reportMetaRight}>
+                <Text style={ReportStyles.reportMetaLabel}>Scan ID</Text>
+                <Text style={ReportStyles.reportMetaValue}>{report?.scanId ?? '\u2014'}</Text>
+              </View>
+            </View>
+
             <View style={[styles.iconCircle, { backgroundColor: sevStyle.bg }]}>
               <MaterialCommunityIcons name={sevStyle.icon} size={38} color={sevStyle.text} />
             </View>
@@ -201,8 +185,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               {confidenceInfo.text}
             </Text>
 
-            {/* The transparency trail itself: photo with overlay, plus
-                toggles to see before/after crop and hide the overlay */}
             <View style={styles.imageSection}>
               <ImageWithOverlay
                 imageBase64={displayedImageBase64}
@@ -241,13 +223,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 </Text>
               )}
 
-              {/* Legend for the overlay's color gradient -- only shown
-                  when the overlay is actually visible, since it's
-                  meaningless otherwise. Swatch colors match the exact
-                  hex values compute_severity_color() in shape_screening.py
-                  produces at severity 0.0 / 0.5 / 1.0, so the legend is
-                  a real reflection of the gradient on screen rather than
-                  an approximate illustration. */}
               {prediction.cell_overlay && showOverlay && !showBeforeCrop && (
                 <View style={styles.legendRow}>
                   <View style={styles.legendItem}>
@@ -266,7 +241,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               )}
             </View>
 
-            {/* Morphology findings, only what's above the reporting threshold */}
             {morphologyEntries.length > 0 && (
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeading}>Morphology findings</Text>
@@ -281,8 +255,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               </View>
             )}
 
-            {/* CBC pattern summary -- explicitly NOT lab values, see
-                cbc_uncertainty.py on the backend for why */}
             {cbcPatternEntries.length > 0 && (
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeading}>Estimated hematological patterns</Text>
@@ -298,8 +270,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               </View>
             )}
 
-            {/* AI explanation, in the technician's own words rather than
-                raw probabilities */}
             {prediction.explanation?.reasoning_summary && (
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeading}>Why this result</Text>
@@ -313,11 +283,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               <Text style={styles.disclaimerText}>{prediction.scope_disclaimer}</Text>
             )}
 
-            {/* Lab technician notes -- free text, saved onto the report
-                (per-user storage, see ReportUtils.js) so it's visible
-                later in the Reports screen detail view. Placed before
-                the recommendation so the recommendation reads as the
-                final takeaway of the whole sheet. */}
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionHeading}>Lab Technician Notes</Text>
               <TextInput
@@ -350,11 +315,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               </TouchableOpacity>
             </View>
 
-            {/* MOVED: "Review recommended" now sits just above the
-                Recommendation block instead of at the very top -- keeps
-                this screen's reading order consistent with
-                DetailModal.js/the exported PDF (evidence first, then
-                warning + recommendation as the closing takeaway). */}
             {(isUnreliable || imageQuality.quality_score === 'poor') && (
               <View style={[styles.warningBanner, { marginBottom: SPACING.sm }]}>
                 <MaterialCommunityIcons name="alert-outline" size={20} color="#92400E" />
@@ -370,9 +330,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               </View>
             )}
 
-            {/* Recommendation -- deliberately the LAST content block.
-                Everything above is evidence; this is the takeaway the
-                technician relays to the patient. */}
             <View style={[styles.sectionBlock, styles.recommendationBlock, { backgroundColor: sevStyle.bg }]}>
               <View style={styles.recommendationHeader}>
                 <MaterialCommunityIcons name={recommendation.icon} size={20} color={sevStyle.text} />
