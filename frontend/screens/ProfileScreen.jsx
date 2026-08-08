@@ -301,7 +301,7 @@ export default function ProfileScreen() {
           <Row
             icon="shield-lock-outline" iconColor="#0EA5E9" iconBg="#F0F9FF"
             label="Change Password"
-            onPress={() => navigation.navigate('ForgotPassword')}
+            onPress={() => navigation.navigate('ChangePassword')}
           />
           <Divider />
           <Row
