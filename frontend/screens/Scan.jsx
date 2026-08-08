@@ -6,7 +6,7 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAuth }       from '../context/AuthContext';
@@ -14,7 +14,7 @@ import { supabase }      from '../utils/supabase';
 import { buildReport, saveReport, resolveConditionKey } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
-import { compressImage } from '../utils/Offlinequeue';
+import { prepareImage } from '../utils/imageUtils';
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
 import { getPlan }       from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
@@ -117,31 +117,69 @@ const Scan = ({ navigation, route }) => {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
     });
   }
-
   async function handlePickFile() {
-    if (isAnalysing) return;
-    console.log('>>> handlePickFile CALLED');
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/png', 'image/jpeg'],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (result.canceled) return;
-      const file = result.assets?.[0];
-      if (!file) return;
-      const name = file.name?.toLowerCase() ?? '';
-      if (!name.endsWith('.png') && !name.endsWith('.jpg') && !name.endsWith('.jpeg')) {
-        Alert.alert('Invalid File', 'Only PNG or JPG images are supported.');
-        return;
-      }
-      setImage(file.uri);
-      setImageSourceType('upload');
-    } catch (err) {
-      console.error('Scan handlePickFile:', err.message);
-      Alert.alert('Upload Failed', 'Unable to open file picker.');
+
+  if (isAnalysing) return;
+
+  try {
+
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+
+    if (!permission.granted) {
+
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your gallery."
+      );
+
+      return;
     }
+
+
+    const result =
+      await ImagePicker.launchImageLibraryAsync({
+
+        mediaTypes: ['images'],
+
+        quality: 1,
+
+        allowsEditing:false,
+
+      });
+
+
+
+    if(result.canceled) return;
+
+
+
+    const uri =
+      result.assets[0].uri;
+
+
+    setImage(uri);
+
+    setImageSourceType('upload');
+
+
+  } catch(error){
+
+    console.error(
+      "Image picker error:",
+      error
+    );
+
+
+    Alert.alert(
+      "Upload Failed",
+      "Unable to select image."
+    );
+
   }
+
+}
 
   function handleResetPress() {
     if (isAnalysing) return;
@@ -196,7 +234,7 @@ const Scan = ({ navigation, route }) => {
   setIsAnalysing(true);
   console.log('STEP 1: starting analysis, image =', image);
   try {
-    const compressedUri = await compressImage(image);
+    const compressedUri = await prepareImage(image);
     console.log('STEP 2: compressImage done ', compressedUri);
 
 
