@@ -1,10 +1,27 @@
 // auth/Onboarding.js
 //
-// Redesigned to feel like a real clinical-tool onboarding rather than a
-// generic template: a thin progress bar (not a page counter), a slide
-// order that follows the actual scan workflow, and a dedicated slide for
-// offline support since that's a genuine differentiator for lab techs in
-// low-connectivity areas — not just filler copy.
+// Redesigned for a professional clinical-tool feel: 3 slides (down from
+// 6) that map directly onto the real scan workflow -- capture, analyze,
+// work offline -- each anchored by a real photograph instead of a
+// generic icon-in-a-circle. The page navigator is an enlarged pill-style
+// progress track rather than small dots, so it reads clearly at a glance
+// and matches the thin top progress bar in weight.
+//
+// IMAGES: bundled locally (require(...)), not fetched from a remote
+// URL, since these are licensed photos, not app-generated content.
+// Drop your three photos into assets/onboarding/ with these exact names,
+// or update the require() paths below to match your own filenames. Each
+// should show the actual microscope/smear workflow, not generic stock
+// lab imagery:
+//   assets/onboarding/microscope-capture.jpg  -- phone/adapter
+//                                                 photographing a blood
+//                                                 smear on a microscope
+//   assets/onboarding/microscope-results.jpg  -- a real smear/red-cell
+//                                                 close-up, or the app's
+//                                                 result screen beside
+//                                                 the microscope
+//   assets/onboarding/patient-reports.jpg     -- tech reviewing a saved
+//                                                 report on the device
 
 import React, { useState, useRef } from "react";
 import {
@@ -15,6 +32,7 @@ import {
   Animated,
   Dimensions,
   StatusBar,
+  Image,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -28,60 +46,29 @@ import { styles } from "../styles/OnboardingStyles";
 const { width } = Dimensions.get("window");
 const ONBOARDING_KEY = "aidepoint_has_launched";
 
+// Copy trimmed to one short, plain statement per slide -- a lab tech
+// should be able to read all three in a few seconds, not study them.
 const SLIDES = [
   {
     id: "1",
-    icon: "microscope",
-    color: "#0EA5E9",
-    bg: "#E0F2FE",
-    title: "Welcome to AidePoint",
-    description:
-      "AI-assisted anemia screening built for the lab bench — photograph a blood smear and get results in seconds, online or off.",
+    image: require("../assets/onboarding/microscope-capture.jpg"),
+    accent: "#0EA5E9",
+    title: "Scan the smear",
+    description: "Photograph a blood smear on the microscope. That's it.",
   },
   {
     id: "2",
-    icon: "clipboard-text-outline",
-    color: "#6366F1",
-    bg: "#EEF2FF",
-    title: "Start with patient details",
-    description:
-      "Enter the patient's basic information first. It's attached to every scan and improves the accuracy of the analysis.",
+    image: require("../assets/onboarding/microscope-results.jpg"),
+    accent: "#10B981",
+    title: "Get results instantly",
+    description: "Anemia risk and a full CBC read, in seconds.",
   },
   {
     id: "3",
-    icon: "camera-outline",
-    color: "#F59E0B",
-    bg: "#FFFBEB",
-    title: "Capture the smear",
-    description:
-      "Line the slide up inside the guide frame and hold steady. Good lighting and a clean focus make the biggest difference.",
-  },
-  {
-    id: "4",
-    icon: "chart-donut",
-    color: "#10B981",
-    bg: "#ECFDF5",
-    title: "Get a full CBC read",
-    description:
-      "Every scan returns an anemia probability, estimated blood counts, and morphology flags — saved straight to the patient's report.",
-  },
-  {
-    id: "5",
-    icon: "cloud-off-outline",
-    color: "#0D9488",
-    bg: "#F0FDFA",
-    title: "Works without a connection",
-    description:
-      "No signal at the clinic? Scans queue on the device automatically and sync the moment you're back online.",
-  },
-  {
-    id: "6",
-    icon: "robot-outline",
-    color: "#EC4899",
-    bg: "#FDF2F8",
-    title: "Ask AideBot anytime",
-    description:
-      "Unsure about a result? AideBot is built in to help you interpret findings and answer clinical questions on the spot.",
+    image: require("../assets/onboarding/patient-reports.jpg"),
+    accent: "#6366F1",
+    title: "Every report saved",
+    description: "Every scan is saved and searchable by patient.",
   },
 ];
 
@@ -112,7 +99,7 @@ export default function Onboarding() {
   }
 
   const isLastSlide = currentIndex === SLIDES.length - 1;
-  const activeColor = SLIDES[currentIndex].color;
+  const activeColor = SLIDES[currentIndex].accent;
 
   // Progress bar width interpolated from scroll position
   const progressWidth = scrollX.interpolate({
@@ -157,10 +144,9 @@ export default function Onboarding() {
         data={SLIDES}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
-            <View style={[styles.iconRing, { borderColor: `${item.color}33` }]}>
-              <View style={[styles.iconCircle, { backgroundColor: item.bg }]}>
-                <MaterialCommunityIcons name={item.icon} size={scale(46)} color={item.color} />
-              </View>
+            <View style={styles.photoFrame}>
+              <Image source={item.image} style={styles.photo} resizeMode="cover" />
+              <View style={[styles.photoAccentBar, { backgroundColor: item.accent }]} />
             </View>
 
             <Text style={styles.slideTitle}>{item.title}</Text>
@@ -178,19 +164,24 @@ export default function Onboarding() {
         scrollEventThrottle={16}
       />
 
-      {/* ── Dots ── */}
-      <View style={styles.dotsRow}>
+      {/* ── Navigator: enlarged pill-style page indicator ── */}
+      <View style={styles.navigatorRow}>
         {SLIDES.map((slide, index) => (
-          <View
+          <TouchableOpacity
             key={slide.id}
-            style={[
-              styles.dot,
-              {
-                backgroundColor: index === currentIndex ? activeColor : COLORS.border,
-                width: index === currentIndex ? 20 : 7,
-              },
-            ]}
-          />
+            onPress={() => flatListRef.current?.scrollToIndex({ index, animated: true })}
+            hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+          >
+            <View
+              style={[
+                styles.navigatorPill,
+                {
+                  backgroundColor: index === currentIndex ? activeColor : COLORS.border,
+                  width: index === currentIndex ? scale(36) : scale(12),
+                },
+              ]}
+            />
+          </TouchableOpacity>
         ))}
       </View>
 

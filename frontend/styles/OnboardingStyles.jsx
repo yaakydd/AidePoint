@@ -63,22 +63,31 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  iconRing: {
-    width: scale(176),
-    height: scale(176),
-    borderRadius: RADIUS.full,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
+  // Photo frame: full slide width (minus the slide's own horizontal
+  // padding), fixed 4:3 aspect ratio via aspectRatio rather than a
+  // hardcoded height, so it scales correctly across every device width
+  // instead of relying on one baseline pixel value. resizeMode="cover"
+  // on the Image inside crops to fill this exact box.
+  photoFrame: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+    borderRadius: RADIUS.xl,
+    overflow: "hidden",
+    backgroundColor: COLORS.surfaceAlt,
     marginBottom: scale(36),
+    ...SHADOWS.md,
   },
 
-  iconCircle: {
-    width: scale(140),
-    height: scale(140),
-    borderRadius: RADIUS.full,
-    alignItems: "center",
-    justifyContent: "center",
+  photo: {
+    width: "100%",
+    height: "100%",
+  },
+
+  // Thin accent bar under the photo, colored per-slide to tie the image
+  // back to the active progress/navigator color.
+  photoAccentBar: {
+    height: scale(4),
+    width: "100%",
   },
 
   slideTitle: {
@@ -97,17 +106,20 @@ export const styles = StyleSheet.create({
     paddingHorizontal: scale(6),
   },
 
-  dotsRow: {
+  // Enlarged pill-style page navigator, replacing the old small dots --
+  // bigger hit target, bigger visual weight, active pill grows into a
+  // wide pill rather than just a slightly bigger dot.
+  navigatorRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: SPACING.lg,
     marginBottom: SPACING.md,
-    gap: 6,
+    gap: scale(8),
   },
 
-  dot: {
-    height: 7,
+  navigatorPill: {
+    height: scale(8),
     borderRadius: RADIUS.full,
   },
 
