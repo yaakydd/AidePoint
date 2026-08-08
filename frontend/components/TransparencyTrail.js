@@ -61,6 +61,32 @@ const getQualityCaveat = (imageQualityWarning) =>
     ? 'Image quality issues were detected during analysis (see warning above). If this result is borderline or unexpected, consider re-scanning with better lighting and focus before acting on it.'
     : null;
 
+// Mirrors backend/shape_screening.py's compute_severity_color() exactly,
+// so this legend bar is a true reflection of the colors actually drawn
+// on the cell overlay -- not a separate hand-picked gradient that could
+// drift out of sync with the backend's real math.
+const severityToColor = (severityScore) => {
+  let redValue, greenValue, blueValue;
+  if (severityScore < 0.5) {
+    const blendRatio = severityScore / 0.5;
+    redValue   = Math.round(0x16 + (0xEA - 0x16) * blendRatio);
+    greenValue = Math.round(0xA3 + (0xB3 - 0xA3) * blendRatio);
+    blueValue  = Math.round(0x4A + (0x08 - 0x4A) * blendRatio);
+  } else {
+    const blendRatio = (severityScore - 0.5) / 0.5;
+    redValue   = Math.round(0xEA + (0xDC - 0xEA) * blendRatio);
+    greenValue = Math.round(0xB3 + (0x26 - 0xB3) * blendRatio);
+    blueValue  = Math.round(0x08 + (0x26 - 0x08) * blendRatio);
+  }
+  const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+  return `#${toHex(redValue)}${toHex(greenValue)}${toHex(blueValue)}`;
+};
+
+// Number of thin slices making up the fake-gradient bar. 40 is dense
+// enough to read as continuous on a ~300px-wide bar with no visible
+// banding, without generating an excessive number of Views.
+const GRADIENT_BAR_SLICES = 40;
+
 function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop }) {
   const { width: screenWidth } = useWindowDimensions();
   const displaySize = screenWidth - SPACING['2xl'] * 2;
@@ -122,6 +148,13 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const recommendation = getRecommendation(conditionKey, isUnreliable, imageQualityWarning);
   const qualityCaveat = getQualityCaveat(imageQualityWarning);
 
+  // Matches the "date - time" pairing DetailModal.js uses for the same
+  // report object (report.dateDisplay / report.timeDisplay), so both
+  // screens read the same fields the same way.
+  const dateTimeDisplay = [report?.dateDisplay, report?.timeDisplay]
+    .filter(Boolean)
+    .join('  \u2022  ');
+
   const handleSaveNotes = async () => {
     if (!report?.id || !userId) return;
     setSavingNotes(true);
@@ -164,6 +197,20 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 <Text style={ReportStyles.reportMetaLabel}>Scan ID</Text>
                 <Text style={ReportStyles.reportMetaValue}>{report?.scanId ?? '\u2014'}</Text>
               </View>
+            </View>
+
+            {/* Patient name left, date/time right -- mirrors
+                DetailModal.js's sheetHeader row so both modals present
+                the same report identity info the same way. */}
+            <View style={styles.patientMetaRow}>
+              <Text style={styles.patientName} numberOfLines={1} ellipsizeMode="tail">
+                {report?.patientName ?? 'Unnamed Patient'}
+              </Text>
+              {!!dateTimeDisplay && (
+                <Text style={styles.patientDateTime} numberOfLines={1}>
+                  {dateTimeDisplay}
+                </Text>
+              )}
             </View>
 
             <View style={[styles.iconCircle, { backgroundColor: sevStyle.bg }]}>
@@ -219,29 +266,39 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 </Text>
               )}
 
-{prediction.cell_overlay && showOverlay && !showBeforeCrop && (
-  <View style={{ width: '100%' }}>
-    <Text style={styles.legendCaption}>
-      Each flagged cell is colored by how abnormal its shape looks. Green cells are
-      close to normal, red cells show the most unusual shape. Colors in between (like yellow and 
-      orange) fall between the two nearest categories which is normal and abnormal.
-    </Text>
-    <View style={styles.legendRow}>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendSwatch, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#16A34A' }]} />
-        <Text style={styles.legendText}>Normal shape</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendSwatch, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EAB308' }]} />
-        <Text style={styles.legendText}>Mild variation</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendSwatch, { width: 10, height: 10, borderRadius: 5, backgroundColor: '#DC2626' }]} />
-        <Text style={styles.legendText}>Unusual shape</Text>
-      </View>
-    </View>
-  </View>
-)}
+              {prediction.cell_overlay && showOverlay && !showBeforeCrop && (
+                <View style={{ width: '100%' }}>
+                  <Text style={styles.legendCaption}>
+                    Each flagged cell is colored by how abnormal its shape looks, on a
+                    continuous scale from green (normal) to red (most unusual). A cell's
+                    exact position on this bar is what its color on the image means.
+                  </Text>
+
+                  <View style={styles.gradientBar}>
+                    {Array.from({ length: GRADIENT_BAR_SLICES }).map((_, index) => (
+                      <View
+                        key={index}
+                        style={{
+                          flex: 1,
+                          backgroundColor: severityToColor(index / (GRADIENT_BAR_SLICES - 1)),
+                        }}
+                      />
+                    ))}
+                  </View>
+
+                  <View style={styles.gradientTickRow}>
+                    <Text style={styles.gradientTickText}>0.0</Text>
+                    <Text style={styles.gradientTickText}>0.5</Text>
+                    <Text style={styles.gradientTickText}>1.0</Text>
+                  </View>
+
+                  <View style={styles.gradientLabelRow}>
+                    <Text style={[styles.gradientBandLabel, { textAlign: 'left' }]}>Normal shape</Text>
+                    <Text style={[styles.gradientBandLabel, { textAlign: 'center' }]}>Mild variation</Text>
+                    <Text style={[styles.gradientBandLabel, { textAlign: 'right' }]}>Unusual shape</Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             {morphologyEntries.length > 0 && (
@@ -280,10 +337,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                   {prediction.explanation.reasoning_summary}
                 </Text>
               </View>
-            )}
-
-            {prediction.scope_disclaimer && (
-              <Text style={styles.disclaimerText}>{prediction.scope_disclaimer}</Text>
             )}
 
             <View style={styles.sectionBlock}>
@@ -364,6 +417,13 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 ? 'Unlimited scans remaining today'
                 : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`}
             </Text>
+
+            {/* Disclaimer now renders last, after every other section,
+                matching DetailModal.js's disclaimerNote placement right
+                before its Close button. */}
+            {prediction.scope_disclaimer && (
+              <Text style={styles.disclaimerText}>{prediction.scope_disclaimer}</Text>
+            )}
           </ScrollView>
 
           <View style={styles.btnRow}>
@@ -391,6 +451,30 @@ const styles = StyleSheet.create({
   },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: SPACING.md },
 
+  // Patient name (left) / date+time (right) row, directly under the
+  // branded letterhead -- mirrors DetailModal.js's sheetHeader/sheetName
+  // pairing so both modals present report identity the same way.
+  patientMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    width: '100%',
+    marginBottom: SPACING.md,
+  },
+  patientName: {
+    fontSize: FONTS.md,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+    flexShrink: 1,
+    marginRight: SPACING.sm,
+  },
+  patientDateTime: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+    textAlign: 'right',
+    flexShrink: 0,
+  },
+
   warningBanner: {
     flexDirection: 'row', gap: SPACING.sm, backgroundColor: '#FEF3C7',
     borderRadius: RADIUS.sm + 2, padding: SPACING.md, marginBottom: SPACING.md, width: '100%',
@@ -411,41 +495,68 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm, paddingHorizontal: SPACING.sm + 2, paddingVertical: 6,
   },
   toggleChipText: { fontSize: FONTS.xs, color: COLORS.primary, fontWeight: FONTS.semibold },
-overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
+  overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
 
-  legendCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: 6, fontStyle: 'italic', lineHeight: 16 },
-  legendRow: {
+  // Legend caption + column layout. Swatches are now sized via theme
+  // scale() (not raw inline numbers) and stacked as a column with a
+  // label directly beside each swatch, one per row, instead of the old
+  // cramped horizontal row of 3 dots.
+  legendCaption: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
+  gradientBar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: SPACING.md,
+    width: '100%',
+    height: scale(14),
+    borderRadius: RADIUS.xs,
+    overflow: 'hidden',
     marginTop: SPACING.xs,
   },
-  legendItem: {
+  gradientTickRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 4,
   },
-  legendSwatch: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  gradientTickText: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
   },
-  legendText: {
+  gradientLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 2,
+    marginBottom: SPACING.xs,
+  },
+  gradientBandLabel: {
+    flex: 1,
     fontSize: FONTS.xs,
     color: COLORS.textSecondary,
+    fontWeight: FONTS.medium,
   },
 
   sectionBlock: { width: '100%', marginBottom: SPACING.md },
   sectionHeading: { fontSize: FONTS.sm, fontWeight: FONTS.bold, color: COLORS.textPrimary, marginBottom: 4 },
   sectionSubcaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: SPACING.xs, fontStyle: 'italic' },
-  findingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  findingText: { fontSize: FONTS.sm, color: COLORS.textSecondary, textTransform: 'capitalize' },
-  cbcRow: { marginBottom: SPACING.xs },
-  cbcFieldName: { fontSize: FONTS.xs, fontWeight: FONTS.bold, color: COLORS.textMuted, textTransform: 'uppercase' },
-  cbcFieldText: { fontSize: FONTS.sm, color: COLORS.textSecondary },
+
+  // flexShrink + alignItems: 'flex-start' so a long finding name wraps
+  // onto a second line and stays lined up with the icon at the top,
+  // instead of overflowing past the sheet's right edge.
+  findingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 2 },
+  findingText: { fontSize: FONTS.sm, color: COLORS.textSecondary, textTransform: 'capitalize', flexShrink: 1 },
+
+  cbcRow: { marginBottom: SPACING.xs, flexDirection: 'row', flexWrap: 'wrap' },
+  cbcFieldName: { fontSize: FONTS.xs, fontWeight: FONTS.bold, color: COLORS.textMuted, textTransform: 'uppercase', flexShrink: 1 },
+  cbcFieldText: { fontSize: FONTS.sm, color: COLORS.textSecondary, flexShrink: 1 },
+
   explanationText: { fontSize: FONTS.sm, color: COLORS.textSecondary, lineHeight: 20 },
-  disclaimerText: { fontSize: FONTS.xs, color: COLORS.textMuted, textAlign: 'center', marginBottom: SPACING.md, lineHeight: 16 },
+  disclaimerText: { fontSize: FONTS.xs, color: COLORS.textMuted, textAlign: 'center', marginTop: SPACING.sm, marginBottom: SPACING.sm, lineHeight: 16 },
 
   notesInput: {
     width: '100%', minHeight: scale(72), backgroundColor: COLORS.surfaceAlt,
@@ -469,7 +580,7 @@ overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACIN
     borderRadius: RADIUS.sm + 2, paddingHorizontal: SPACING.md + 2, paddingVertical: SPACING.sm + 2, marginBottom: SPACING.md, width: '100%',
   },
   bonusText: { flex: 1, fontSize: FONTS.sm, color: COLORS.primaryDark, fontWeight: FONTS.semibold },
-  remainingNote: { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: SPACING.md },
+  remainingNote: { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: SPACING.sm },
 
   btnRow: { flexDirection: 'row', gap: SPACING.md, width: '100%', paddingTop: SPACING.sm },
   btnPrimary: {
