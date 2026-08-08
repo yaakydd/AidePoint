@@ -1,12 +1,14 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 
-export async function prepareImage(uri) {
-
+// Copies a picker/camera URI into app-controlled cache storage immediately,
+// before the OS has a chance to evict the original temp file. Must be
+// called as soon as an image is captured or picked -- NOT deferred until
+// analysis time, since expo-image-picker's returned URI is not guaranteed
+// to stay valid while the user fills out the rest of the form.
+export async function stabilizeImage(uri) {
   try {
-
-    // Copy picker/camera temporary file into app storage
     const safeUri =
       `${FileSystem.cacheDirectory}aidepoint_${Date.now()}.jpg`;
 
@@ -15,41 +17,38 @@ export async function prepareImage(uri) {
       to: safeUri,
     });
 
+    return safeUri;
 
-    // Compress image
-    const result =
-      await ImageManipulator.manipulateAsync(
-        safeUri,
-        [
-          {
-            resize: {
-              width: 1024,
-            },
-          },
-        ],
-        {
-          compress: 0.75,
-          format: ImageManipulator.SaveFormat.JPEG,
-        }
-      );
-
-
-    console.log(
-      "prepareImage compressed:",
-      result.uri
-    );
-
-
-    return result.uri;
-
-
-  } catch(error){
-
+  } catch (error) {
     console.error(
-      "prepareImage failed:",
+      "stabilizeImage failed:",
       error
     );
+    throw error;
+  }
+}
 
+
+// Compresses an already-stabilized image (see stabilizeImage above) ahead
+// of upload/analysis. Assumes `uri` already points to a safe app-owned
+// file, so no copy step is needed here anymore.
+// utils/imageUtils.js
+export async function prepareImage(uri) {
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (!info.exists) {
+      throw new Error('IMAGE_EXPIRED');
+    }
+
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    return result.uri;
+  } catch (error) {
+    console.error("prepareImage failed:", error);
     throw error;
   }
 }

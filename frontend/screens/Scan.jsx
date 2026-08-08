@@ -14,7 +14,7 @@ import { supabase }      from '../utils/supabase';
 import { buildReport, saveReport, resolveConditionKey } from '../utils/ReportUtils';
 import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
-import { prepareImage } from '../utils/imageUtils';
+import { prepareImage, stabilizeImage } from '../utils/imageUtils';
 import { getRemainingScans, recordScan } from '../utils/scanStorage';
 import { getPlan }       from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
@@ -77,18 +77,25 @@ const Scan = ({ navigation, route }) => {
     const r = await getRemainingScans(user.id, plan);
     setRemaining(r);
   }
-
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      const photo = route.params?.capturedPhoto;
-      if (photo) {
-        setImage(photo);
-        setImageSourceType('camera');
-        navigation.setParams({ capturedPhoto: undefined });
-      }
-    });
-    return unsubscribe;
-  }, [navigation, route.params]);
+  const unsubscribe = navigation.addListener('focus', () => {
+    const photo = route.params?.capturedPhoto;
+    if (photo) {
+      (async () => {
+        try {
+          const safeUri = await stabilizeImage(photo);
+          setImage(safeUri);
+          setImageSourceType('camera');
+        } catch (err) {
+          console.error('Camera image stabilize failed:', err);
+          Alert.alert('Error', 'Could not process the captured photo. Please try again.');
+        }
+      })();
+      navigation.setParams({ capturedPhoto: undefined });
+    }
+  });
+  return unsubscribe;
+}, [navigation, route.params]);
 
   const isFormValid =
     patientName.trim() !== '' &&
@@ -117,6 +124,7 @@ const Scan = ({ navigation, route }) => {
       existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
     });
   }
+
   async function handlePickFile() {
 
   if (isAnalysing) return;
@@ -155,11 +163,12 @@ const Scan = ({ navigation, route }) => {
 
 
 
-    const uri =
+    const pickedUri =
       result.assets[0].uri;
 
+    const safeUri = await stabilizeImage(pickedUri);
 
-    setImage(uri);
+    setImage(safeUri);
 
     setImageSourceType('upload');
 
@@ -327,10 +336,13 @@ const report = buildReport({
       setImage(null); setImageSourceType(null);
       setScanId(generateScanId());
 
-    } catch (err) {
-      console.error('Scan handleStartAnalysis:', err.message);
-      Alert.alert('Analysis Failed', err.message ?? 'Something went wrong. Please try again.', [{ text: 'OK' }]);
-    } finally {
+    }  catch (err) {
+  console.error('Scan handleStartAnalysis:', err.message);
+  const message = err.message === 'IMAGE_EXPIRED'
+    ? 'The captured image is no longer available. Please retake or re-select the photo before trying again.'
+    : (err.message ?? 'Something went wrong. Please try again.');
+  Alert.alert('Analysis Failed', message, [{ text: 'OK' }]);
+}finally {
       setIsAnalysing(false);
     }
   }
