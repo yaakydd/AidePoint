@@ -19,11 +19,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
+import { clearPin } from '../utils/reportPin';
 import { clearReports } from '../utils/ReportUtils';
 import { MaterialIcons } from '@expo/vector-icons';
 
-// must match whatever key reportPin.js uses
-const PIN_KEY = 'aidepoint_report_pin';
 const AVATAR_BUCKET = 'avatars';
 
 const ROLE_DISPLAY = {
@@ -117,7 +116,7 @@ export default function ProfileScreen() {
       setUploadingAvatar(false);
     }
   }
-  function handleResetPin() {
+function handleResetPin() {
   Alert.alert(
     'Reset Report PIN',
     "You'll be asked to set a new 4-digit PIN the next time you open Reports.",
@@ -128,7 +127,7 @@ export default function ProfileScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await SecureStore.deleteItemAsync(PIN_KEY);
+            await clearPin(user.id);
           } catch (err) {
             Alert.alert('Error', err.message ?? 'Could not reset PIN. Please try again.');
           }
