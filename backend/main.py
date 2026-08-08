@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI):
         _cbc_mean_absolute_errors = eval_report.get("cbc_mae_per_field", {})
     else:
         log.warning(
-            "%s not found -- CBC pattern summaries will mark every field "
+            "%s not found, CBC pattern summaries will mark every field "
             "as not_estimable until this file is present.", EVAL_REPORT_PATH,
         )
 
@@ -123,7 +123,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AidePoint API",
     version="1.1.0",
-    description="AI-powered anemia detection from RBC microscope images",
+    description="AI-powered anemia risk detection from RBC microscope images",
     lifespan=lifespan,
 )
 
