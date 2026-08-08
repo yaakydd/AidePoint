@@ -230,13 +230,6 @@ const ChangePassword = () => {
             }
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.forgotLink}
-            onPress={() => navigation.navigate('ForgotPassword')}
-          >
-            <Text style={styles.forgotLinkText}>Forgot your current password instead?</Text>
-          </TouchableOpacity>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
