@@ -4,6 +4,14 @@
 // Handles both "create PIN" (first time) and "enter PIN" (subsequent visits).
 // Supports biometric fallback where available.
 //
+// RESTYLED: now matches PinSetup.js's full-bleed brand-colour visual
+// design (white plain-text digit keys, no button chips/shadows, centered
+// dot progress) instead of the old white-background card with circular
+// shadowed keys. Functionality is unchanged -- mode prop, biometric
+// fallback, failCount, and the Modal wrapper (needed here since, unlike
+// PinSetup.js, this renders on top of ReportScreen.js rather than as its
+// own full screen in the nav stack) all still work exactly as before.
+//
 // Usage in ReportScreen.js -- see that file for the full wiring, including
 // the useFocusEffect that decides when to show this modal at all.
 
@@ -18,7 +26,7 @@ import {
   savePin, verifyPin,
   isBiometricAvailable, authenticateWithBiometrics,
 } from '../utils/reportPin';
-import { COLORS, FONTS, SPACING, RADIUS } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, scale, vScale } from '../assets/theme';
 
 const PIN_LENGTH = 4;
 const BACKSPACE_KEY = 'backspace';
@@ -131,14 +139,15 @@ export default function PinModal({ mode, userId, onSuccess }) {
 
   return (
     <Modal visible animationType="fade" statusBarTranslucent>
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.safe}>
 
-        <View style={styles.iconWrap}>
-          <MaterialCommunityIcons name="lock-outline" size={40} color={COLORS.primary} />
+        <View style={styles.header}>
+          <View style={styles.iconWrap}>
+            <MaterialCommunityIcons name="lock-outline" size={scale(32)} color={COLORS.white} />
+          </View>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
 
         <Animated.View style={[styles.dotsRow, { transform: [{ translateX: shake }] }]}>
           {Array.from({ length: PIN_LENGTH }).map((_, dotIndex) => (
@@ -149,7 +158,9 @@ export default function PinModal({ mode, userId, onSuccess }) {
           ))}
         </Animated.View>
 
-        {!!error && <Text style={styles.error}>{error}</Text>}
+        <View style={styles.errorSlot}>
+          {!!error && <Text style={styles.error}>{error}</Text>}
+        </View>
 
         <View style={styles.keypad}>
           {KEYS.map((row, rowIndex) => (
@@ -157,13 +168,13 @@ export default function PinModal({ mode, userId, onSuccess }) {
               {row.map((key, keyIndex) => (
                 <TouchableOpacity
                   key={keyIndex}
-                  style={[styles.key, key === '' && styles.keyEmpty]}
+                  style={styles.key}
                   onPress={() => handleKey(key)}
-                  activeOpacity={0.65}
+                  activeOpacity={0.6}
                   disabled={key === ''}
                 >
                   {key === BACKSPACE_KEY ? (
-                    <MaterialIcons name="backspace" size={22} color={COLORS.textPrimary} />
+                    <MaterialIcons name="backspace" size={22} color={COLORS.white} />
                   ) : (
                     <Text style={styles.keyText}>{key}</Text>
                   )}
@@ -175,7 +186,7 @@ export default function PinModal({ mode, userId, onSuccess }) {
 
         {biometric && !isCreate && (
           <TouchableOpacity style={styles.bioBtn} onPress={handleBiometric}>
-            <MaterialCommunityIcons name="fingerprint" size={28} color={COLORS.primary} />
+            <MaterialCommunityIcons name="fingerprint" size={26} color={COLORS.white} />
             <Text style={styles.bioText}>Use biometrics instead</Text>
           </TouchableOpacity>
         )}
@@ -192,23 +203,50 @@ export default function PinModal({ mode, userId, onSuccess }) {
   );
 }
 
+// Styles mirror PinSetup.js's scale()-based, full-bleed brand-colour
+// design 1:1 -- same iconWrap/dot/key sizing and spacing tokens -- so
+// PIN creation (onboarding) and PIN verification/re-creation (Reports)
+// now look like the same product surface instead of two different ones.
 const styles = StyleSheet.create({
-  screen:       { flex: 1, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  iconWrap:     { width: 72, height: 72, borderRadius: 36, backgroundColor: '#E0F7FA', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  title:        { fontSize: FONTS['2xl'], fontWeight: FONTS.bold, color: COLORS.textPrimary, marginBottom: 8 },
-  subtitle:     { fontSize: FONTS.sm, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: 40, marginBottom: 36, lineHeight: 20 },
-  dotsRow:      { flexDirection: 'row', gap: 18, marginBottom: 12 },
-  dot:          { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: COLORS.primary, backgroundColor: 'transparent' },
-  dotFilled:    { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  error:        { color: COLORS.danger, fontSize: FONTS.sm, marginBottom: 12, fontWeight: FONTS.semibold },
-  keypad:       { marginTop: 24, gap: 12 },
-  keyRow:       { flexDirection: 'row', gap: 20, justifyContent: 'center' },
-  key:          { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
-  keyEmpty:     { backgroundColor: 'transparent', elevation: 0, shadowOpacity: 0 },
-  keyText:      { fontSize: FONTS.xl, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
-  bioBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 28 },
-  bioText:      { fontSize: FONTS.sm, color: COLORS.primary, fontWeight: FONTS.semibold },
-  stepRow:      { flexDirection: 'row', gap: 8, marginTop: 32 },
-  stepDot:      { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.divider },
-  stepDotActive:{ backgroundColor: COLORS.primary },
+  safe: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  header: { alignItems: 'center', marginBottom: SPACING['2xl'] },
+  iconWrap: {
+    width: scale(64), height: scale(64), borderRadius: scale(32),
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: SPACING.md,
+  },
+  title: { fontSize: FONTS['2xl'], fontWeight: FONTS.bold, color: COLORS.white, marginBottom: 6 },
+  subtitle: { fontSize: FONTS.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center', paddingHorizontal: SPACING['2xl'] },
+
+  dotsRow: { flexDirection: 'row', gap: SPACING.lg, marginBottom: SPACING.sm },
+  dot: {
+    width: scale(14), height: scale(14), borderRadius: scale(7),
+    borderWidth: 2, borderColor: COLORS.white, backgroundColor: 'transparent',
+  },
+  dotFilled: { backgroundColor: COLORS.white },
+
+  errorSlot: { height: vScale(28), justifyContent: 'center' },
+  error: { color: COLORS.white, fontSize: FONTS.sm, fontWeight: FONTS.semibold },
+
+  keypad: { marginTop: SPACING.lg, gap: SPACING.md },
+  keyRow: { flexDirection: 'row', gap: SPACING.xl, justifyContent: 'center' },
+  key: {
+    width: scale(72), height: scale(72),
+    alignItems: 'center', justifyContent: 'center',
+  },
+  keyText: { fontSize: FONTS.xl, fontWeight: FONTS.semibold, color: COLORS.white },
+
+  bioBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.xl },
+  bioText: { fontSize: FONTS.sm, color: COLORS.white, fontWeight: FONTS.semibold },
+
+  stepRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING['2xl'] },
+  stepDot: { width: scale(8), height: scale(8), borderRadius: scale(4), backgroundColor: 'rgba(255,255,255,0.35)' },
+  stepDotActive: { backgroundColor: COLORS.white },
 });
