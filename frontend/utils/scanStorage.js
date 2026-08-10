@@ -6,18 +6,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BUCKET = 'scan-images';
 
 // checks whether this user has opted in to having their smear images stored
-// (set at signup or toggled later in ProfileScreen)
+// (set on ConsentScreen.js at signup, editable later in ProfileScreen.js)
 //
-// FIXED: this used to .select('consent_reqired') but then read
-// data?.images_consent -- selecting one column and reading a different,
-// never-selected one. That meant data.images_consent was always
-// undefined, so this function returned false for every user, always,
-// regardless of their real consent setting. Both sides now agree on
-// images_consent.
+// FIXED (round 2): the actual Supabase column is `store_images` -- not
+// `consent_reqired`/`images_consent`, either of which was previously
+// selected/read here. Confirmed by grepping ConsentScreen.js and
+// ProfileScreen.js: both only ever read/write `storeImages`
+// (-> store_images), and neither references consent_required anywhere.
+// consent_required is a dead column at the application layer -- nothing
+// writes to it, nothing reads it -- so it's ignored here rather than
+// factored into this check.
 export async function hasImageConsent(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('images_consent')
+    .select('store_images')
     .eq('id', userId)
     .single();
 
@@ -27,7 +29,7 @@ export async function hasImageConsent(userId) {
     return false;
   }
 
-  return !!data?.images_consent;
+  return !!data?.store_images;
 }
 
 // uploads a scan image if (and only if) the user has consented.
