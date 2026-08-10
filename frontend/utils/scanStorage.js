@@ -7,10 +7,17 @@ const BUCKET = 'scan-images';
 
 // checks whether this user has opted in to having their smear images stored
 // (set at signup or toggled later in ProfileScreen)
+//
+// FIXED: this used to .select('consent_reqired') but then read
+// data?.images_consent -- selecting one column and reading a different,
+// never-selected one. That meant data.images_consent was always
+// undefined, so this function returned false for every user, always,
+// regardless of their real consent setting. Both sides now agree on
+// images_consent.
 export async function hasImageConsent(userId) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('consent_reqired')
+    .select('images_consent')
     .eq('id', userId)
     .single();
 
@@ -103,6 +110,18 @@ function decode(base64) {
 // bonus already been granted" (since bonus is a UI/allowance concept,
 // not a row in `scans`), so that one flag lives in AsyncStorage,
 // keyed per user per day.
+//
+// FIXED: the bonus was being granted purely for reaching `saveGoal`
+// scans, with no relationship at all to image-save consent -- despite
+// the bonus being framed everywhere ("save 5 images") as a reward for
+// opting in to having images stored. A user who never consented to
+// image storage was still getting the bonus just by running 5 scans,
+// because recordScan() never called hasImageConsent(). Both
+// getRemainingScans() and recordScan() now require hasImageConsent()
+// to be true before the bonus can be granted or counted as active --
+// so a non-consenting user who hits 5 scans gets no bonus, and if they
+// later toggle consent ON, the bonus becomes available going forward
+// (not retroactively re-granted for scans already done without consent).
 // ─────────────────────────────────────────────────────────────────
 
 function todayKeyForUser(userId) {
@@ -156,7 +175,13 @@ export async function getRemainingScans(userId, plan) {
 
   const count = await getTodayScanCount(userId);
   const bonusGranted = await isBonusGrantedToday(userId);
-  const bonusScans = bonusGranted ? (plan?.scans?.bonusScans ?? 0) : 0;
+  // A bonus can only count as "active" if the user has actually
+  // consented to image saving -- see FIXED note above. Without this,
+  // a non-consenting user whose AsyncStorage flag was somehow set
+  // (e.g. consent was toggled off AFTER the bonus was granted earlier
+  // that day) would still see the extra scans as available.
+  const consented = await hasImageConsent(userId);
+  const bonusScans = (bonusGranted && consented) ? (plan?.scans?.bonusScans ?? 0) : 0;
 
   const effectiveLimit = baseLimit + bonusScans;
   return Math.max(effectiveLimit - count, 0);
@@ -164,7 +189,10 @@ export async function getRemainingScans(userId, plan) {
 
 // Called right after a scan row has already been inserted into Supabase.
 // Recomputes remaining allowance and grants the bonus the first time the
-// day's saveGoal is reached.
+// day's saveGoal is reached -- but only for users who've consented to
+// having their scan images saved, since the bonus is explicitly framed
+// (in-app copy, plan config) as a reward for that opt-in, not just for
+// running a certain number of scans.
 export async function recordScan(userId, plan) {
   const baseLimit = plan?.scans?.dailyLimit ?? 0;
 
@@ -177,16 +205,22 @@ export async function recordScan(userId, plan) {
   const count = await getTodayScanCount(userId); // includes the scan just inserted
   const saveGoal = plan?.scans?.saveGoal ?? Infinity;
   const bonusScans = plan?.scans?.bonusScans ?? 0;
+  const consented = await hasImageConsent(userId);
 
   const alreadyGranted = await isBonusGrantedToday(userId);
   let bonusJustGranted = false;
 
-  if (!alreadyGranted && count >= saveGoal && bonusScans > 0) {
+  if (!alreadyGranted && consented && count >= saveGoal && bonusScans > 0) {
     await setBonusGrantedToday(userId);
     bonusJustGranted = true;
   }
 
-  const bonusActive = alreadyGranted || bonusJustGranted;
+  // Bonus only counts as active this run if it was granted (just now or
+  // earlier today) AND the user is currently consented -- so toggling
+  // consent off mid-day immediately stops the bonus from applying to
+  // the remaining-scans math, even if the AsyncStorage flag from
+  // earlier is still set to true.
+  const bonusActive = (alreadyGranted || bonusJustGranted) && consented;
   const effectiveLimit = baseLimit + (bonusActive ? bonusScans : 0);
   const remaining = Math.max(effectiveLimit - count, 0);
 
