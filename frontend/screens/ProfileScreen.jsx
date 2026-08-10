@@ -80,7 +80,7 @@ export default function ProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -391,19 +391,3 @@ function Row({ icon, iconColor, iconBg, label, value, onPress }) {
 function Divider() {
   return <View style={styles.divider} />;
 }
-
-// ── Two things AuthContext still needs for this file to fully work ──
-//
-// 1. In hydrateUser(), add avatarUrl to the userData object built from
-//    the profiles row:
-//      avatarUrl: profile?.avatar_url || null,
-//
-// 2. In updateProfile(), add avatarUrl to the dbChanges mapping:
-//      if (changes.avatarUrl !== undefined) dbChanges.avatar_url = changes.avatarUrl;
-//    and to the optimistic `updated` object the same way storeImages is
-//    handled there already.
-//
-// Also needs a `avatar_url` column on `profiles`, and a Supabase storage
-// bucket called "avatars" — public read, write restricted to the user's
-// own folder (storage policy checking auth.uid() against the first path
-// segment, same pattern as scan-images probably already uses).
