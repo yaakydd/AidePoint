@@ -15,7 +15,7 @@ import { buildReport, saveReport, resolveConditionKey } from '../utils/ReportUti
 import { scanStyles as styles }    from '../styles/ScanStyles';
 import { analyzeBloodSmear }       from '../utils/api';
 import { prepareImage, stabilizeImage } from '../utils/imageUtils';
-import { getRemainingScans, recordScan } from '../utils/scanStorage';
+import { getRemainingScans, recordScan, uploadScanImage } from '../utils/scanStorage';
 import { getPlan }       from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
 import { COLORS, SPACING } from '../assets/theme';
@@ -261,6 +261,8 @@ const Scan = ({ navigation, route }) => {
       if (patientErr) throw patientErr;
       const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
 console.log('STEP 4: prediction ', prediction);
+    const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
+console.log('STEP 4.5: image storage path ', storedImagePath);
 
 const conditionKey = resolveConditionKey(
   prediction.is_anemic,
@@ -274,7 +276,7 @@ const report = buildReport({
     condition:     conditionKey,   // was: prediction.is_anemic ? 'anemic' : 'healthy'
     confidence:    prediction.explanation?.confidence ?? 'moderate',
     labTechName,
-    imageUri:      compressedUri,
+    image_url:  storedImagePath,
     temperature:   temperature.trim(),
     bloodPressure: bloodPressure.trim(),
     morphologyFindings: prediction.morphology_findings,
