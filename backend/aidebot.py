@@ -4,15 +4,26 @@
 # SYSTEM_INSTRUCTION here, not in the client bundle -- the app never
 # talks to Gemini directly, only to this endpoint.
 #
-# Requires GEMINI_API_KEY set as a real server-side env var (not an
-# EXPO_PUBLIC_ one -- that prefix is an Expo/client-bundling convention
-# and has no meaning here).
+# report_context is no longer accepted as freeform client-supplied JSON
+# (a client could previously send fabricated data, or another patient's
+# real data, with nothing to stop it). The client now sends only
+# prediction_id; this router fetches the real record from
+# prediction_records and verifies technician_id == the requesting user
+# before using it as grounding context -- same ownership check pattern
+# human_review.py already uses for review submissions.
 
 import os
+import json
+import logging
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Request, status
 from pydantic import BaseModel
+from supabase import Client
 
+from auth import verify_supabase_token
+from routers.human_review import get_supabase_client  # reuse the same app.state-backed client
+
+log = logging.getLogger("aidepoint")
 router = APIRouter(prefix="/aidebot", tags=["aidebot"])
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -47,10 +58,10 @@ mirrors the disclaimer already shown elsewhere in the app, so don't
 contradict it. Keep answers concise and practical for someone reading
 them on a phone at a lab bench, not a long clinical essay."""
 
-# Same cap as the client's MAX_HISTORY_MESSAGES, enforced again here so
-# a client bug (or a direct API call bypassing the app) can't send an
-# arbitrarily large history and blow up request size/cost anyway.
 MAX_HISTORY_MESSAGES = 10
+
+# Rate limit -- see item 3 below.
+MAX_MESSAGES_PER_DAY = 50
 
 
 class ChatMessage(BaseModel):
@@ -60,24 +71,108 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     history: list[ChatMessage]
-    # Optional structured snapshot of the report/prediction the
-    # technician is currently viewing (scanId, anemia_probability,
-    # confidence, morphology_findings, cbc_pattern_summary, etc). When
-    # present, this is injected as grounding context so AideBot answers
-    # about THIS result instead of generic/possibly-invented numbers.
-    # The client should only send the current report's own data -- never
-    # another patient's -- since this is not access-controlled per report
-    # on the backend.
-    report_context: dict | None = None
+    # Replaces the old freeform report_context dict. The client sends
+    # only the ID of the prediction currently being discussed; the
+    # backend fetches and verifies ownership before using it as grounding.
+    prediction_id: str | None = None
+
+
+def _fetch_verified_report_context(
+    supabase_client: Client, prediction_id: str, requesting_user_id: str
+) -> dict:
+    """
+    Fetches a prediction_records row and confirms it belongs to the
+    requesting technician before returning it as chat context. Raises
+    404 if the prediction doesn't exist, 403 if it belongs to someone
+    else -- both are treated as client errors, not server errors, since
+    either means the request itself is invalid for this user.
+    """
+    lookup = (
+        supabase_client.table("prediction_records")
+        .select(
+            "prediction_id, technician_id, anemia_probability, is_anemic, "
+            "prediction_confidence, is_unreliable, unreliable_reasons, "
+            "morphology_findings, cbc_pattern_summary, explanation"
+        )
+        .eq("prediction_id", prediction_id)
+        .execute()
+    )
+
+    if not lookup.data:
+        raise HTTPException(status_code=404, detail="Prediction not found.")
+
+    record = lookup.data[0]
+    if record.get("technician_id") != requesting_user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="This prediction does not belong to your account.",
+        )
+
+    # Only the fields relevant to grounding a chat answer -- not the
+    # full audit row (no need to hand image hashes etc. to Gemini).
+    return {
+        "anemia_probability": record.get("anemia_probability"),
+        "is_anemic": record.get("is_anemic"),
+        "prediction_confidence": record.get("prediction_confidence"),
+        "is_unreliable": record.get("is_unreliable"),
+        "unreliable_reasons": record.get("unreliable_reasons"),
+        "morphology_findings": record.get("morphology_findings"),
+        "cbc_pattern_summary": record.get("cbc_pattern_summary"),
+        "explanation": record.get("explanation"),
+    }
+
+
+def _check_and_record_rate_limit(supabase_client: Client, user_id: str) -> None:
+    """
+    Counts today's aidebot_messages rows for this user (UTC day) and
+    raises 429 if at or over MAX_MESSAGES_PER_DAY. Same "source of truth
+    is the table itself, not a local counter" approach scanStorage.js
+    uses for daily scan limits -- correct across devices/restarts.
+    """
+    from datetime import datetime, timezone
+    start_of_today = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).isoformat()
+
+    count_result = (
+        supabase_client.table("aidebot_messages")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .gte("created_at", start_of_today)
+        .execute()
+    )
+    today_count = count_result.count or 0
+
+    if today_count >= MAX_MESSAGES_PER_DAY:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily AideBot message limit reached ({MAX_MESSAGES_PER_DAY}/day). Try again tomorrow.",
+        )
+
+
+def _record_message(supabase_client: Client, user_id: str) -> None:
+    """Best-effort usage log -- a failure here shouldn't block a reply
+    the user is already waiting on, but it's logged loudly since a
+    silent failure here would mean the rate limit stops enforcing."""
+    try:
+        supabase_client.table("aidebot_messages").insert({"user_id": user_id}).execute()
+    except Exception as exc:
+        log.error("Failed to record aidebot usage for user=%s: %s", user_id, exc)
 
 
 @router.post("/chat")
-async def aidebot_chat(payload: ChatRequest):
+async def aidebot_chat(
+    payload: ChatRequest,
+    user: dict = Depends(verify_supabase_token),
+    supabase_client: Client = Depends(get_supabase_client),
+):
     if not GEMINI_API_KEY:
         raise HTTPException(
             status_code=500,
             detail="Server is missing GEMINI_API_KEY. Set it in the backend environment.",
         )
+
+    _check_and_record_rate_limit(supabase_client, user["id"])
 
     trimmed_history = payload.history[-MAX_HISTORY_MESSAGES:]
     contents = [
@@ -89,13 +184,10 @@ async def aidebot_chat(payload: ChatRequest):
     if not contents:
         raise HTTPException(status_code=400, detail="No valid messages in history.")
 
-    # If the client sent the current report's data, prepend it as a
-    # user-turn "context" message before the real conversation, so
-    # Gemini answers about this specific result rather than guessing.
-    # It's inserted as its own turn (not folded into system_instruction)
-    # so it can change every request without editing the fixed prompt.
-    if payload.report_context is not None:
-        import json
+    if payload.prediction_id is not None:
+        report_context = _fetch_verified_report_context(
+            supabase_client, payload.prediction_id, user["id"]
+        )
         context_message = {
             "role": "user",
             "parts": [{
@@ -103,7 +195,7 @@ async def aidebot_chat(payload: ChatRequest):
                     "Context: here is the report/prediction data for the "
                     "result currently being discussed. Use it to answer "
                     "accurately; do not repeat it back verbatim unless "
-                    "asked.\n\n" + json.dumps(payload.report_context)
+                    "asked.\n\n" + json.dumps(report_context)
                 )
             }],
         }
@@ -141,5 +233,7 @@ async def aidebot_chat(payload: ChatRequest):
     )
     if not reply:
         raise HTTPException(status_code=502, detail="Gemini returned no usable response.")
+
+    _record_message(supabase_client, user["id"])
 
     return {"reply": reply.strip()}
