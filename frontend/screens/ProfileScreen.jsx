@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
 import { clearPin, endSession } from '../utils/reportPin';
+import { deleteAllScanImages } from '../utils/scanStorage';
 import { clearReports } from '../utils/ReportUtils';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -58,19 +59,19 @@ export default function ProfileScreen() {
   const tierLabel = TIER_LABELS[tier] || 'Basic Plan';
   const tierColor = TIER_COLORS[tier] || TIER_COLORS.basic;
 
-  async function handleToggle(newValue) {
-    const prev = storeImages;
-    setStoreImages(newValue);
+async function handleToggle(newValue) {
+  const prev = storeImages;
+  setStoreImages(newValue);
 
-    setSaving(true);
-    const result = await updateProfile({ storeImages: newValue });
-    setSaving(false);
+  setSaving(true);
+  const result = await updateProfile({ storeImages: newValue });
+  setSaving(false);
 
-    if (!result.success) {
-      setStoreImages(prev);
-      Alert.alert('Error', result.error || 'Could not save preference.');
-    }
+  if (!result.success) {
+    setStoreImages(prev);
+    Alert.alert('Error', result.error || 'Could not save preference.');
   }
+}
 
   async function handleChangeAvatar() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
