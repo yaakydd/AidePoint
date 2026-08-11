@@ -1,15 +1,4 @@
-# Dockerfile
-# Deploys the AidePoint FastAPI backend on Hugging Face Spaces' Docker SDK.
-#
-# HF Spaces builds this image, then runs whatever CMD is set below on
-# container start -- there is no separate "start command" field to set
-# in the Spaces UI the way Railway has, so the run command lives here
-# instead of in a platform dashboard.
-#
-# slim, not alpine: opencv-python-headless needs glibc and several shared
-# system libraries (libgl1, libglib2.0) that alpine's musl-based image
-# does not ship, and building them from source on alpine would slow the
-# image build down far more than the size savings are worth here.
+
 FROM python:3.11-slim
 
 # libgl1 and libglib2.0-0 are OpenCV's actual runtime dependencies for
