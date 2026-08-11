@@ -1,12 +1,21 @@
 import os
+import logging
 import httpx
 from fastapi import HTTPException, Request, status
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+log = logging.getLogger("aidepoint")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")# your project URL
+SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "")   # public anon key
 
 
+# Auth: verify Supabase JWT 
 async def verify_supabase_token(request: Request) -> dict:
+    """
+    Extracts the Bearer token from the Authorization header and
+    verifies it against Supabase's /auth/v1/user endpoint.
+    Returns the user dict on success, raises 401 on failure.
+    """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(
@@ -26,7 +35,11 @@ async def verify_supabase_token(request: Request) -> dict:
                 },
             )
     except httpx.RequestError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        log.exception("Supabase auth check failed")
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        )
 
     if resp.status_code != 200:
         raise HTTPException(
@@ -34,4 +47,4 @@ async def verify_supabase_token(request: Request) -> dict:
             detail="Invalid or expired session. Please log in again.",
         )
 
-    return resp.json()
+    return resp.json()   # contains id, email, etc.
