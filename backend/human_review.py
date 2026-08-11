@@ -57,7 +57,7 @@ async def get_current_technician_id(request: Request) -> str:
     does -- there is no separate reviewer role yet, any authenticated
     technician can review any pending prediction.
     """
-    from main import verify_supabase_token  # deferred to avoid a circular import at module load
+    from auth import verify_supabase_token  # deferred to avoid a circular import at module load
 
     user = await verify_supabase_token(request)
     return user["id"]
