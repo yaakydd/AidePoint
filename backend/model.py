@@ -18,8 +18,8 @@ import json
 import numpy as np
 import onnxruntime as ort
 
-from quality_checks import run_reliability_gate
-from backend.services.shape_screening import run_shape_screening, get_cell_overlay
+from services.quality_checks import run_reliability_gate
+from services.shape_screening import run_shape_screening, get_cell_overlay
 
 # ── CBC metadata (must match training exactly) ──────────────────────────────
 # Trimmed from the original 14 fields to only the 6 with real visual
@@ -64,7 +64,7 @@ CBC_CLINICAL_REFERENCE_RANGES = {
 
 EVAL_REPORT_PATH = os.getenv(
     "EVAL_REPORT_PATH",
-    os.path.join(os.path.dirname(__file__), "eval_report.json"),
+    os.path.join(os.path.dirname(__file__), "..", "models", "eval_report.json"),
 )
 
 # Below this F1 score, a morphology flag's own held-out validation
@@ -192,7 +192,7 @@ CBC_ACCURACY_DISCLAIMER = (
 
 OUT_OF_DISTRIBUTION_STATS_PATH = os.getenv(
     "OOD_STATS_PATH",
-    os.path.join(os.path.dirname(__file__), "ood_stats.json"),
+    os.path.join(os.path.dirname(__file__), "..", "models", "ood_stats.json"),
 )
 
 
@@ -389,4 +389,4 @@ class AidePointONNX:
             "cell_overlay": cell_overlay_result,
             "scope_disclaimer": ANEMIA_SCOPE_DISCLAIMER,
             "cbc_scope_disclaimer": CBC_ACCURACY_DISCLAIMER,
-        }
+}
