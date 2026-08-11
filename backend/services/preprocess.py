@@ -16,7 +16,7 @@ import cv2
 from PIL import Image
 import io
 
-from image_crop import auto_crop_microscope_field
+from services.image_crop import auto_crop_microscope_field
 
 TARGET_IMAGE_SIZE = 260
 
