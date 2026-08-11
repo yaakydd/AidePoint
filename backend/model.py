@@ -19,7 +19,7 @@ import numpy as np
 import onnxruntime as ort
 
 from quality_checks import run_reliability_gate
-from shape_screening import run_shape_screening, get_cell_overlay
+from backend.services.shape_screening import run_shape_screening, get_cell_overlay
 
 # ── CBC metadata (must match training exactly) ──────────────────────────────
 # Trimmed from the original 14 fields to only the 6 with real visual
