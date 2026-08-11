@@ -16,6 +16,7 @@ import os
 import json
 import logging
 import httpx
+from cachetools import TTLCache
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from pydantic import BaseModel
 from supabase import Client
@@ -74,6 +75,20 @@ CHAT_MESSAGE_LIMITS = {
     "annual": 50,
 }
 DEFAULT_CHAT_LIMIT = CHAT_MESSAGE_LIMITS["free"]
+
+# Shared, module-level httpx client for calls to Gemini -- reused across
+# every request instead of opening a fresh connection (and re-doing the
+# TLS handshake) on every single chat message. httpx.AsyncClient is
+# safe to share across concurrent requests within one process.
+_gemini_client = httpx.AsyncClient(timeout=30.0)
+
+# Short-lived cache of subscription_tier per user, since it only changes
+# right after a payment (see services/subscription.py) but was otherwise
+# being re-fetched from profiles on every single chat message. A 5-minute
+# TTL means a tier upgrade takes up to 5 minutes to be reflected in the
+# chat rate limit -- an acceptable staleness window for a daily message
+# cap, in exchange for skipping a Supabase round trip on most requests.
+_subscription_tier_cache: TTLCache = TTLCache(maxsize=10_000, ttl=300)
 
 
 class ChatMessage(BaseModel):
@@ -142,16 +157,27 @@ def _get_subscription_tier(supabase_client: Client, user_id: str) -> str:
     the profile row is missing or the column is unset, rather than
     raising -- a lookup failure here should degrade to the free tier's
     limit, not block the chat endpoint entirely.
+
+    Cached per user_id for _subscription_tier_cache's TTL, since this
+    was previously queried on every single chat message despite rarely
+    changing.
     """
+    cached_tier = _subscription_tier_cache.get(user_id)
+    if cached_tier is not None:
+        return cached_tier
+
     profile_lookup = (
         supabase_client.table("profiles")
         .select("subscription_tier")
         .eq("id", user_id)
         .execute()
     )
-    if not profile_lookup.data:
-        return "free"
-    return profile_lookup.data[0].get("subscription_tier") or "free"
+    tier = "free"
+    if profile_lookup.data:
+        tier = profile_lookup.data[0].get("subscription_tier") or "free"
+
+    _subscription_tier_cache[user_id] = tier
+    return tier
 
 
 def _check_and_record_rate_limit(supabase_client: Client, user_id: str) -> None:
@@ -247,8 +273,7 @@ async def aidebot_chat(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(GEMINI_URL, json=request_body)
+        response = await _gemini_client.post(GEMINI_URL, json=request_body)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Gemini request timed out.")
     except httpx.RequestError as exc:
