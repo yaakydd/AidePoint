@@ -88,6 +88,12 @@ export const homeStyles = StyleSheet.create({
     fontSize: FONTS["2xl"],
     fontWeight: FONTS.bold,
   },
+
+  avatarImage: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+},
   // TITLES
 
   sectionTitle: {

@@ -195,3 +195,68 @@ export const CONDITION_STYLES = {
   unknown: { label: 'UNKNOWN', color: COLORS.textSecondary, bg: COLORS.surfaceAlt },
 
 };
+
+
+// Header Layout 
+// Single source of truth for header sizing/spacing, so every screen's
+// header — whether it's HomeScreen's avatar+greeting header or a
+// back-arrow+title header like Scan/Profile — has identical height,
+// padding, and touch-target sizes. Screens should import these instead
+// of hardcoding their own header padding/heights in their local
+// StyleSheet, which is how HomeStyles/ScanStyles/ProfileStyles drifted
+// out of sync in the first place.
+export const HEADER = {
+  // Horizontal inset — same as page content padding, so the header's
+  // edges line up with the screen body below it.
+  paddingHorizontal: SPACING.pagePad,
+
+  // Vertical padding above/below header content.
+  paddingVertical: SPACING.md,
+
+  // Standard tappable icon size for back buttons, bell icons, etc.
+  // (matches HomeStyles.notificationButton)
+  iconTouchTarget: 44,
+
+  // Standard icon glyph size inside a touch target (back arrow, bell)
+  iconSize: 22,
+
+  // Avatar circle size + radius (matches HomeStyles.avatar)
+  avatarSize: 48,
+  avatarRadius: 24,
+
+  // Gap between an icon/avatar and the title/greeting text next to it
+  contentGap: SPACING.sm,
+};
+
+export const FONTS = {
+  // Font family — used with the FONTS.regular/medium/semibold/bold
+  // weight tokens below via fontFamily + fontWeight pairing isn't
+  // needed on RN when using distinct font files per weight; instead
+  // reference these directly as fontFamily in styles.
+  family: {
+    regular:  'Inter_400Regular',
+    medium:   'Inter_500Medium',
+    semibold: 'Inter_600SemiBold',
+    bold:     'Inter_700Bold',
+  },
+
+  // Sizes
+  xs:   mScale(11),
+  sm:   mScale(13),
+  md:   mScale(15),
+  lg:   mScale(17),
+  xl:   mScale(20),
+  '2xl': mScale(24),
+  '3xl': mScale(28),
+  '4xl': mScale(34),
+
+  // Weights (kept for any legacy fontWeight: FONTS.bold usage)
+  regular:  '400',
+  medium:   '500',
+  semibold: '600',
+  bold:     '700',
+
+  tight:  1.2,
+  normal: 1.5,
+  loose:  1.8,
+};

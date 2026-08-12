@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale, HEADER } from '../assets/theme';
 
 // Shared, theme-derived bottom clearance for the report list, so it
 // scales with the actual tab bar height on this device rather than a
@@ -17,25 +17,16 @@ export const ReportStyles = StyleSheet.create({
 
   // ─── HEADER — white background to match the rest of the app's screens
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.pagePad,
-    // FIXED: back to a small fixed gap. The previous layout.statusBarHeight
-    // approach assumed SafeAreaView's top edge was excluded, but
-    // layout.statusBarHeight is hardcoded to 0 on iOS specifically
-    // because SafeAreaView is supposed to own that inset -- with 'top'
-    // excluded, nothing accounted for the notch on iOS and the header
-    // rendered underneath the status bar. SafeAreaView now handles the
-    // real per-device top inset (edges includes 'top' again in
-    // ReportScreen.js); this is just the small breathing-room gap below
-    // that inset, not a substitute for it.
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.md,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
-  },
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: COLORS.surface,
+  paddingHorizontal: HEADER.paddingHorizontal,
+  paddingTop: HEADER.paddingVertical,
+  paddingBottom: HEADER.paddingVertical,
+  marginBottom: SPACING.sm,
+  ...SHADOWS.sm,
+},
 
   headerTitle: {
     fontSize: FONTS.xl,

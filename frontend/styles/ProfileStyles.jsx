@@ -1,6 +1,6 @@
 // styles/ProfileStyles.js
 import { StyleSheet } from 'react-native';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale, mScale } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale, mScale, HEADER } from '../assets/theme';
 
 export const styles = StyleSheet.create({
   safe: {
@@ -8,14 +8,17 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
 
-  // Header
+  // Header — matches Home's header height/padding via shared HEADER
+  // constants from theme.js. Content differs (back arrow + centered
+  // title here, vs avatar + greeting + bell on Home) but the outer
+  // dimensions (padding, therefore total height) are identical.
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: HEADER.paddingHorizontal,
+    paddingVertical: HEADER.paddingVertical,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
   },

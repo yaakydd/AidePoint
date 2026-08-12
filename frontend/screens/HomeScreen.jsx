@@ -3,7 +3,7 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Platform, RefreshControl,
+  Platform, RefreshControl, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -291,10 +291,14 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <View style={styles.profileRow}>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-            <View style={[styles.avatar, styles.avatarCircle]}>
-              <Text style={styles.avatarInitials}>{getInitial(displayName)}</Text>
-            </View>
-          </TouchableOpacity>
+  <View style={[styles.avatar, styles.avatarCircle]}>
+    {user?.avatarUrl ? (
+      <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+    ) : (
+      <Text style={styles.avatarInitials}>{getInitial(displayName)}</Text>
+    )}
+  </View>
+</TouchableOpacity>
           <View style={styles.greetingBlock}>
             <Text style={styles.greeting} numberOfLines={1}>
               {getGreeting()}, {displayName.split(' ')[0]}
