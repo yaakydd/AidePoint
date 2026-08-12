@@ -9,7 +9,17 @@
 import { supabase } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const TIMEOUT_MS = 35000;
+
+// 35s was too tight even for a healthy local backend on a real device --
+// the first request after `uvicorn --reload` restarts, or the first
+// request after the model is lazy-loaded, can take a while on its own
+// before any network latency is added on top. Bumped to 60s. If you're
+// still hitting timeouts at 60s, the model call itself is the bottleneck,
+// not this constant -- check the timing logs below.
+const TIMEOUT_MS = 60000;
+
+// Separate, short timeout just for the lightweight warmup ping.
+const WARMUP_TIMEOUT_MS = 8000;
 
 if (!API_BASE_URL) {
   console.warn(
@@ -50,6 +60,11 @@ export async function analyzeBloodSmear(imageUri, patientSampleId) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  // Timing so you can see in the logs whether it's the request itself
+  // that's slow, vs. something upstream (auth, form building, etc).
+  const startedAt = Date.now();
+  console.log(`>>> /predict request starting (timeout ${TIMEOUT_MS}ms)`);
+
   try {
     const response = await fetch(`${API_BASE_URL}/predict`, {
       method: 'POST',
@@ -58,6 +73,9 @@ export async function analyzeBloodSmear(imageUri, patientSampleId) {
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
+
+    const elapsedMs = Date.now() - startedAt;
+    console.log(`>>> /predict responded in ${elapsedMs}ms with status ${response.status}`);
 
     let json = null;
     try { json = await response.json(); } catch {}
@@ -94,18 +112,46 @@ export async function analyzeBloodSmear(imageUri, patientSampleId) {
 
   } catch (err) {
     clearTimeout(timeoutId);
+    const elapsedMs = Date.now() - startedAt;
 
     if (err.name === 'AbortError') {
-      throw new Error('Analysis timed out. This can happen on a slow connection — try again.');
+      console.error(`>>> /predict aborted after ${elapsedMs}ms (timeout was ${TIMEOUT_MS}ms)`);
+      throw new Error(
+        `Analysis timed out after ${Math.round(TIMEOUT_MS / 1000)}s. ` +
+        `The server may still be processing — check your backend logs, or try again.`
+      );
     }
     if (err.message === 'Network request failed') {
+      console.error(`>>> /predict network failure after ${elapsedMs}ms`);
       throw new Error(
         `Could not reach the backend at ${API_BASE_URL}. ` +
-        `Make sure the server is running and reachable from this device.`
+        `Make sure your phone and computer are on the same wifi network, the server is running, ` +
+        `and Windows/macOS firewall isn't blocking port 8000.`
       );
     }
 
     throw err;
+  }
+}
+
+// Call this when the Scan screen mounts (or as soon as an image is picked)
+// so a slow first-request model load happens in the background while the
+// user is still filling in patient details, instead of eating into the
+// 60s timeout budget once they tap "Start Analysis".
+export async function warmupBackend() {
+  if (!API_BASE_URL) return false;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT_MS);
+  const startedAt = Date.now();
+  try {
+    const resp = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    console.log(`>>> backend warmup ${resp.ok ? 'succeeded' : 'failed'} in ${Date.now() - startedAt}ms`);
+    return resp.ok;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.log(`>>> backend warmup errored after ${Date.now() - startedAt}ms:`, err.message);
+    return false;
   }
 }
 

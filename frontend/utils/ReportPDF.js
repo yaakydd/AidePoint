@@ -1,6 +1,7 @@
 // utils/reportPdf.js
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { CONDITION_CONFIG } from './ReportUtils';
 
 const row = (label, value) => {
@@ -69,9 +70,6 @@ const buildReliabilitySection = (isUnreliable, unreliableReasons, imageQuality) 
     </div>`;
 };
 
-// Technician notes only -- recommendation and disclaimer now live in their
-// own dedicated sections at the bottom of the report (see buildReportHtml),
-// grouped together instead of scattered, per the reference layout.
 const buildTechnicianNotesSection = (report) => {
   const rows = [
     row('Lab Technician', report.labTechName),
@@ -107,8 +105,6 @@ const buildReportHtml = (report) => {
           padding: 32px 40px;
           font-size: 13px;
         }
-
-        /* Letterhead -- unchanged, owner is handling the top-right block */
         .letterhead {
           display: flex;
           justify-content: space-between;
@@ -127,21 +123,15 @@ const buildReportHtml = (report) => {
         .brand-name { font-size: 17px; font-weight: 700; }
         .brand-sub { font-size: 10px; color: #6B7C93; margin-top: 1px; }
         .brand-contact { font-size: 9px; color: #9CA3AF; margin-top: 6px; line-height: 1.5; }
-
         .meta-right { text-align: right; font-size: 10px; color: #6B7C93; min-width: 180px; }
         .meta-right .meta-line { margin-bottom: 4px; }
         .meta-right .meta-line strong { color: #1A2332; font-weight: 600; }
-
-        /* Requisition-style blue info bars, matching the reference's
-           two side-by-side bars under the letterhead. */
         .info-bar-row { display: flex; gap: 2px; margin-bottom: 16px; }
         .info-bar {
           flex: 1; background: #00CFE8; color: #fff;
           padding: 7px 12px; font-size: 11px; font-weight: 600;
         }
         .info-bar span { font-weight: 400; opacity: 0.9; }
-
-        /* Two-column Lab Technician / Patient Information block */
         .info-columns { display: flex; gap: 32px; margin-bottom: 18px; }
         .info-col { flex: 1; }
         .info-col-title {
@@ -150,9 +140,7 @@ const buildReportHtml = (report) => {
         }
         .info-col-line { font-size: 12px; margin-bottom: 3px; }
         .info-col-line strong { font-weight: 600; }
-
         .divider { border-top: 1px solid #EDF2F7; margin: 16px 0; }
-
         .section-bar {
           background: #F1F9FB; color: #1A2332;
           border-left: 3px solid #00CFE8;
@@ -160,21 +148,14 @@ const buildReportHtml = (report) => {
           letter-spacing: 0.4px; text-transform: uppercase;
           margin: 18px 0 8px;
         }
-
         table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
         td.label { padding: 6px 0; color: #6B7C93; width: 45%; border-bottom: 1px solid #EDF2F7; }
         td.value { padding: 6px 0; font-weight: 600; text-align: right; border-bottom: 1px solid #EDF2F7; }
-
-        /* Plain-English result statement, replacing the old colored
-           result box -- reads as a sentence, not a badge. */
         .result-statement { font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
         .result-statement strong { color: #1A2332; }
-
         .note-text { font-size: 11px; color: #6B7C93; font-style: italic; margin-bottom: 8px; line-height: 1.4; }
-
         .finding-list { margin: 0 0 8px; padding-left: 18px; }
         .finding-list li { font-size: 12px; margin-bottom: 4px; text-transform: capitalize; }
-
         .reliability-banner {
           background: #FEF3C7; border-radius: 6px; padding: 14px 16px;
           margin: 16px 0;
@@ -184,12 +165,7 @@ const buildReportHtml = (report) => {
           text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
         }
         .reliability-banner .finding-list li { color: #92400E; text-transform: none; }
-
         .recommendation-text { font-size: 12px; line-height: 1.6; margin-bottom: 4px; }
-
-        /* Footer -- disclaimer now grouped with notes/recommendation at
-           the bottom instead of a standalone closing block, per the
-           requested ordering: notes → recommendation → disclaimer. */
         .footer {
           margin-top: 20px; padding-top: 12px; border-top: 1px solid #EDF2F7;
           font-size: 9px; color: #9CA3AF; line-height: 1.6;
@@ -284,17 +260,33 @@ const buildReportHtml = (report) => {
   </html>`;
 };
 
+const sanitizeFileName = (name) => {
+  if (!name) return 'Unknown_Patient';
+  return name
+    .trim()
+    .replace(/[^a-zA-Z0-9\-_ ]/g, '')
+    .replace(/\s+/g, '_');
+};
+
 export const exportReportAsPdf = async (report) => {
   const html = buildReportHtml(report);
   const { uri } = await Print.printToFileAsync({ html });
 
+  const safeName = sanitizeFileName(report.patientName);
+  const idPart = report.scanId ? `_${sanitizeFileName(String(report.scanId))}` : '';
+  const fileName = `${safeName}${idPart}.pdf`;
+
+  const newUri = `${FileSystem.cacheDirectory}${fileName}`;
+
+  await FileSystem.copyAsync({ from: uri, to: newUri });
+
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {
-    await Sharing.shareAsync(uri, {
+    await Sharing.shareAsync(newUri, {
       mimeType: 'application/pdf',
       dialogTitle: `AidePoint Report — ${report.patientName}`,
       UTI: 'com.adobe.pdf',
     });
   }
-  return uri;
+  return newUri;
 };

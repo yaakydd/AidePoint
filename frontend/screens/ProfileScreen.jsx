@@ -5,6 +5,13 @@
 // upload (tap the camera badge on the avatar), and stripped the isOnline/
 // offline-banner bits since the app's online-only now — matches the same
 // cleanup already done on api.js and Scan.js.
+//
+// AVATAR UPLOAD: reads the picked file as base64 via expo-file-system and
+// converts it to an ArrayBuffer before handing it to Supabase Storage.
+// fetch(uri).blob() is unreliable in React Native for local file:// URIs
+// (RN's Blob is a polyfill, not a real browser Blob, and silently
+// produces empty/corrupt data on some devices/OS versions) -- this is
+// the approach Supabase's own RN docs recommend.
 
 import React, { useState } from 'react';
 import {
@@ -16,6 +23,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/ProfileStyles';
@@ -92,15 +101,21 @@ async function handleToggle(newValue) {
     setUploadingAvatar(true);
 
     try {
-      // grab the picked file as a blob so we can hand it to Supabase storage
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
+      // Read the picked file as base64, then convert to an ArrayBuffer.
+      // Do NOT use fetch(asset.uri).blob() here -- on React Native that
+      // often returns a broken/empty blob for local file:// URIs, which
+      // makes the Supabase upload fail (or silently upload 0 bytes).
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const arrayBuffer = decode(base64);
+
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `${user.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(AVATAR_BUCKET)
-        .upload(path, blob, { upsert: true, contentType: `image/${ext}` });
+        .upload(path, arrayBuffer, { upsert: true, contentType: `image/${ext}` });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
@@ -112,6 +127,7 @@ async function handleToggle(newValue) {
       if (!saveResult.success) throw new Error(saveResult.error);
 
     } catch (err) {
+      console.error('Avatar upload failed:', err);
       Alert.alert('Upload Failed', err.message ?? 'Could not update your profile picture.');
     } finally {
       setUploadingAvatar(false);
