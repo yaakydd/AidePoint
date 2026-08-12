@@ -11,10 +11,12 @@
 # visible by manually inspecting a Colab notebook run.
 
 import base64
+import io
+from dataclasses import dataclass
+
 import numpy as np
 import cv2
 from PIL import Image
-import io
 
 from services.image_crop import auto_crop_microscope_field
 
@@ -32,7 +34,18 @@ PREVIEW_IMAGE_SIZE = 200
 PREVIEW_JPEG_QUALITY = 70
 
 
-def encode_preview_image(image_bgr):
+@dataclass
+class PreprocessResult:
+    """Everything downstream needs from one raw image upload."""
+
+    model_input: np.ndarray  # (1, 3, 260, 260) float32 NCHW, normalized -- feeds the ONNX model directly.
+    raw_resized_image: np.ndarray  # (260, 260, 3) uint8 BGR, BEFORE normalization -- feeds quality_checks.py and shape_screening.py.
+    was_cropped: bool  # whether auto_crop_microscope_field actually changed the image.
+    original_preview_base64: str | None  # small JPEG preview of the image BEFORE cropping, for the app's before/after display.
+    cropped_preview_base64: str | None  # same, AFTER cropping.
+
+
+def encode_preview_image(image_bgr: np.ndarray) -> str | None:
     """
     Downscales and JPEG-encodes an image for inclusion in the API
     response as a base64 string the app can display directly in an
@@ -50,20 +63,9 @@ def encode_preview_image(image_bgr):
     return base64.b64encode(encoded_bytes).decode("ascii")
 
 
-def preprocess_image(image_bytes):
+def preprocess_image(image_bytes: bytes) -> PreprocessResult:
     """
     Converts raw image bytes into everything downstream needs.
-
-    Returns a dict with:
-        model_input        : (1, 3, 260, 260) float32 NCHW, normalized --
-                              feeds the ONNX model directly.
-        raw_resized_image   : (260, 260, 3) uint8 BGR, BEFORE normalization
-                              -- feeds quality_checks.py and shape_screening.py.
-        was_cropped         : bool -- whether auto_crop_microscope_field
-                              actually changed the image.
-        original_preview_base64 : small JPEG preview of the image BEFORE
-                              cropping, for the app's before/after display.
-        cropped_preview_base64  : same, AFTER cropping.
     """
     loaded_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image_as_rgb_array = np.array(loaded_image, dtype=np.uint8)
@@ -84,10 +86,10 @@ def preprocess_image(image_bytes):
     normalized_image = (resized_image_rgb - NORMALIZE_MEAN) / NORMALIZE_STD
     model_input = normalized_image.transpose(2, 0, 1)[np.newaxis, :].astype(np.float32)
 
-    return {
-        "model_input": model_input,
-        "raw_resized_image": resized_image_bgr,
-        "was_cropped": was_cropped,
-        "original_preview_base64": encode_preview_image(original_image_bgr),
-        "cropped_preview_base64": encode_preview_image(resized_image_bgr),
-    }
+    return PreprocessResult(
+        model_input=model_input,
+        raw_resized_image=resized_image_bgr,
+        was_cropped=was_cropped,
+        original_preview_base64=encode_preview_image(original_image_bgr),
+        cropped_preview_base64=encode_preview_image(resized_image_bgr),
+    )

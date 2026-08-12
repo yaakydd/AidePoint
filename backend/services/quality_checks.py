@@ -22,7 +22,7 @@ import numpy as np
 import cv2
 
 
-def compute_embedding_distance(image_embedding, reference_stats):
+def compute_embedding_distance(image_embedding: np.ndarray, reference_stats: dict) -> float:
     """
     Per-dimension z-score distance of this image's embedding from the
     training distribution's center. Larger means less like anything the
@@ -33,7 +33,7 @@ def compute_embedding_distance(image_embedding, reference_stats):
     return float(np.linalg.norm((image_embedding - reference_mean) / reference_std))
 
 
-def run_color_and_vignette_checks(raw_resized_image, reference_stats):
+def run_color_and_vignette_checks(raw_resized_image: np.ndarray, reference_stats: dict) -> list[str]:
     """
     raw_resized_image: the (260, 260, 3) uint8 BGR image from
                         preprocess_image(), BEFORE ImageNet normalization.
@@ -42,7 +42,7 @@ def run_color_and_vignette_checks(raw_resized_image, reference_stats):
     Returns a list of human-readable reasons the image looks unlike
     training data. An empty list means it looks fine on these signals.
     """
-    reasons = []
+    reasons: list[str] = []
     image_size = raw_resized_image.shape[0]
 
     hsv_image = cv2.cvtColor(raw_resized_image, cv2.COLOR_BGR2HSV).astype(np.float32)
@@ -82,7 +82,9 @@ def run_color_and_vignette_checks(raw_resized_image, reference_stats):
     return reasons
 
 
-def run_reliability_gate(image_embedding, raw_resized_image, reference_stats):
+def run_reliability_gate(
+    image_embedding: np.ndarray, raw_resized_image: np.ndarray, reference_stats: dict
+) -> tuple[bool, list[str]]:
     """Combines both signals. Returns (is_unreliable, reasons)."""
     reasons = run_color_and_vignette_checks(raw_resized_image, reference_stats)
     embedding_distance = compute_embedding_distance(image_embedding, reference_stats)

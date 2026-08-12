@@ -13,10 +13,11 @@ from starlette.requests import Request
 from supabase import create_client, Client
 
 from services.model import AidePointONNX
-from routers.human_review import router as human_review_router
 from routers.health import router as health_router
 from routers.predict import router as predict_router
 from routers.payments import router as payments_router
+from routers.aidebot import router as aidebot_router
+
 
 # Logging 
 logging.basicConfig(
@@ -116,10 +117,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(human_review_router)
 app.include_router(health_router)
 app.include_router(predict_router)
 app.include_router(payments_router)
+app.include_router(aidebot_router)
 
 
 #  Global error handler, never expose raw tracebacks 

@@ -1,3 +1,5 @@
+# shape_screening.py
+#
 # Two things live here now:
 #   1. run_shape_screening() - the original reliability check: "do enough
 #      of this image's cells look like normal round RBCs to trust a
@@ -20,6 +22,8 @@
 # low-circularity contours with nothing to do with disease. What it does
 # show, accurately: how round and how uniform the visible cells actually
 # are, drawn exactly where they appear in the photo.
+
+from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
@@ -45,7 +49,66 @@ MINIMUM_CONTOUR_AREA = 40  # square pixels at 260x260 -- filters out noise/debri
 MINIMUM_CELLS_FOR_SHAPE_VERDICT = 15
 
 
-def detect_cell_contours(image_bgr):
+@dataclass
+class ShapeMeasurement:
+    """Per-contour shape metrics from measure_contour_shape."""
+
+    circularity: float
+    eccentricity: float
+    center_x: float
+    center_y: float
+    axis_major: float
+    axis_minor: float
+    rotation_angle: float
+
+
+@dataclass
+class ShapeScreeningResult:
+    """Reliability verdict from run_shape_screening. flagged_fraction and
+    mean_eccentricity are None when cells_detected is below
+    MINIMUM_CELLS_FOR_SHAPE_VERDICT -- segmentation itself was too
+    unreliable to measure, not merely a shape finding."""
+
+    needs_review: bool
+    flagged_fraction: float | None
+    mean_eccentricity: float | None
+    cells_detected: int
+    reason: str | None
+
+
+@dataclass
+class SeverityInfo:
+    """A cell's position on the green -> yellow -> red severity gradient."""
+
+    severity: float
+    color: str
+
+
+@dataclass
+class CellOverlayEntry:
+    """One cell's normalized (0-1) position/size plus its shape metrics
+    and severity color, ready for the app to draw directly on the photo."""
+
+    center_x: float
+    center_y: float
+    radius_x: float
+    radius_y: float
+    rotation_angle: float
+    eccentricity: float
+    circularity: float
+    severity: float
+    color: str
+
+
+@dataclass
+class CellOverlayResult:
+    cells: list[CellOverlayEntry] = field(default_factory=list)
+    cell_count: int = 0
+    flagged_count: int = 0
+    error: str | None = None
+
+
+def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
     """
     Threshold + watershed segmentation to split touching/overlapping
     cells. A plain Otsu threshold plus findContours treats any group of
@@ -110,7 +173,7 @@ def detect_cell_contours(image_bgr):
     # Rebuild per-region contours from the watershed labels rather than
     # re-running findContours on the original merged mask -- this is what
     # actually gets the split cells out as separate shapes.
-    all_contours = []
+    all_contours: list[np.ndarray] = []
     for region_label in np.unique(cell_markers):
         if region_label <= 1:  # 1 = background, -1 = watershed boundary lines
             continue
@@ -130,7 +193,7 @@ def detect_cell_contours(image_bgr):
     return all_contours
 
 
-def measure_contour_shape(contour):
+def measure_contour_shape(contour: np.ndarray) -> ShapeMeasurement | None:
     contour_area = cv2.contourArea(contour)
     if contour_area < MINIMUM_CONTOUR_AREA:
         return None
@@ -148,18 +211,18 @@ def measure_contour_shape(contour):
         return None
     eccentricity = float(np.sqrt(1 - (axis_minor / axis_major) ** 2))
 
-    return {
-        "circularity": min(circularity, 1.0),
-        "eccentricity": eccentricity,
-        "center_x": float(center_x),
-        "center_y": float(center_y),
-        "axis_major": float(axis_major),
-        "axis_minor": float(axis_minor),
-        "rotation_angle": float(rotation_angle),
-    }
+    return ShapeMeasurement(
+        circularity=min(circularity, 1.0),
+        eccentricity=eccentricity,
+        center_x=float(center_x),
+        center_y=float(center_y),
+        axis_major=float(axis_major),
+        axis_minor=float(axis_minor),
+        rotation_angle=float(rotation_angle),
+    )
 
 
-def run_shape_screening(image_bgr):
+def run_shape_screening(image_bgr: np.ndarray) -> ShapeScreeningResult:
     """
     The reliability check that decides whether an anemia result should be
     shown with confidence. This is the fix for the sickle-cell-called-
@@ -183,18 +246,18 @@ def run_shape_screening(image_bgr):
     ]
 
     if len(cell_measurements) < MINIMUM_CELLS_FOR_SHAPE_VERDICT:
-        return {
-            "needs_review": True,
-            "flagged_fraction": None,
-            "mean_eccentricity": None,
-            "cells_detected": len(cell_measurements),
-            "reason": (
+        return ShapeScreeningResult(
+            needs_review=True,
+            flagged_fraction=None,
+            mean_eccentricity=None,
+            cells_detected=len(cell_measurements),
+            reason=(
                 f"only {len(cell_measurements)} cells could be separated for "
                 f"shape assessment (need at least {MINIMUM_CELLS_FOR_SHAPE_VERDICT}) "
                 f"-- likely due to low contrast or overlapping cells preventing "
                 f"reliable segmentation, not a specific shape finding"
             ),
-        }
+        )
 
     # FIXED: changed from OR to AND. Confirmed against a real 54-cell test
     # image (a genuinely poor-quality, under-stained smear, not a
@@ -213,28 +276,28 @@ def run_shape_screening(image_bgr):
     # triggers needs_review purely from segmentation noise.
     flagged_cells = [
         measurement for measurement in cell_measurements
-        if measurement["eccentricity"] > ECCENTRICITY_LIMIT
-        and measurement["circularity"] < CIRCULARITY_FLOOR
+        if measurement.eccentricity > ECCENTRICITY_LIMIT
+        and measurement.circularity < CIRCULARITY_FLOOR
     ]
     flagged_fraction = len(flagged_cells) / len(cell_measurements)
     mean_eccentricity = float(
-        np.mean([measurement["eccentricity"] for measurement in cell_measurements])
+        np.mean([measurement.eccentricity for measurement in cell_measurements])
     )
 
-    return {
-        "needs_review": flagged_fraction > FLAGGED_FRACTION_THRESHOLD,
-        "flagged_fraction": round(flagged_fraction, 3),
-        "mean_eccentricity": round(mean_eccentricity, 3),
-        "cells_detected": len(cell_measurements),
-        "reason": (
+    return ShapeScreeningResult(
+        needs_review=flagged_fraction > FLAGGED_FRACTION_THRESHOLD,
+        flagged_fraction=round(flagged_fraction, 3),
+        mean_eccentricity=round(mean_eccentricity, 3),
+        cells_detected=len(cell_measurements),
+        reason=(
             f"{flagged_fraction * 100:.0f}% of detected cells are unusually "
             f"elongated or non-round for a typical smear"
             if flagged_fraction > FLAGGED_FRACTION_THRESHOLD else None
         ),
-    }
+    )
 
 
-def compute_severity_color(eccentricity, circularity):
+def compute_severity_color(eccentricity: float, circularity: float) -> SeverityInfo:
     """
     Maps a cell's shape to a color along a green -> yellow -> red
     gradient, rather than a binary flagged/not-flagged split. A cell
@@ -264,13 +327,13 @@ def compute_severity_color(eccentricity, circularity):
         green_value = int(0xB3 + (0x26 - 0xB3) * blend_ratio)
         blue_value = int(0x08 + (0x26 - 0x08) * blend_ratio)
 
-    return {
-        "severity": round(severity_score, 3),
-        "color": f"#{red_value:02X}{green_value:02X}{blue_value:02X}",
-    }
+    return SeverityInfo(
+        severity=round(severity_score, 3),
+        color=f"#{red_value:02X}{green_value:02X}{blue_value:02X}",
+    )
 
 
-def get_cell_overlay(image_bgr):
+def get_cell_overlay(image_bgr: np.ndarray) -> CellOverlayResult:
     """
     Returns per-cell shape data for drawing a live annotation directly on
     the photo -- the headline feature. Coordinates and sizes are
@@ -290,38 +353,38 @@ def get_cell_overlay(image_bgr):
     image_height, image_width = image_bgr.shape[:2]
     contours = detect_cell_contours(image_bgr)
 
-    detected_cells = []
+    detected_cells: list[CellOverlayEntry] = []
     for contour in contours:
         shape_measurement = measure_contour_shape(contour)
         if shape_measurement is None:
             continue
         severity_info = compute_severity_color(
-            shape_measurement["eccentricity"], shape_measurement["circularity"]
+            shape_measurement.eccentricity, shape_measurement.circularity
         )
-        detected_cells.append({
-            "center_x": round(
-                float(np.clip(shape_measurement["center_x"] / image_width, 0.0, 1.0)), 4
+        detected_cells.append(CellOverlayEntry(
+            center_x=round(
+                float(np.clip(shape_measurement.center_x / image_width, 0.0, 1.0)), 4
             ),
-            "center_y": round(
-                float(np.clip(shape_measurement["center_y"] / image_height, 0.0, 1.0)), 4
+            center_y=round(
+                float(np.clip(shape_measurement.center_y / image_height, 0.0, 1.0)), 4
             ),
-            "radius_x": round(
-                float(np.clip((shape_measurement["axis_major"] / 2) / image_width, 0.0, 0.5)), 4
+            radius_x=round(
+                float(np.clip((shape_measurement.axis_major / 2) / image_width, 0.0, 0.5)), 4
             ),
-            "radius_y": round(
-                float(np.clip((shape_measurement["axis_minor"] / 2) / image_height, 0.0, 0.5)), 4
+            radius_y=round(
+                float(np.clip((shape_measurement.axis_minor / 2) / image_height, 0.0, 0.5)), 4
             ),
-            "rotation_angle": round(shape_measurement["rotation_angle"], 1),
-            "eccentricity": round(shape_measurement["eccentricity"], 3),
-            "circularity": round(shape_measurement["circularity"], 3),
-            "severity": severity_info["severity"],
-            "color": severity_info["color"],
-        })
+            rotation_angle=round(shape_measurement.rotation_angle, 1),
+            eccentricity=round(shape_measurement.eccentricity, 3),
+            circularity=round(shape_measurement.circularity, 3),
+            severity=severity_info.severity,
+            color=severity_info.color,
+        ))
 
-    detected_cells.sort(key=lambda cell: -cell["severity"])
+    detected_cells.sort(key=lambda cell: -cell.severity)
 
-    return {
-        "cells": detected_cells,
-        "cell_count": len(detected_cells),
-        "flagged_count": sum(1 for cell in detected_cells if cell["severity"] >= 0.5),
-    }
+    return CellOverlayResult(
+        cells=detected_cells,
+        cell_count=len(detected_cells),
+        flagged_count=sum(1 for cell in detected_cells if cell.severity >= 0.5),
+    )

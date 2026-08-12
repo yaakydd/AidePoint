@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, Request, status
@@ -6,19 +7,19 @@ from fastapi.responses import JSONResponse
 from auth import verify_supabase_token
 from services.image_quality import assess_image_quality, should_block_inference
 from services.shape_screening import run_shape_screening
-from services.preprocess import preprocess_image
+from services.preprocess import preprocess_image, PreprocessResult
 from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
 from services.morphology_explanations import build_explanation, classify_confidence
 from services.audit_trail import build_prediction_record, persist_prediction_record
+from services.shape_screening import run_shape_screening, ShapeScreeningResult
 from services.prediction_helpers import _extract_image_quality_fields, _build_morphology_findings
 
 log = logging.getLogger("aidepoint")
 router = APIRouter()
 
-import os
-MODEL_VERSION       = os.getenv("MODEL_VERSION", "unversioned")
-MAX_IMAGE_BYTES    = 10 * 1024 * 1024   # 10 MB hard limit
-ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/jpg"}
+MODEL_VERSION: str = os.getenv("MODEL_VERSION", "unversioned")
+MAX_IMAGE_BYTES: int = 10 * 1024 * 1024   # 10 MB hard limit
+ALLOWED_MIME_TYPES: set[str] = {"image/jpeg", "image/png", "image/jpg"}
 
 
 @router.post("/predict")
@@ -27,7 +28,7 @@ async def predict(
     file: UploadFile = File(...),
     patient_sample_id: str = Form(...),
     user: dict = Depends(verify_supabase_token),
-):
+) -> JSONResponse:
     """
     Accepts a blood smear image, runs ONNX inference, returns clinical JSON.
 
@@ -60,7 +61,7 @@ async def predict(
         )
 
     # Validate file type 
-    content_type = file.content_type or ""
+    content_type: str = file.content_type or ""
     if content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -68,7 +69,7 @@ async def predict(
         )
 
     #  Read and size-check 
-    image_bytes = await file.read()
+    image_bytes: bytes = await file.read()
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -80,11 +81,12 @@ async def predict(
             detail="Empty file received.",
         )
 
-    # preprocess_image() now returns a dict -- the model-ready tensor,
-    # the raw resized image the reliability/shape checks need, and the
-    # before/after crop preview data used by the app's transparency trail.
+    # preprocess_image() now returns a PreprocessResult dataclass -- the
+    # model-ready tensor, the raw resized image the reliability/shape
+    # checks need, and the before/after crop preview data used by the
+    # app's transparency trail.
     try:
-        preprocessed = preprocess_image(image_bytes)
+        preprocessed: PreprocessResult = preprocess_image(image_bytes)
     except Exception as exc:
         log.warning("Preprocessing failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(
@@ -92,14 +94,14 @@ async def predict(
             detail="Could not read image. Ensure it is a valid JPEG or PNG.",
         )
 
-
     # Image quality check: runs before the model. Answers "is this photo
     # even usable" (blur, brightness, cell count) -- a separate, earlier
     # question from the reliability gate further down, which asks "does
     # this usable photo look like our training data."
-    shape_result = run_shape_screening(preprocessed["raw_resized_image"])
+    shape_result: ShapeScreeningResult = run_shape_screening(preprocessed.raw_resized_image)
+    shape_result = run_shape_screening(preprocessed.raw_resized_image)
     quality_result = assess_image_quality(
-        preprocessed["raw_resized_image"], shape_result["cells_detected"]
+        preprocessed.raw_resized_image, shape_result.cells_detected
     )
 
     if should_block_inference(quality_result):
@@ -120,7 +122,7 @@ async def predict(
     t0 = time.perf_counter()
     try:
         result = _model.predict(
-            preprocessed["model_input"], preprocessed["raw_resized_image"]
+            preprocessed.model_input, preprocessed.raw_resized_image
         )
     except Exception as exc:
         log.error("Inference error for user %s: %s", user.get("id"), exc)
@@ -128,7 +130,7 @@ async def predict(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Inference failed. Please try again.",
         )
-    elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+    elapsed_ms: float = round((time.perf_counter() - t0) * 1000, 1)
     # Photo quality is deliberately kept separate from is_unreliable.
     # is_unreliable (from run_reliability_gate + shape_screening) answers
     # "does this sample look like something the model wasn't trained to
@@ -181,7 +183,7 @@ async def predict(
     # succeeds but before the response is returned -- a prediction that
     # was shown to a technician and not logged is worse than one that
     # failed outright, since it leaves no trace to investigate later.
-    prediction_id = None
+    prediction_id: str | None = None
     if _supabase_client is not None:
         try:
             quality_score, quality_breakdown = _extract_image_quality_fields(quality_result)
@@ -189,8 +191,8 @@ async def predict(
                 patient_sample_id=patient_sample_id,
                 technician_id=user["id"],
                 original_image_bytes=image_bytes,
-                analyzed_image_bytes=preprocessed["raw_resized_image"].tobytes(),
-                was_cropped=preprocessed["was_cropped"],
+                analyzed_image_bytes=preprocessed.raw_resized_image.tobytes(),
+                was_cropped=preprocessed.was_cropped,
                 model_name="AidePointONNX",
                 model_version=MODEL_VERSION,
                 decision_threshold=result["decision_threshold"],
@@ -233,8 +235,8 @@ async def predict(
         "prediction_confidence": prediction_confidence,
         "prediction_id": prediction_id,
         "inference_ms": elapsed_ms,
-        "was_cropped": preprocessed["was_cropped"],
-        "original_preview_base64": preprocessed["original_preview_base64"],
-        "cropped_preview_base64": preprocessed["cropped_preview_base64"],
+        "was_cropped": preprocessed.was_cropped,
+        "original_preview_base64": preprocessed.original_preview_base64,
+        "cropped_preview_base64": preprocessed.cropped_preview_base64,
         "image_quality": quality_result.__dict__,
     })
