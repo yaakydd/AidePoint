@@ -87,7 +87,102 @@ const severityToColor = (severityScore) => {
 // banding, without generating an excessive number of Views.
 const GRADIENT_BAR_SLICES = 40;
 
-function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop }) {
+// Diameter of a severity marker pin. Sized off theme scale() rather
+// than a raw number so it scales consistently with the rest of the UI.
+const SEVERITY_MARKER_SIZE = scale(14);
+
+// Pure function, easy to unit test in isolation: given the flagged
+// cells shown on the bar, produce the one-line summary underneath it.
+const summarizeSeverityRange = (cells) => {
+  if (!cells || cells.length === 0) return null;
+  const scores = cells.map((cell) => cell.severity_score);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const rangeText = min === max ? min.toFixed(1) : `${min.toFixed(1)}\u2013${max.toFixed(1)}`;
+  return `${cells.length} flagged cell${cells.length !== 1 ? 's' : ''} shown \u2022 severity ${rangeText}`;
+};
+
+// A single pin on the severity bar marking where one flagged cell's
+// severity_score actually falls. `active` highlights the marker that
+// corresponds to whichever cell is currently selected (e.g. tapped on
+// the image), so the bar and the image overlay can stay in sync.
+function SeverityMarker({ score, active, onPress }) {
+  // Clamp defensively -- a borderline or malformed score shouldn't push
+  // the marker outside the bar's bounds.
+  const clampedScore = Math.min(1, Math.max(0, score));
+
+  return (
+    <TouchableOpacity
+      style={[styles.severityMarker, { left: `${clampedScore * 100}%` }]}
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <View style={[styles.severityMarkerDot, active && styles.severityMarkerDotActive]} />
+    </TouchableOpacity>
+  );
+}
+
+// The full legend: reference gradient + real markers for this sample's
+// flagged cells + a plain-language summary line. Pulled out of the main
+// render tree (same pattern as ImageWithOverlay below) since the marker
+// positioning math deserves to be isolated and testable on its own.
+function SeverityLegend({ cells, selectedCellId, onSelectCell }) {
+  const summaryText = summarizeSeverityRange(cells);
+
+  return (
+    <View style={{ width: '100%' }}>
+      <Text style={styles.legendCaption}>
+        Each flagged cell is colored by how abnormal its shape looks, on a
+        continuous scale from green (normal) to red (most unusual). The
+        markers below show exactly where this sample's flagged cells fall
+        on that scale.
+      </Text>
+
+      <View style={styles.gradientBarWrapper}>
+        <View style={styles.gradientBar}>
+          {Array.from({ length: GRADIENT_BAR_SLICES }).map((_, index) => (
+            <View
+              key={index}
+              style={{
+                flex: 1,
+                backgroundColor: severityToColor(index / (GRADIENT_BAR_SLICES - 1)),
+              }}
+            />
+          ))}
+        </View>
+
+        {cells.map((cell) => (
+          <SeverityMarker
+            key={cell.id}
+            score={cell.severity_score}
+            active={cell.id === selectedCellId}
+            onPress={onSelectCell ? () => onSelectCell(cell.id) : undefined}
+          />
+        ))}
+      </View>
+
+      <View style={styles.gradientTickRow}>
+        <Text style={styles.gradientTickText}>0.0</Text>
+        <Text style={styles.gradientTickText}>0.5</Text>
+        <Text style={styles.gradientTickText}>1.0</Text>
+      </View>
+
+      <View style={styles.gradientLabelRow}>
+        <Text style={[styles.gradientBandLabel, { textAlign: 'left' }]}>Normal shape</Text>
+        <Text style={[styles.gradientBandLabel, { textAlign: 'center' }]}>Mild variation</Text>
+        <Text style={[styles.gradientBandLabel, { textAlign: 'right' }]}>Unusual shape</Text>
+      </View>
+
+      {summaryText && <Text style={styles.legendSummary}>{summaryText}</Text>}
+    </View>
+  );
+}
+
+function ImageWithOverlay({
+  imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop,
+  selectedCellId, onSelectCell,
+}) {
   const { width: screenWidth } = useWindowDimensions();
   const displaySize = screenWidth - SPACING['2xl'] * 2;
 
@@ -107,6 +202,8 @@ function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnal
           cellOverlay={cellOverlay}
           displayWidth={displaySize}
           displayHeight={displaySize}
+          selectedCellId={selectedCellId}
+          onSelectCell={onSelectCell}
         />
       )}
     </View>
@@ -120,6 +217,10 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const [notes, setNotes] = useState(report?.labTechNotes ?? '');
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  // Which flagged cell (by id) is currently selected -- shared between
+  // the image overlay and the severity legend markers so tapping either
+  // one highlights the same cell in both places.
+  const [selectedCellId, setSelectedCellId] = useState(null);
 
   const conditionKey = resolveConditionKey(
     prediction.is_anemic,
@@ -234,6 +335,8 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 cellOverlay={prediction.cell_overlay}
                 showOverlay={showOverlay}
                 isShowingAnalyzedCrop={!showBeforeCrop}
+                selectedCellId={selectedCellId}
+                onSelectCell={setSelectedCellId}
               />
               <View style={styles.imageControls}>
                 {prediction.was_cropped && (
@@ -267,37 +370,11 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               )}
 
               {prediction.cell_overlay && showOverlay && !showBeforeCrop && (
-                <View style={{ width: '100%' }}>
-                  <Text style={styles.legendCaption}>
-                    Each flagged cell is colored by how abnormal its shape looks, on a
-                    continuous scale from green (normal) to red (most unusual). A cell's
-                    exact position on this bar is what its color on the image means.
-                  </Text>
-
-                  <View style={styles.gradientBar}>
-                    {Array.from({ length: GRADIENT_BAR_SLICES }).map((_, index) => (
-                      <View
-                        key={index}
-                        style={{
-                          flex: 1,
-                          backgroundColor: severityToColor(index / (GRADIENT_BAR_SLICES - 1)),
-                        }}
-                      />
-                    ))}
-                  </View>
-
-                  <View style={styles.gradientTickRow}>
-                    <Text style={styles.gradientTickText}>0.0</Text>
-                    <Text style={styles.gradientTickText}>0.5</Text>
-                    <Text style={styles.gradientTickText}>1.0</Text>
-                  </View>
-
-                  <View style={styles.gradientLabelRow}>
-                    <Text style={[styles.gradientBandLabel, { textAlign: 'left' }]}>Normal shape</Text>
-                    <Text style={[styles.gradientBandLabel, { textAlign: 'center' }]}>Mild variation</Text>
-                    <Text style={[styles.gradientBandLabel, { textAlign: 'right' }]}>Unusual shape</Text>
-                  </View>
-                </View>
+                <SeverityLegend
+                  cells={prediction.cell_overlay.cells ?? []}
+                  selectedCellId={selectedCellId}
+                  onSelectCell={setSelectedCellId}
+                />
               )}
             </View>
 
@@ -453,7 +530,7 @@ const styles = StyleSheet.create({
 
   // Patient name (left) / date+time (right) row, directly under the
   // branded letterhead -- mirrors DetailModal.js's sheetHeader/sheetName
-  // pairing so both modals present report identity the same way.
+  // pairing so both modals present report identity info the same way.
   patientMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -497,10 +574,9 @@ const styles = StyleSheet.create({
   toggleChipText: { fontSize: FONTS.xs, color: COLORS.primary, fontWeight: FONTS.semibold },
   overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
 
-  // Legend caption + column layout. Swatches are now sized via theme
-  // scale() (not raw inline numbers) and stacked as a column with a
-  // label directly beside each swatch, one per row, instead of the old
-  // cramped horizontal row of 3 dots.
+  // Legend caption + gradient bar. gradientBarWrapper adds top padding
+  // and relative positioning so the absolutely-positioned severity
+  // markers have room to sit above the bar and align against it.
   legendCaption: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,
@@ -509,6 +585,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 16,
   },
+  gradientBarWrapper: {
+    width: '100%',
+    position: 'relative',
+    paddingTop: SEVERITY_MARKER_SIZE,
+  },
   gradientBar: {
     flexDirection: 'row',
     width: '100%',
@@ -516,6 +597,36 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xs,
     overflow: 'hidden',
     marginTop: SPACING.xs,
+  },
+  // A single marker pin -- positioned via `left` (percentage, set
+  // inline per-cell) with a fixed pixel offset here to center it on
+  // that position rather than anchoring its left edge to it.
+  severityMarker: {
+    position: 'absolute',
+    top: 0,
+    marginLeft: -(SEVERITY_MARKER_SIZE / 2),
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: SEVERITY_MARKER_SIZE,
+    height: SEVERITY_MARKER_SIZE + 6,
+  },
+  severityMarkerDot: {
+    width: SEVERITY_MARKER_SIZE,
+    height: SEVERITY_MARKER_SIZE,
+    borderRadius: SEVERITY_MARKER_SIZE / 2,
+    backgroundColor: COLORS.textPrimary,
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  severityMarkerDotActive: {
+    borderColor: COLORS.primary,
+    borderWidth: 3,
+    transform: [{ scale: 1.2 }],
   },
   gradientTickRow: {
     flexDirection: 'row',
@@ -539,6 +650,12 @@ const styles = StyleSheet.create({
     fontSize: FONTS.xs,
     color: COLORS.textSecondary,
     fontWeight: FONTS.medium,
+  },
+  legendSummary: {
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    fontWeight: FONTS.semibold,
+    marginTop: SPACING.xs,
   },
 
   sectionBlock: { width: '100%', marginBottom: SPACING.md },
