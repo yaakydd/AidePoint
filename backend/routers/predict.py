@@ -1,17 +1,17 @@
 import os
 import time
 import logging
+from dataclasses import asdict
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, Request, status
 from fastapi.responses import JSONResponse
 
 from auth import verify_supabase_token
 from services.image_quality import assess_image_quality, should_block_inference
-from services.shape_screening import run_shape_screening
+from services.shape_screening import run_shape_screening, ShapeScreeningResult
 from services.preprocess import preprocess_image, PreprocessResult
 from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
-from services.morphology_explanations import build_explanation, classify_confidence
+from services.morphology_explanations import build_explanation, classify_confidence, Explanation
 from services.audit_trail import build_prediction_record, persist_prediction_record
-from services.shape_screening import run_shape_screening, ShapeScreeningResult
 from services.prediction_helpers import _extract_image_quality_fields, _build_morphology_findings
 
 log = logging.getLogger("aidepoint")
@@ -99,7 +99,6 @@ async def predict(
     # question from the reliability gate further down, which asks "does
     # this usable photo look like our training data."
     shape_result: ShapeScreeningResult = run_shape_screening(preprocessed.raw_resized_image)
-    shape_result = run_shape_screening(preprocessed.raw_resized_image)
     quality_result = assess_image_quality(
         preprocessed.raw_resized_image, shape_result.cells_detected
     )
@@ -156,14 +155,20 @@ async def predict(
     )
 
     # Human-readable explanation of which morphology indicators and
-    # cell-level findings support this prediction.
-    explanation = build_explanation(
+    # cell-level findings support this prediction. build_explanation now
+    # returns an Explanation dataclass -- converted to a plain dict here
+    # with asdict() since this same value is (a) spread into the JSON
+    # response below and (b) passed into build_prediction_record(), whose
+    # PredictionRecord.explanation field expects a plain dict, not a
+    # dataclass instance.
+    explanation: Explanation = build_explanation(
         anemia_probability=result["anemia_probability"],
         decision_threshold=result["decision_threshold"],
         morphology_probabilities=result["morphology_probs"],
         cell_overlay=result["cell_overlay"].get("cells", []),
     )
-    prediction_confidence = explanation["confidence"]
+    prediction_confidence = explanation.confidence
+    explanation_dict = asdict(explanation)
 
     # Same shape used for the audit trail record below -- built once here
     # and reused, rather than computed twice, so the API response and the
@@ -209,7 +214,7 @@ async def predict(
                     "morphology_findings": morphology_findings,
                     "cbc_pattern_summary": cbc_pattern_summary,
                 },
-                explanation=explanation,
+                explanation=explanation_dict,
             )
             prediction_id = persist_prediction_record(_supabase_client, record)
         except Exception as exc:
@@ -231,7 +236,7 @@ async def predict(
         **result,
         "cbc_pattern_summary": cbc_pattern_summary,
         "morphology_findings": morphology_findings,
-        "explanation": explanation,
+        "explanation": explanation_dict,
         "prediction_confidence": prediction_confidence,
         "prediction_id": prediction_id,
         "inference_ms": elapsed_ms,

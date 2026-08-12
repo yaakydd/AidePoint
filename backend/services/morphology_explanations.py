@@ -11,6 +11,7 @@ explains WHAT it found there in clinical language. Keep both if you
 have time -- they answer different questions.
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 # Threshold above which a morphology flag is considered a contributing
@@ -26,7 +27,7 @@ MORPHOLOGY_REPORTING_THRESHOLD = 0.5
 # never actually appear in morphology_probabilities; leaving them here
 # was dead entries, not a functional bug, but worth cleaning up so this
 # dict accurately reflects what the model can actually report.
-MORPHOLOGY_DISPLAY_NAMES = {
+MORPHOLOGY_DISPLAY_NAMES: dict[str, str] = {
     "dimorphic_picture": "Dimorphic red cell population detected",
     "anisocytosis": "Increased red cell size variation detected",
     "hypochromia": "Hypochromic appearance detected",
@@ -36,6 +37,22 @@ MORPHOLOGY_DISPLAY_NAMES = {
     "target_cells": "Target cell morphology detected",
     "elliptocytosis": "Elliptocyte morphology detected",
 }
+
+
+@dataclass
+class CellOverlaySummary:
+    cells_analyzed: int
+    cells_flagged_abnormal: int
+    percent_abnormal: float
+
+
+@dataclass
+class Explanation:
+    confidence: str
+    observed_indicators: list[str]
+    cell_level_summary: CellOverlaySummary
+    reasoning_summary: str
+    limitations: str
 
 
 def classify_confidence(anemia_probability: float, decision_threshold: float) -> str:
@@ -55,7 +72,7 @@ def classify_confidence(anemia_probability: float, decision_threshold: float) ->
         return "low"
 
 
-def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> dict[str, Any]:
+def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> CellOverlaySummary:
     """
     Reduces the per-cell overlay data (already computed for the frontend
     drawing feature) into summary statistics for the explanation text.
@@ -69,11 +86,11 @@ def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> dict[str, Any]
     reported 31/54 flagged cells but this function's output claimed 0.
     """
     if not cell_overlay:
-        return {
-            "cells_analyzed": 0,
-            "cells_flagged_abnormal": 0,
-            "percent_abnormal": 0.0,
-        }
+        return CellOverlaySummary(
+            cells_analyzed=0,
+            cells_flagged_abnormal=0,
+            percent_abnormal=0.0,
+        )
 
     severity_flag_threshold = 0.5
     flagged_cells = [
@@ -81,11 +98,11 @@ def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> dict[str, Any]
         if cell.get("severity", 0.0) >= severity_flag_threshold
     ]
 
-    return {
-        "cells_analyzed": len(cell_overlay),
-        "cells_flagged_abnormal": len(flagged_cells),
-        "percent_abnormal": round(100 * len(flagged_cells) / len(cell_overlay), 1),
-    }
+    return CellOverlaySummary(
+        cells_analyzed=len(cell_overlay),
+        cells_flagged_abnormal=len(flagged_cells),
+        percent_abnormal=round(100 * len(flagged_cells) / len(cell_overlay), 1),
+    )
 
 
 def build_explanation(
@@ -93,7 +110,7 @@ def build_explanation(
     decision_threshold: float,
     morphology_probabilities: dict[str, float],
     cell_overlay: list[dict[str, Any]],
-) -> dict[str, Any]:
+) -> Explanation:
     """
     Produces the explanation block attached to every prediction record
     and shown in the clinical report.
@@ -122,20 +139,20 @@ def build_explanation(
         reasoning_summary = (
             f"Classification is supported by {len(observed_indicators)} morphology "
             f"indicator(s) and cell-level analysis showing "
-            f"{cell_summary['percent_abnormal']}% of the "
-            f"{cell_summary['cells_analyzed']} detected cells with abnormal shape "
+            f"{cell_summary.percent_abnormal}% of the "
+            f"{cell_summary.cells_analyzed} detected cells with abnormal shape "
             f"characteristics."
         )
 
-    return {
-        "confidence": confidence,
-        "observed_indicators": observed_indicators,
-        "cell_level_summary": cell_summary,
-        "reasoning_summary": reasoning_summary,
-        "limitations": (
+    return Explanation(
+        confidence=confidence,
+        observed_indicators=observed_indicators,
+        cell_level_summary=cell_summary,
+        reasoning_summary=reasoning_summary,
+        limitations=(
             "This explanation describes which detected features the model's "
             "morphology and shape analysis found, not a pixel-level attribution "
             "of the anemia classifier itself. It should be read as supporting "
             "context, not as proof of causation."
         ),
-    }
+    )
