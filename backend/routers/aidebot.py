@@ -32,7 +32,7 @@ log = logging.getLogger("aidepoint")
 router = APIRouter(prefix="/aidebot", tags=["aidebot"])
 
 GEMINI_API_KEY: str | None = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
@@ -312,14 +312,17 @@ async def aidebot_chat(
         }
         contents = [context_message] + contents
 
-    request_body: dict = {
-        "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
-        "contents": contents,
-        "generationConfig": {
-            "temperature": 0.4,
-            "maxOutputTokens": 512,
+        request_body: dict = {
+    "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
+    "contents": contents,
+    "generationConfig": {
+        "temperature": 0.4,
+        "maxOutputTokens": 512,
+        "thinkingConfig": {
+            "thinkingLevel": "LOW"
         },
-    }
+    },
+}
 
     try:
         response = await _gemini_client.post(GEMINI_URL, json=request_body)
