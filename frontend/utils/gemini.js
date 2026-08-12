@@ -17,6 +17,12 @@
  * use AideBot), rate limiting, and logging later, none of which is
  * possible when the client calls Gemini directly.
  *
+ * AUTH: aidebot_chat is protected by verify_supabase_token on the
+ * backend, same as /predict -- so every request here must carry the
+ * current user's Supabase access token as a Bearer header, exactly
+ * like analyzeBloodSmear does in utils/api.js. Without it, the backend
+ * returns 401 Missing or malformed Authorization header.
+ *
  * Requires EXPO_PUBLIC_API_BASE_URL to point at your FastAPI backend,
  * e.g. in a .env file at the project root:
  *
@@ -26,6 +32,8 @@
  * matching server-side endpoint -- it should own SYSTEM_INSTRUCTION,
  * the Gemini model name, and the actual generateContent call.
  */
+
+import { supabase } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const AIDEBOT_ENDPOINT = `${API_BASE_URL}/aidebot/chat`;
@@ -44,16 +52,27 @@ const MAX_HISTORY_MESSAGES = 20;
 // something went wrong.
 const REQUEST_TIMEOUT_MS = 30000;
 
+async function getAuthToken() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session?.access_token) {
+    throw new Error('Your session has expired. Please log in again.');
+  }
+  return session.access_token;
+}
+
 /**
  * @param {Array<{type: 'user'|'bot', text: string}>} history  conversation so far, oldest first
+ * @param {string|null} predictionId  optional prediction_id to ground the reply in a specific report
  * @returns {Promise<string>} the model's reply text
  */
-export async function sendToGemini(history) {
+export async function sendToGemini(history, predictionId = null) {
   if (!API_BASE_URL) {
     throw new Error(
       'Missing EXPO_PUBLIC_API_BASE_URL. Add it to your .env file and restart the dev server.'
     );
   }
+
+  const token = await getAuthToken();
 
   const trimmedHistory = history
     .filter(m => m.text && m.text !== '...')
@@ -70,8 +89,14 @@ export async function sendToGemini(history) {
   try {
     response = await fetch(AIDEBOT_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ history: trimmedHistory }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        history: trimmedHistory,
+        prediction_id: predictionId,
+      }),
       signal: abortController.signal,
     });
   } catch (err) {

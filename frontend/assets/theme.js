@@ -68,6 +68,18 @@ export const COLORS = {
 // React Native uses sp units for fonts — mScale ensures readability
 // across small Android phones and large iPhones equally.
 export const FONTS = {
+  // Font family — reference these directly as `fontFamily` in styles
+  // (e.g. fontFamily: FONTS.family.bold) since RN doesn't reliably map
+  // fontWeight onto custom-loaded font files the way it does system
+  // fonts. The plain regular/medium/semibold/bold string tokens below
+  // are kept for any remaining legacy `fontWeight: FONTS.bold` usage.
+  family: {
+    regular:  'Inter_400Regular',
+    medium:   'Inter_500Medium',
+    semibold: 'Inter_600SemiBold',
+    bold:     'Inter_700Bold',
+  },
+
   // Sizes
   xs:   mScale(11),
   sm:   mScale(13),
@@ -226,37 +238,4 @@ export const HEADER = {
 
   // Gap between an icon/avatar and the title/greeting text next to it
   contentGap: SPACING.sm,
-};
-
-export const FONTS = {
-  // Font family — used with the FONTS.regular/medium/semibold/bold
-  // weight tokens below via fontFamily + fontWeight pairing isn't
-  // needed on RN when using distinct font files per weight; instead
-  // reference these directly as fontFamily in styles.
-  family: {
-    regular:  'Inter_400Regular',
-    medium:   'Inter_500Medium',
-    semibold: 'Inter_600SemiBold',
-    bold:     'Inter_700Bold',
-  },
-
-  // Sizes
-  xs:   mScale(11),
-  sm:   mScale(13),
-  md:   mScale(15),
-  lg:   mScale(17),
-  xl:   mScale(20),
-  '2xl': mScale(24),
-  '3xl': mScale(28),
-  '4xl': mScale(34),
-
-  // Weights (kept for any legacy fontWeight: FONTS.bold usage)
-  regular:  '400',
-  medium:   '500',
-  semibold: '600',
-  bold:     '700',
-
-  tight:  1.2,
-  normal: 1.5,
-  loose:  1.8,
 };
