@@ -35,7 +35,7 @@ async def predict(
     Security:
       - Supabase JWT required (verify_supabase_token dependency)
       - File size capped at 10 MB
-      - Only JPEG/PNG accepted
+      - Only JPEG/PNG/JPG accepted
       - Model is never re-loaded per request (singleton)
 
     Non-functional:
@@ -65,7 +65,7 @@ async def predict(
     if content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type: {content_type}. Send JPEG or PNG.",
+            detail=f"Unsupported file type: {content_type}. Send JPEG,JPG or PNG.",
         )
 
     #  Read and size-check 
@@ -81,9 +81,9 @@ async def predict(
             detail="Empty file received.",
         )
 
-    # preprocess_image() now returns a PreprocessResult dataclass -- the
+    # preprocess_image() now returns a PreprocessResult dataclass, the
     # model-ready tensor, the raw resized image the reliability/shape
-    # checks need, and the before/after crop preview data used by the
+    # checks need and the before/after crop preview data used by the
     # app's transparency trail.
     try:
         preprocessed: PreprocessResult = preprocess_image(image_bytes)
@@ -95,7 +95,7 @@ async def predict(
         )
 
     # Image quality check: runs before the model. Answers "is this photo
-    # even usable" (blur, brightness, cell count) -- a separate, earlier
+    # even usable" (blur, brightness, cell count), a separate, earlier
     # question from the reliability gate further down, which asks "does
     # this usable photo look like our training data."
     shape_result: ShapeScreeningResult = run_shape_screening(preprocessed.raw_resized_image)
@@ -133,10 +133,10 @@ async def predict(
     # Photo quality is deliberately kept separate from is_unreliable.
     # is_unreliable (from run_reliability_gate + shape_screening) answers
     # "does this sample look like something the model wasn't trained to
-    # recognize" -- a genuine out-of-distribution signal, which is the
+    # recognize". This is a genuine out-of-distribution signal, which is the
     # closest honest proxy for "this might be a different disease
     # entirely." Quality problems (blur, poor staining, bad lighting) are
-    # a completely different question -- "is this photo usable at all" --
+    # a completely different question . "is this photo usable at all"
     # and mixing the two meant a blurry photo of a perfectly healthy
     # sample and a well-photographed malaria smear both ended up tagged
     # identically as "unreliable," with no way to tell them apart
@@ -147,8 +147,8 @@ async def predict(
     )
 
     # Uncertainty-relabeled CBC pattern summary, replacing raw regression
-    # values with directional estimates + confidence tiers -- see
-    # cbc_uncertainty.py for why presenting the raw numbers alone is a
+    # values with directional estimates + confidence tiers. Use
+    # cbc_uncertainty.py as reference for why presenting the raw numbers alone is a
     # patient safety issue, not just a display preference.
     cbc_pattern_summary = serialize_pattern_summary(
         build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
@@ -156,7 +156,7 @@ async def predict(
 
     # Human-readable explanation of which morphology indicators and
     # cell-level findings support this prediction. build_explanation now
-    # returns an Explanation dataclass -- converted to a plain dict here
+    # returns an Explanation dataclass and is converted to a plain dict here
     # with asdict() since this same value is (a) spread into the JSON
     # response below and (b) passed into build_prediction_record(), whose
     # PredictionRecord.explanation field expects a plain dict, not a
@@ -170,7 +170,7 @@ async def predict(
     prediction_confidence = explanation.confidence
     explanation_dict = asdict(explanation)
 
-    # Same shape used for the audit trail record below -- built once here
+    # Same shape used for the audit trail record below and is built once here
     # and reused, rather than computed twice, so the API response and the
     # persisted record can never silently drift apart from each other.
     morphology_findings = _build_morphology_findings(result["morphology_probs"])
@@ -219,7 +219,7 @@ async def predict(
             prediction_id = persist_prediction_record(_supabase_client, record)
         except Exception as exc:
             # A failed audit write should not block the technician from
-            # seeing a result they're waiting on in a clinical setting --
+            # seeing a result they're waiting on in a clinical setting
             # but it must be loud in the logs, since this is the one
             # failure mode that leaves no other trace.
             log.error(

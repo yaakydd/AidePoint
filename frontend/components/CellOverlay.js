@@ -1,9 +1,9 @@
 // Draws the backend's cell_overlay data directly on top of the smear
-// photo -- one colored ellipse per detected cell, green through yellow to
+// photo , one colored ellipse per detected cell, green through yellow to
 // red depending on how far the cell's shape is from a normal round RBC.
 // Coordinates from the backend are normalized 0-1 (fraction of image
 // width/height), so this component just needs to know the rendered
-// width/height of the photo on screen to place things correctly --
+// width/height of the photo on screen to place things correctly ,
 // it doesn't need to know anything about the backend's internal
 // 260x260 processing size.
 
@@ -12,7 +12,7 @@ import { View, StyleSheet } from 'react-native';
 import Svg, { Ellipse } from 'react-native-svg';
 
 // Only draws cells at or above this severity by default, to avoid
-// cluttering the photo with every faint, harmless variation -- the
+// cluttering the photo with every faint, harmless variation , the
 // technician can still see the raw numbers in the report even for
 // cells not drawn here. Pass showAllCells to override this.
 const DEFAULT_MINIMUM_SEVERITY_TO_DRAW = 0.0;

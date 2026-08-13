@@ -1,15 +1,3 @@
-# preprocess.py
-# Replicates the exact validation transforms used during training.
-# Any deviation here causes silent accuracy degradation.
-#
-# CHANGED: now returns a dict instead of a growing tuple, since this
-# function's job has expanded past just "produce the model input." It
-# also captures the pre-crop image (previously decoded once and then
-# discarded) so the app can show a real before/after comparison -- the
-# same demonstration used earlier when tracing the sickle cell test case,
-# now available as a first-class feature rather than something only
-# visible by manually inspecting a Colab notebook run.
-
 import base64
 import io
 from dataclasses import dataclass
@@ -27,7 +15,7 @@ NORMALIZE_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 NORMALIZE_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 # Preview images sent back for the transparency trail are downscaled and
-# JPEG-compressed before base64 encoding -- the full-resolution original
+# JPEG-compressed before base64 encoding , the full-resolution original
 # isn't needed for a small on-screen comparison, and keeping this small
 # matters for response size and mobile data usage.
 PREVIEW_IMAGE_SIZE = 200
@@ -38,8 +26,8 @@ PREVIEW_JPEG_QUALITY = 70
 class PreprocessResult:
     """Everything downstream needs from one raw image upload."""
 
-    model_input: np.ndarray  # (1, 3, 260, 260) float32 NCHW, normalized -- feeds the ONNX model directly.
-    raw_resized_image: np.ndarray  # (260, 260, 3) uint8 BGR, BEFORE normalization -- feeds quality_checks.py and shape_screening.py.
+    model_input: np.ndarray  # (1, 3, 260, 260) float32 NCHW, normalized , feeds the ONNX model directly.
+    raw_resized_image: np.ndarray  # (260, 260, 3) uint8 BGR, BEFORE normalization , feeds quality_checks.py and shape_screening.py.
     was_cropped: bool  # whether auto_crop_microscope_field actually changed the image.
     original_preview_base64: str | None  # small JPEG preview of the image BEFORE cropping, for the app's before/after display.
     cropped_preview_base64: str | None  # same, AFTER cropping.

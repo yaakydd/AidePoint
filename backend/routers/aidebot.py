@@ -1,16 +1,6 @@
-# backend/routers/aidebot.py
-#
 # Server-side counterpart to utils/gemini.js. Holds GEMINI_API_KEY and
-# SYSTEM_INSTRUCTION here, not in the client bundle -- the app never
+# SYSTEM_INSTRUCTION here, not in the client bundle but rather the app never
 # talks to Gemini directly, only to this endpoint.
-#
-# report_context is no longer accepted as freeform client-supplied JSON
-# (a client could previously send fabricated data, or another patient's
-# real data, with nothing to stop it). The client now sends only
-# prediction_id; this router fetches the real record from
-# prediction_records and verifies technician_id == the requesting user
-# before using it as grounding context -- same ownership check pattern
-# human_review.py already used for review submissions.
 
 import os
 import json
@@ -40,17 +30,17 @@ GEMINI_URL = (
 
 SYSTEM_INSTRUCTION = """You are AideBot, the in-app assistant for AidePoint, an AI-assisted blood
 smear screening tool used by lab technicians. A technician photographs a
-blood smear on a microscope; the app returns an anaemia probability, a
+blood smear on a microscope, then the app returns an anaemia probability, a
 confidence level (high/moderate/low), morphology findings (flagged cell
-shape abnormalities), an estimated CBC pattern summary, and a per-cell
+shape abnormalities), an estimated CBC pattern summary and a per-cell
 shape-severity overlay on the image (a green-to-red gradient, not a
 fixed category), these are image-based estimates, not laboratory
-measurements, and you should say so if asked how reliable a number is.
+measurements and you should say so if asked how reliable a number is.
 
 You help technicians understand a specific result: what the probability
 and confidence mean, what a flagged morphology finding or condition
 (sickle cell, iron deficiency, malaria-related, thalassemia, pernicious,
-megaloblastic, aplastic, haemolytic) generally indicates, and what a
+megaloblastic, aplastic, haemolytic) generally indicates and what a
 cell's position on the severity gradient means. When report data is
 given to you as context, ground your answer in those exact numbers and
 findings, do not invent findings that aren't in the data, and say so
@@ -65,7 +55,7 @@ them on a phone at a lab bench, not a long clinical essay."""
 
 MAX_HISTORY_MESSAGES = 10
 
-# Rate limit -- tiered by subscription_tier (the same field
+# Rate limit is tiered by subscription_tier (the same field
 # services/subscription.py writes to profiles after a successful
 # Paystack payment). Free users get a modest daily allowance to try
 # AideBot; paying users get the higher limit. Falls back to the "free"
@@ -75,12 +65,12 @@ MAX_HISTORY_MESSAGES = 10
 # granting unlimited access.
 CHAT_MESSAGE_LIMITS: dict[str, int] = {
     "free": 5,
-    "monthly": 50,
+    "monthly": 25,
     "annual": 50,
 }
 DEFAULT_CHAT_LIMIT: int = CHAT_MESSAGE_LIMITS["free"]
 
-# Shared, module-level httpx client for calls to Gemini -- reused across
+# Shared, module-level httpx client for calls to Gemini, reused across
 # every request instead of opening a fresh connection (and re-doing the
 # TLS handshake) on every single chat message. httpx.AsyncClient is
 # safe to share across concurrent requests within one process.
@@ -90,27 +80,24 @@ _gemini_client: httpx.AsyncClient = httpx.AsyncClient(timeout=30.0)
 # right after a payment (see services/subscription.py) but was otherwise
 # being re-fetched from profiles on every single chat message. A 5-minute
 # TTL means a tier upgrade takes up to 5 minutes to be reflected in the
-# chat rate limit -- an acceptable staleness window for a daily message
+# chat rate limit is an acceptable staleness window for a daily message
 # cap, in exchange for skipping a Supabase round trip on most requests.
 _subscription_tier_cache: TTLCache = TTLCache(maxsize=10_000, ttl=300)
 
 
 class ChatMessage(BaseModel):
-    role: str  # 'user' | 'model'
+    role: str  # 'user' or 'model'
     text: str
 
 
 class ChatRequest(BaseModel):
     history: list[ChatMessage]
-    # Replaces the old freeform report_context dict. The client sends
-    # only the ID of the prediction currently being discussed; the
-    # backend fetches and verifies ownership before using it as grounding.
     prediction_id: str | None = None
 
 
 @dataclass
 class ReportContext:
-    """Grounding data handed to Gemini for one chat turn -- the subset
+    """Grounding data handed to Gemini for one chat turn, the subset
     of a prediction_records row relevant to answering a question about
     it, not the full audit row (no need to hand image hashes etc. to
     Gemini)."""
@@ -142,7 +129,7 @@ def _fetch_verified_report_context(
     Fetches a prediction_records row and confirms it belongs to the
     requesting technician before returning it as chat context. Raises
     404 if the prediction doesn't exist, 403 if it belongs to someone
-    else -- both are treated as client errors, not server errors, since
+    else both are treated as client errors not server errors, since
     either means the request itself is invalid for this user.
     """
     lookup = (
@@ -161,7 +148,7 @@ def _fetch_verified_report_context(
 
     # lookup.data is typed as list[JSON], and JSON is a broad union
     # (str | int | float | bool | Sequence[JSON] | Mapping[str, JSON] |
-    # None) -- Supabase's Python client returns plain dict rows at
+    # None). Supabase's Python client returns plain dict rows at
     # runtime, but the type checker has no way to know that, so this
     # cast narrows it explicitly rather than fighting the checker with
     # a bare annotation (which doesn't narrow, only declares).
@@ -190,7 +177,7 @@ def _get_subscription_tier(supabase_client: Client, user_id: str) -> str:
     the same column services/subscription.py's _update_subscription_tier
     writes to after a verified Paystack payment. Defaults to "free" if
     the profile row is missing or the column is unset, rather than
-    raising -- a lookup failure here should degrade to the free tier's
+    raising a lookup failure here should degrade to the free tier's
     limit, not block the chat endpoint entirely.
 
     Cached per user_id for _subscription_tier_cache's TTL, since this
@@ -221,7 +208,7 @@ def _check_and_record_rate_limit(supabase_client: Client, user_id: str) -> None:
     Counts today's aidebot_messages rows for this user (UTC day) and
     raises 429 if at or over that user's tier-specific daily limit. Same
     "source of truth is the table itself, not a local counter" approach
-    scanStorage.js uses for daily scan limits -- correct across
+    scanStorage.js uses for daily scan limits  correct across
     devices/restarts.
     """
     start_of_today: str = datetime.now(timezone.utc).replace(
@@ -313,16 +300,16 @@ async def aidebot_chat(
         contents = [context_message] + contents
 
         request_body: dict = {
-    "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
-    "contents": contents,
-    "generationConfig": {
-        "temperature": 0.4,
-        "maxOutputTokens": 512,
-        "thinkingConfig": {
-            "thinkingLevel": "LOW"
+            "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
+            "contents": contents,
+            "generationConfig": {
+            "temperature": 0.4,
+            "maxOutputTokens": 512,
+            "thinkingConfig": {
+                "thinkingLevel": "LOW"  # Reduce the thinking of the model and also save tokens
+            },
         },
-    },
-}
+    }
 
     try:
         response = await _gemini_client.post(GEMINI_URL, json=request_body)

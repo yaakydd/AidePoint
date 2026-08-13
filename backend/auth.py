@@ -47,7 +47,7 @@ async def verify_supabase_token(request: Request) -> dict:
                 f"{SUPABASE_URL}/auth/v1/user",
                 headers={
                     "Authorization": f"Bearer {token}",
-                    "apikey":        SUPABASE_ANON_KEY,
+                    "apikey": SUPABASE_ANON_KEY,
                 },
             )
     except httpx.RequestError as exc:

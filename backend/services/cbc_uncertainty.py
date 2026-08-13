@@ -8,7 +8,7 @@ Presenting these as "Hemoglobin = 12.5 g/dL" implies lab-grade precision
 the model does not have, which is a genuine patient safety issue, not
 just a display choice.
 
-This module does not discard the regression outputs -- it re-expresses
+This module does not discard the regression outputs, it re-expresses
 them as directional patterns with an explicit reliability tier, and
 suppresses point estimates for fields where the error exceeds a
 clinically meaningful fraction of the reference range.
@@ -16,20 +16,6 @@ clinically meaningful fraction of the reference range.
 
 from dataclasses import dataclass
 
-# Reference ranges are approximate adult ranges for display purposes only.
-# Do not use this dict for anything clinical -- it exists purely to compute
-# whether a field's measured MAE is small enough, relative to the range,
-# to be worth showing a directional estimate for.
-#
-# FIXED: trimmed from the original 8 fields to the 6 the model actually
-# outputs (WBC/platelets removed -- no visual grounding in a red-cell-only
-# photo, same reasoning as model.py's CBC_KEYS). Key casing also corrected
-# to match model.py's CBC_KEYS exactly (uppercase field names like
-# "HAEMOGLOBIN", not "hemoglobin") -- the previous lowercase keys here
-# meant every field passed in from a real prediction silently failed the
-# `field_name not in CBC_REFERENCE_RANGES` check in build_cbc_pattern_summary
-# below, so the CBC pattern summary came back empty on every real request,
-# with no error raised anywhere.
 CBC_REFERENCE_RANGES = {
     "RBC": (4.2, 5.9),            # x10^12/L
     "HAEMOGLOBIN": (12.0, 16.0),  # g/dL
@@ -40,7 +26,7 @@ CBC_REFERENCE_RANGES = {
 }
 
 # If a field's MAE exceeds this fraction of its reference range width,
-# a directional estimate is not trustworthy enough to show at all --
+# a directional estimate is not trustworthy enough to show at all 
 # the model's typical error is comparable to or larger than the entire
 # normal range, so "low/normal/high" would be close to a coin flip.
 MAE_TO_RANGE_SUPPRESSION_THRESHOLD = 0.60
@@ -54,8 +40,8 @@ MAE_TO_RANGE_MODERATE_THRESHOLD = 0.35
 @dataclass
 class CbcFieldPattern:
     field_name: str
-    direction: str          # 'reduced' | 'increased' | 'within_typical_range' | 'not_estimable'
-    confidence: str         # 'moderate' | 'low' | 'not_estimable'
+    direction: str          # 'reduced', 'increased', 'within_typical_range', 'not_estimable'
+    confidence: str         # 'moderate', 'low', 'not_estimable'
     display_text: str
 
 
@@ -79,12 +65,12 @@ def build_cbc_pattern_summary(
     """
     raw_predicted_values: the model's regression output per field, keyed
         exactly as model.py's CBC_KEYS (e.g. "HAEMOGLOBIN", not
-        "hemoglobin") -- e.g. {"HAEMOGLOBIN": 10.8, "MCV": 92.0, ...}
+        "hemoglobin") e.g. {"HAEMOGLOBIN": 10.8, "MCV": 92.0, ...}
     eval_report_mae: measured MAE per field from eval_report.json's
         "cbc_mae_per_field" key, using the same casing.
 
     Returns a pattern summary per field. Fields classified 'not_estimable'
-    should not be rendered with a direction at all in the UI -- only the
+    should not be rendered with a direction at all in the UI, only the
     fact that the field could not be reliably estimated from this image.
     """
     pattern_summary = {}
@@ -112,7 +98,7 @@ def build_cbc_pattern_summary(
                 confidence="not_estimable",
                 display_text=(
                     f"{field_name} pattern could not be reliably estimated "
-                    f"from image analysis -- confirm with laboratory CBC testing"
+                    f"from image analysis, confirm with laboratory CBC testing"
                 ),
             )
             continue

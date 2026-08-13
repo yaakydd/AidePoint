@@ -27,9 +27,9 @@ logging.basicConfig(
 log = logging.getLogger("aidepoint")
 
 #  Config from environment variables 
-ONNX_MODEL_PATH    = os.getenv("ONNX_MODEL_PATH", os.path.join(os.path.dirname(__file__), "models", "AidePoint.onnx"))
+ONNX_MODEL_PATH = os.getenv("ONNX_MODEL_PATH", os.path.join(os.path.dirname(__file__), "models", "AidePoint.onnx"))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")# your project URL
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")  # service role — payments write
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")  # service role, payments write
 
 EVAL_REPORT_PATH = os.getenv(
     "EVAL_REPORT_PATH",
@@ -44,14 +44,14 @@ _model: AidePointONNX | None = None
 # eval_report.json model.py reads. model.py only exposes the *derived*
 # confidence labels (CBC_CONFIDENCE_LABELS), not this raw MAE dict, and
 # build_cbc_pattern_summary needs the raw numbers to compute its own
-# per-field reliability tier -- so this is read independently here rather
+# per-field reliability tier , so this is read independently here rather
 # than importing a private value out of model.py.
 _cbc_mean_absolute_errors: dict[str, float] = {}
 
 # Supabase client for writes that need to bypass row-level security
 # (prediction record inserts, subscription tier updates). Auth
 # verification still goes through the raw httpx call against
-# /auth/v1/user below -- that only needs the user's own token, not a
+# /auth/v1/user below , that only needs the user's own token, not a
 # service-role client, so it's left as-is rather than routed through this
 # client for no reason.
 _supabase_client: Client | None = None
@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
         _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     else:
         log.error(
-            "SUPABASE_URL or SUPABASE_SERVICE_KEY not set -- prediction "
+            "SUPABASE_URL or SUPABASE_SERVICE_KEY not set , prediction "
             "records will fail to persist."
         )
 
@@ -99,19 +99,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="AidePoint API",
+    title="AidePoint",
     version="1.1.0",
-    description="AI-powered anemia risk detection from RBC microscope images",
+    description="AI-powered anemia risk detection from Red Blood Cell microscopic images",
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    # Defaults to "*" only because no production domain has been set yet
-    # -- once the app has a real deployed frontend URL, set
-    # ALLOWED_ORIGINS as a comma-separated env var (e.g.
-    # "https://aidepoint.app,https://staging.aidepoint.app") rather than
-    # leaving this open to any origin on a service handling patient data.
     allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],

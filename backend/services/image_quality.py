@@ -11,7 +11,7 @@ this check should never reach the model in the first place.
 
 The frontend should still run a cheap pre-check (blur/brightness) before
 upload, purely to save the technician a round trip on an obviously bad
-shot. This module is the authoritative check -- it is what actually
+shot. This module is the authoritative check, it is what actually
 gets logged in the audit trail and what actually gates whether
 inference runs.
 """
@@ -23,8 +23,7 @@ import numpy as np
 
 # Below this Laplacian variance, the image is considered too blurry for
 # reliable cell boundary detection. Calibrated against a batch of known
-# in-focus vs out-of-focus AneRBC-II samples -- revisit if you change
-# camera source or magnification.
+# in-focus vs out-of-focus AneRBC-II samples.
 BLUR_VARIANCE_MINIMUM = 100.0
 
 # Mean pixel intensity (0-255) outside this range indicates the photo is
@@ -43,12 +42,12 @@ MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS = 15
 
 @dataclass
 class ImageQualityResult:
-    quality_score: str          # 'excellent' | 'good' | 'poor'
+    quality_score: str          # 'excellent', 'good', 'poor'
     blur_score: float
     brightness_score: float
     contrast_score: float
     cells_detected: int
-    staining_quality: str       # 'normal' | 'over_stained' | 'under_stained' | 'uneven'
+    staining_quality: str       # 'normal', 'over_stained', 'under_stained', 'uneven'
     failure_reasons: list[str]
 
 

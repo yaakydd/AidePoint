@@ -1,22 +1,3 @@
-# image_crop.py
-# Fixes the actual domain-gap problem, not just detecting it. Training data
-# is close, properly-framed crops of stained smear (no dark corners). Real
-# users are mostly holding a phone up to a microscope eyepiece, which gives
-# a bright circular field of view surrounded by black -- completely
-# different framing, even when the actual smear/stain underneath is fine.
-#
-# This crops down to the biggest square that fits inside that bright
-# circle, so the image handed to the model actually resembles training
-# data. If an image is ALREADY a close crop with no dark corners (like
-# properly-cropped training-style images), it's left untouched -- this only
-# fires when it detects the eyepiece-vignette pattern.
-#
-# CHANGED: now returns (cropped_image, was_cropped) instead of just the
-# image. The boolean lets the app's transparency trail (see main.py) skip
-# showing a "before/after crop" comparison screen when nothing actually
-# changed, rather than showing an identical before/after that looks like
-# a bug.
-
 import numpy as np
 import cv2
 
@@ -25,7 +6,7 @@ def auto_crop_microscope_field(image_bgr: np.ndarray) -> tuple[np.ndarray, bool]
     image_height, image_width = image_bgr.shape[:2]
     grayscale_image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
 
-    # Same corner-vs-center brightness check as quality_checks.py -- reuse
+    # Same corner-vs-center brightness check as quality_checks.py, reuse
     # it here to decide whether cropping is even needed.
     edge_thickness = min(image_height, image_width) // 8
     corner_pixels = np.concatenate([
@@ -42,13 +23,13 @@ def auto_crop_microscope_field(image_bgr: np.ndarray) -> tuple[np.ndarray, bool]
     vignette_ratio = float(corner_pixels.mean()) / (float(center_pixels.mean()) + 1e-6)
 
     if vignette_ratio > 0.5:
-        # Corners aren't meaningfully darker than the center -- this is
+        # Corners aren't meaningfully darker than the center. This is
         # already a close, properly-framed crop, nothing to do here.
         return image_bgr, False
 
     # Otsu picks the threshold automatically instead of a fixed brightness
     # cutoff, since the field can be pink, blue, grey, or overexposed
-    # depending on the stain and lighting -- a fixed number would only
+    # depending on the stain and lighting, a fixed number would only
     # work for some of these.
     _, bright_field_mask = cv2.threshold(
         grayscale_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
@@ -63,13 +44,13 @@ def auto_crop_microscope_field(image_bgr: np.ndarray) -> tuple[np.ndarray, bool]
     (field_center_x, field_center_y), field_radius = cv2.minEnclosingCircle(largest_contour)
 
     # If the detected "bright circle" is tiny relative to the frame, this
-    # probably isn't a real eyepiece field of view -- bail rather than
+    # probably isn't a real eyepiece field of view, bail rather than
     # crop down to something meaningless.
     if field_radius < min(image_height, image_width) * 0.15:
         return image_bgr, False
 
-    # Inscribed square inside the circle -- side length = radius * sqrt(2)
-    # -- so the crop never includes any of the dark surround.
+    # Inscribed square inside the circle and side length = radius * sqrt(2)
+    # so the crop never includes any of the dark surround.
     half_square_side = field_radius / 1.4142
     crop_x0 = int(max(field_center_x - half_square_side, 0))
     crop_y0 = int(max(field_center_y - half_square_side, 0))

@@ -2,13 +2,13 @@
 Turns raw morphology probabilities and cell overlay statistics into a
 human-readable explanation of why the model reached its conclusion.
 
-This is deliberately NOT a saliency map -- it does not touch model
+This is deliberately NOT a saliency map, it does not touch model
 gradients. It is a rule-based translation layer over outputs the model
 already produces (morphology_probabilities, cell_overlay severity
 scores). Grad-CAM, if you build it, is a separate and complementary
 explanation method that shows WHERE the model looked; this module
 explains WHAT it found there in clinical language. Keep both if you
-have time -- they answer different questions.
+have time, they answer different questions.
 """
 
 from dataclasses import dataclass
@@ -18,15 +18,6 @@ from typing import Any
 # indicator worth surfacing to the technician, rather than background noise.
 MORPHOLOGY_REPORTING_THRESHOLD = 0.5
 
-# Maps internal morphology flag names to the clinical phrasing used in
-# the explanation. Keep this in sync with model.py's MORPHOLOGY_KEYS --
-# elliptocytosis added after a systematic scan of training reports found
-# it in 433 of 1,000 patients with zero prior vocabulary catching it.
-# teardrop_cells and burr_cells removed -- these were never real training
-# flags (model.py's MORPHOLOGY_KEYS never included them), so they could
-# never actually appear in morphology_probabilities; leaving them here
-# was dead entries, not a functional bug, but worth cleaning up so this
-# dict accurately reflects what the model can actually report.
 MORPHOLOGY_DISPLAY_NAMES: dict[str, str] = {
     "dimorphic_picture": "Dimorphic red cell population detected",
     "anisocytosis": "Increased red cell size variation detected",
@@ -58,7 +49,7 @@ class Explanation:
 def classify_confidence(anemia_probability: float, decision_threshold: float) -> str:
     """
     Confidence is a function of distance from the decision threshold, not
-    just distance from 0.5 -- a probability close to the actual decision
+    just distance from 0.5  a probability close to the actual decision
     threshold should read as lower confidence than the same distance from
     a default 0.5 would suggest.
     """
@@ -80,7 +71,7 @@ def summarize_cell_overlay(cell_overlay: list[dict[str, Any]]) -> CellOverlaySum
     FIXED: was reading cell.get("severity_score", ...), but
     get_cell_overlay() in shape_screening.py names this field "severity",
     not "severity_score". That mismatch meant every cell silently fell
-    through to the 0.0 default here, regardless of its real severity --
+    through to the 0.0 default here, regardless of its real severity 
     percent_abnormal always came out 0.0% no matter what the actual
     per-cell data showed, confirmed on a real response where cell_overlay
     reported 31/54 flagged cells but this function's output claimed 0.

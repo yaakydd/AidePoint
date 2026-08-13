@@ -2,7 +2,7 @@
 Builds and persists the permanent record for every /predict call.
 
 This exists because a model output by itself cannot answer "why did this
-patient get this result" six months later -- the model may have been
+patient get this result" six months later. The model may have been
 retrained, the threshold may have changed, the image may have been
 re-cropped differently. This module snapshots everything relevant at the
 moment of prediction so that question stays answerable.
@@ -164,7 +164,7 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
 
     if not response.data:
         raise RuntimeError(
-            "Failed to persist prediction record -- prediction was computed "
+            "Failed to persist prediction record, prediction was computed "
             "but not logged. Check Supabase connection and schema before "
             "returning a result to the client."
         )

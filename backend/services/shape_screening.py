@@ -1,5 +1,3 @@
-# shape_screening.py
-#
 # Two things live here now:
 #   1. run_shape_screening() - the original reliability check: "do enough
 #      of this image's cells look like normal round RBCs to trust a
@@ -9,12 +7,12 @@
 #      directly on top of the photo: a colored circle around every
 #      detected cell, green for normal, sliding through yellow to red the
 #      more elongated/irregular a cell's shape is. This is the actual
-#      visible proof of what the AI looked at and why -- rather than a
+#      visible proof of what the AI looked at and why , rather than a
 #      paragraph of text explaining a decision, the person watching sees
 #      it drawn on the real photo, cell by cell.
 #
 # Both functions share one contour-detection pass (detect_cell_contours)
-# rather than each re-running OpenCV independently -- same image, same
+# rather than each re-running OpenCV independently , same image, same
 # contours, no reason to compute it twice.
 #
 # Same honesty boundary as before: this does not diagnose anything.
@@ -32,20 +30,7 @@ from scipy import ndimage
 ECCENTRICITY_LIMIT = 0.55
 CIRCULARITY_FLOOR = 0.55
 FLAGGED_FRACTION_THRESHOLD = 0.25
-MINIMUM_CONTOUR_AREA = 40  # square pixels at 260x260 -- filters out noise/debris specks
-
-# FIXED: raised from 5 to 15, matching MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS
-# in image_quality.py. Confirmed on a real test image: with only 7 cells
-# detected on a low-contrast, under-stained smear, every detected
-# "cell" measured circularity 0.22-0.43 -- far below what a single real
-# RBC produces. These were not 7 real cells with unusual shape; they were
-# clumps of several overlapping cells that watershed failed to separate,
-# because low contrast weakens the distance-transform peaks the split
-# depends on. image_quality.py already independently flags this same
-# image as needing at least 15 cells for reliable analysis -- below that
-# count, detect_cell_contours' own segmentation is the unreliable part,
-# not the cells it's measuring, so reporting a confident shape verdict
-# from it is misleading rather than merely cautious.
+MINIMUM_CONTOUR_AREA = 40  # square pixels at 260x260 , filters out noise/debris specks
 MINIMUM_CELLS_FOR_SHAPE_VERDICT = 15
 
 
@@ -66,7 +51,7 @@ class ShapeMeasurement:
 class ShapeScreeningResult:
     """Reliability verdict from run_shape_screening. flagged_fraction and
     mean_eccentricity are None when cells_detected is below
-    MINIMUM_CELLS_FOR_SHAPE_VERDICT -- segmentation itself was too
+    MINIMUM_CELLS_FOR_SHAPE_VERDICT , segmentation itself was too
     unreliable to measure, not merely a shape finding."""
 
     needs_review: bool
@@ -78,7 +63,7 @@ class ShapeScreeningResult:
 
 @dataclass
 class SeverityInfo:
-    """A cell's position on the green -> yellow -> red severity gradient."""
+    """A cell's position on the green to yellow to red severity gradient."""
 
     severity: float
     color: str
@@ -112,7 +97,7 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
     """
     Threshold + watershed segmentation to split touching/overlapping
     cells. A plain Otsu threshold plus findContours treats any group of
-    touching cells as a single blob -- confirmed on a real dense sickle
+    touching cells as a single blob , confirmed on a real dense sickle
     cell test photo, which collapsed 30+ visible cells into exactly one
     contour. That made both run_shape_screening() and the overlay feature
     nearly blind on precisely the kind of dense field a real smear often
@@ -120,7 +105,7 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
 
     Watershed fixes this by treating the cell mask as a topographic
     surface (distance from the nearest edge) and "flooding" outward from
-    each local peak -- each peak becomes its own separate cell region,
+    each local peak , each peak becomes its own separate cell region,
     splitting blobs at their narrowest connecting points rather than
     merging them. This is the standard classical computer vision approach
     for touching, roughly convex shapes, used here instead of a trained
@@ -132,7 +117,7 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
         grayscale_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
     )
 
-    # Red blood cells typically stain darker than the background -- flip
+    # Red blood cells typically stain darker than the background , flip
     # the mask if the region Otsu picked as "foreground" is actually the
     # brighter one.
     if grayscale_image[cell_mask > 0].mean() > grayscale_image[cell_mask == 0].mean():
@@ -140,12 +125,12 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
 
     # Distance transform: every foreground pixel's value becomes its
     # distance to the nearest background pixel. Cell centers are local
-    # maxima of this -- the "peak" of each cell's own local topography.
+    # maxima of this , the "peak" of each cell's own local topography.
     distance_map = cv2.distanceTransform(cell_mask, cv2.DIST_L2, 5)
 
     # A pixel counts as a peak if it's the highest value in its own
     # neighborhood. neighborhood_size is tuned to roughly one typical
-    # cell's radius at this 260x260 processing size -- too small
+    # cell's radius at this 260x260 processing size , too small
     # over-splits single cells, too large under-splits close neighbors.
     neighborhood_size = (15, 15)
     is_local_peak = (
@@ -153,7 +138,7 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
     ) & (distance_map > 3)
 
     # ndimage.label always returns a 2-tuple (labeled_array, num_features)
-    # at runtime -- confirmed by scipy's own docs and by this code running
+    # at runtime , confirmed by scipy's own docs and by this code running
     # correctly against real test images. The type: ignore here is for a
     # known scipy-stubs overload-resolution gap (Pylance picks an overload
     # that returns a bare int and then flags this unpacking as invalid),
@@ -171,7 +156,7 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
     cv2.watershed(color_image_for_watershed, cell_markers)
 
     # Rebuild per-region contours from the watershed labels rather than
-    # re-running findContours on the original merged mask -- this is what
+    # re-running findContours on the original merged mask , this is what
     # actually gets the split cells out as separate shapes.
     all_contours: list[np.ndarray] = []
     for region_label in np.unique(cell_markers):
@@ -179,7 +164,7 @@ def detect_cell_contours(image_bgr: np.ndarray) -> list[np.ndarray]:
             continue
         # np.uint8(...) * 255 produces a numpy scalar-typed array that
         # cv2's type stubs don't recognize as Mat-compatible, even though
-        # OpenCV accepts it fine at runtime -- np.ascontiguousarray with
+        # OpenCV accepts it fine at runtime , np.ascontiguousarray with
         # an explicit dtype gives the stub checker a concrete ndarray
         # type it can actually match against findContours' overloads.
         single_region_mask = np.ascontiguousarray(
@@ -231,13 +216,13 @@ def run_shape_screening(image_bgr: np.ndarray) -> ShapeScreeningResult:
 
     FIXED: the "too few cells" bar is now MINIMUM_CELLS_FOR_SHAPE_VERDICT
     (15), not 5. Below 15, detect_cell_contours' watershed segmentation
-    itself becomes unreliable on real low-contrast smears -- it returns
+    itself becomes unreliable on real low-contrast smears , it returns
     a handful of merged multi-cell blobs rather than individual cells,
     and those blobs measure as low-circularity/high-eccentricity purely
     because they're clumps, not because the underlying cells are
     abnormally shaped. Below this bar, the function reports that shape
-    could not be assessed, rather than asserting a specific -- and
-    likely wrong -- shape verdict built on broken segmentation.
+    could not be assessed, rather than asserting a specific , and
+    likely wrong , shape verdict built on broken segmentation.
     """
     contours = detect_cell_contours(image_bgr)
     cell_measurements = [
@@ -254,26 +239,11 @@ def run_shape_screening(image_bgr: np.ndarray) -> ShapeScreeningResult:
             reason=(
                 f"only {len(cell_measurements)} cells could be separated for "
                 f"shape assessment (need at least {MINIMUM_CELLS_FOR_SHAPE_VERDICT}) "
-                f"-- likely due to low contrast or overlapping cells preventing "
+                f", likely due to low contrast or overlapping cells preventing "
                 f"reliable segmentation, not a specific shape finding"
             ),
         )
 
-    # FIXED: changed from OR to AND. Confirmed against a real 54-cell test
-    # image (a genuinely poor-quality, under-stained smear, not a
-    # segmentation failure like the earlier 7-cell case): the OR version
-    # flagged 49/54 cells (90.7%) as abnormally shaped, but ~40 of those
-    # had HIGH circularity (0.6-0.9, i.e. visually round) alongside high
-    # eccentricity -- two metrics that should agree on a genuinely
-    # elongated cell disagreeing instead, which is the signature of
-    # boundary noise from low contrast, not real morphology. Eccentricity
-    # and circularity are correlated for a real cell; when only one of
-    # two correlated measurements crosses its threshold, that is more
-    # likely measurement noise than a genuine finding. Requiring both to
-    # agree drops the flagged fraction on this same image to 8/54
-    # (14.8%), which correctly falls under FLAGGED_FRACTION_THRESHOLD --
-    # a poor-quality but not-actually-pathological image no longer
-    # triggers needs_review purely from segmentation noise.
     flagged_cells = [
         measurement for measurement in cell_measurements
         if measurement.eccentricity > ECCENTRICITY_LIMIT
@@ -303,7 +273,7 @@ def compute_severity_color(eccentricity: float, circularity: float) -> SeverityI
     gradient, rather than a binary flagged/not-flagged split. A cell
     that's mildly irregular (motion blur, slight overlap) reads visually
     different from one that's dramatically non-round (a real sickle
-    shape) -- the gradient makes that difference legible at a glance
+    shape) , the gradient makes that difference legible at a glance
     instead of collapsing it to two buckets.
 
     severity_score (0.0-1.0) is the underlying number the color is
@@ -336,7 +306,7 @@ def compute_severity_color(eccentricity: float, circularity: float) -> SeverityI
 def get_cell_overlay(image_bgr: np.ndarray) -> CellOverlayResult:
     """
     Returns per-cell shape data for drawing a live annotation directly on
-    the photo -- the headline feature. Coordinates and sizes are
+    the photo , the headline feature. Coordinates and sizes are
     normalized to 0-1 (fraction of image width/height), NOT raw pixels,
     so the app can scale the overlay correctly regardless of what size
     the photo is actually displayed at on screen, without needing to know

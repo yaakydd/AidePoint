@@ -12,11 +12,6 @@ from services.subscription import _update_subscription_tier
 log = logging.getLogger("aidepoint")
 router = APIRouter()
 
-# Payments (Paystack) 
-# Ghana-only, GHS-only app, needs recurring billing — Paystack fits better
-# here than Flutterwave for this specific combination. Decision already
-# made before this code was written; not re-litigating it here.
-
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_BASE_URL   = "https://api.paystack.co"
 
@@ -30,9 +25,8 @@ PLAN_PRICES_GHS = {
     "annual":  300.00,
 }
 
-
 class InitializePaymentRequest(BaseModel):
-    plan_id: str  # "monthly" or "annual" — validated against PLAN_PRICES_GHS below
+    plan_id: str  # "monthly" or "annual"  validated against PLAN_PRICES_GHS below
 
 
 @router.post("/payments/initialize")
@@ -99,7 +93,7 @@ async def initialize_payment(
 @router.post("/payments/webhook")
 async def paystack_webhook(request: Request):
     """
-    Paystack calls this directly — no user is logged in on this request,
+    Paystack calls this directly, no user is logged in on this request,
     so there's no Supabase JWT to check. Instead, trust is established by
     verifying the request itself came from Paystack, via an HMAC-SHA512
     signature over the raw request body using PAYSTACK_SECRET_KEY.
@@ -139,13 +133,13 @@ async def paystack_webhook(request: Request):
             await _update_subscription_tier(user_id, plan_id)
             log.info("Subscription updated via webhook: user=%s plan=%s", user_id, plan_id)
         else:
-            # Not fatal — Paystack still gets its 200, just logged for
+            # Not fatal, Paystack still gets its 200, just logged for
             # investigation. Returning an error here would make Paystack
             # retry a webhook that will never have the missing metadata.
             log.error("charge.success webhook missing user_id/plan_id in metadata: %s", event)
 
     # Paystack expects a 200 regardless of what the event was, as
-    # acknowledgement it was received — anything else triggers retries.
+    # acknowledgement it was received, anything else triggers retries.
     return {"status": "received"}
 
 
@@ -158,7 +152,7 @@ async def verify_payment(
     Lets the app proactively confirm payment right after the browser
     redirects back, instead of waiting on webhook delivery (which can lag
     by seconds to minutes). Applies the same subscription update the
-    webhook would — both paths are allowed to independently grant access,
+    webhook would, both paths are allowed to independently grant access,
     since either one alone is sufficient proof of a successful charge.
     """
     if not PAYSTACK_SECRET_KEY:
@@ -183,7 +177,7 @@ async def verify_payment(
     charge = data["data"]
     metadata = charge.get("metadata", {})
 
-    # Confirms the payment belongs to the person asking about it — without
+    # Confirms the payment belongs to the person asking about it, without
     # this, one logged-in user could probe another user's reference and
     # have it silently applied to themselves.
     if metadata.get("user_id") != user.get("id"):
