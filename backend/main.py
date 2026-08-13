@@ -15,7 +15,7 @@ from supabase import create_client, Client
 from services.model import AidePointONNX
 from routers.health import router as health_router
 from routers.predict import router as predict_router
-from routers.payments import router as payments_router
+#from routers.payments import router as payments_router
 from routers.aidebot import router as aidebot_router
 
 
@@ -114,7 +114,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(predict_router)
-app.include_router(payments_router)
+# app.include_router(payments_router)
 app.include_router(aidebot_router)
 
 
