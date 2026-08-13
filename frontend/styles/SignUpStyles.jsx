@@ -1,13 +1,12 @@
 // styles/SignUpStyles.js
 //
-// FIXED: removed dead styles from the original file -- ssoDivider/line/
-// ssoText/ssoRow/ssoButton/ssoBtnLabel (no SSO buttons anywhere in this
-// app), logoContainer/logoCircle/logoText (unused, SignUp never renders
-// a logo the way SignIn does), footerLegal (never rendered), and the
-// generic `error` style (superseded by fieldError, used consistently
-// with SignInStyles.js's naming). Every remaining style is referenced
-// by SignUp.js. All values now pull from theme.js instead of hardcoded
-// hex/px, per project convention.
+// Restyled after the Chime reference: top bar with close + "Log in",
+// logo + wordmark row, step icons connected by a line with labels
+// underneath, and a `stepBody` wrapper with `flexGrow: 1` +
+// `justifyContent: 'space-between'` so the form content and the Next
+// button spread out to fill the screen instead of clustering at the
+// top on taller devices. Every style here is referenced by SignUp.js;
+// values pull from theme.js per project convention.
 
 import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../assets/theme';
@@ -24,24 +23,62 @@ export const signupStyle = StyleSheet.create({
     paddingBottom: SPACING['3xl'],
   },
 
-  // ── Step header: close/back button + progress dots ──
-  stepHeader: {
+  // ── Top bar: close/back + Log in ──
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    minHeight: scale(28),
   },
 
-// ── Step icons (replace progress dots) ──
+  topBarLogin: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
+    color: COLORS.primary,
+  },
+
+  // ── Logo + wordmark ──
+  // ── Logo + wordmark ──
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,        // was 2xl
+  },
+
+  logoCircle: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  brandText: {
+    fontSize: FONTS.xl,
+    fontWeight: FONTS.bold,
+    color: COLORS.textPrimary,
+  },
+
+  // ── Step icons connected by a line, with labels underneath ──
+// ── Step icons connected by a line, with labels underneath ──
   progressRow: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    alignItems: 'flex-start',
+    marginTop: SPACING.xl,        // was 2xl
+    paddingHorizontal: SPACING.xs,
+  },
+
+  progressItem: {
+    alignItems: 'center',
+    width: scale(72),
   },
 
   stepIconCircle: {
-    width: scale(34),
-    height: scale(34),
+    width: scale(36),
+    height: scale(36),
     borderRadius: RADIUS.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -56,8 +93,44 @@ export const signupStyle = StyleSheet.create({
   },
 
   stepIconCircleDone: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.success,
+    borderColor: COLORS.success,
+  },
+
+  stepIconLabel: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
+
+  stepIconLabelActive: {
+    color: COLORS.textPrimary,
+    fontWeight: FONTS.semibold,
+  },
+
+  progressLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: COLORS.border,
+    marginTop: scale(18), // vertically centers the line on the icon circles
+    marginHorizontal: -SPACING.xs,
+  },
+
+  progressLineDone: {
+    backgroundColor: COLORS.success,
+  },
+
+  // ── Step body wrapper: spreads form + button to fill remaining
+  // screen height on taller devices instead of everything clustering
+  // near the top. scrollContent's flexGrow:1 makes this effective. ──
+// ── Step body wrapper ──
+  stepBody: {
+    flexGrow: 1,
+    // removed justifyContent: 'space-between' — that was the main
+    // culprit, forcing the button all the way to the bottom and
+    // stretching everything to fill leftover height on taller screens
+    marginTop: SPACING.lg,        // was 2xl
   },
 
   // ── Privacy policy checkbox (step 3) ──
@@ -97,6 +170,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   // ── Step title/subtitle ──
+// ── Step title/subtitle ──
   stepTitle: {
     fontSize: FONTS['2xl'],
     fontWeight: FONTS.bold,
@@ -107,17 +181,18 @@ export const signupStyle = StyleSheet.create({
   stepSubtitle: {
     fontSize: FONTS.sm,
     color: COLORS.textMuted,
-    marginBottom: SPACING['2xl'],
+    marginBottom: SPACING.lg,     // was 2xl
     lineHeight: FONTS.sm * FONTS.normal,
   },
 
   // ── Form ──
+// ── Form ──
   label: {
     fontSize: FONTS.sm,
     fontWeight: FONTS.semibold,
     color: COLORS.textSecondary,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.sm,
+    marginTop: SPACING.md,        // was lg
+    marginBottom: SPACING.xs,     // was sm
   },
 
   inputWrapper: {
@@ -206,6 +281,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   // ── Next / submit button ──
+// ── Next / submit button ──
   nextBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -213,7 +289,7 @@ export const signupStyle = StyleSheet.create({
     backgroundColor: COLORS.primary,
     height: scale(56),
     borderRadius: RADIUS.full,
-    marginTop: SPACING['2xl'],
+    marginTop: SPACING.xl,        // was 2xl
     ...SHADOWS.md,
   },
 
@@ -258,7 +334,7 @@ export const signupStyle = StyleSheet.create({
     backgroundColor: COLORS.dangerBg,
     padding: SPACING.md,
     borderRadius: RADIUS.md,
-    marginBottom: SPACING.md,
+    marginTop: SPACING.lg,
   },
 
   errorText: {

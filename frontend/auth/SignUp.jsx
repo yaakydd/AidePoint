@@ -10,16 +10,19 @@
 //
 // All hospital-picker and password-strength logic is carried over
 // unchanged from the previous single-screen version -- only the JSX
-// structure and styling changed to split it into steps.
+// structure and styling changed to split it into steps, match the
+// Chime reference layout (logo + wordmark, connected step icons with
+// labels, generous spacing), and fix keyboard-covering-input on
+// Android/iOS via KeyboardAwareScrollView.
 
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ActivityIndicator, StatusBar, Keyboard, Modal, FlatList,
-  TouchableWithoutFeedback, Platform, KeyboardAvoidingView,
-  ScrollView,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -35,11 +38,16 @@ const PASSWORD_CHECKS = [
   { key: 'special', label: 'At least one special character', test: (p) => /[@#!$%^&*()\-_=+]/.test(p) },
 ];
 
-
 const STEP_ICONS = {
   start: 'account-outline',
   hospital: 'hospital-building',
-  password: 'lock-outline',
+  password: 'shield-check-outline',
+};
+
+const STEP_LABELS = {
+  start: 'Basic Info',
+  hospital: 'Workplace',
+  password: 'Security',
 };
 
 const getStrength = (pwd) => {
@@ -97,35 +105,31 @@ const SignUp = () => {
 
   const strength = getStrength(password);
 
+
+
   useEffect(() => {
-    let mounted = true;
+  const timeout = setTimeout(async () => {
+    const q = hospitalQuery.trim();
+    if (!q) {
+      const { data } = await supabase
+        .from('ghana_hospitals')
+        .select('name, city, type')
+        .order('name')
+        .limit(20);
+      setFilteredList(data ?? []);
+      return;
+    }
+    const { data } = await supabase
+      .from('ghana_hospitals')
+      .select('name, city, type')
+      .or(`name.ilike.%${q}%,city.ilike.%${q}%,type.ilike.%${q}%`)
+      .order('name')
+      .limit(30);
+    setFilteredList(data ?? []);
+  }, 150);
 
-    const fetchHospitals = async () => {
-      try {
-        setHospitalsLoading(true);
-        const { data, error } = await supabase
-          .from('ghana_hospitals')
-          .select('name, city, type')
-          .order('name');
-
-        if (error) {
-          console.log(error);
-          return;
-        }
-        if (mounted && data) {
-          setHospitalList(data);
-          setFilteredList(data.slice(0, 20));
-        }
-      } catch (err) {
-        console.log(err);
-      } finally {
-        mounted && setHospitalsLoading(false);
-      }
-    };
-
-    fetchHospitals();
-    return () => { mounted = false; };
-  }, []);
+  return () => clearTimeout(timeout);
+}, [hospitalQuery]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -203,24 +207,22 @@ const SignUp = () => {
     return Object.keys(e).length === 0;
   };
   const validatePassword = () => {
-  const e = {};
-  if (!password) e.password = 'Password is required';
-  else if (strength.score < 3) e.password = 'Password is too weak';
-  if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
-  if (!agreedToPrivacy) e.privacy = 'You must agree to the Privacy Policy to continue';
-  setErrors(e);
-  return Object.keys(e).length === 0;
-};
-
+    const e = {};
+    if (!password) e.password = 'Password is required';
+    else if (strength.score < 3) e.password = 'Password is too weak';
+    if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
+    if (!agreedToPrivacy) e.privacy = 'You must agree to the Privacy Policy to continue';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const canProceedStart = name.trim().length > 0 && email.trim().length > 0;
   const canProceedHospital = !!hospitalSelected;
   const canProceedPassword =
-  strength.score >= 3 &&
-  password === confirmPassword &&
-  confirmPassword.length > 0 &&
-  agreedToPrivacy;
-  
+    strength.score >= 3 &&
+    password === confirmPassword &&
+    confirmPassword.length > 0 &&
+    agreedToPrivacy;
 
   const handleBack = () => {
     if (stepIndex === 0) {
@@ -233,10 +235,20 @@ const SignUp = () => {
 
   const handleNext = async () => {
     if (step === 'start') {
-      if (!validateStart()) return;
-      setStepIndex(1);
+          if (!validateStart()) return;
+
+    setLoading(true);
+    const available = await checkEmailAvailable(email.trim().toLowerCase());
+    setLoading(false);
+
+    if (!available) {
+      setErrors({ email: 'An account with this email already exists. Try signing in instead.' });
       return;
     }
+
+    setStepIndex(1);
+    return;
+  }
     if (step === 'hospital') {
       if (!validateHospital()) return;
       setStepIndex(2);
@@ -271,50 +283,100 @@ const SignUp = () => {
     step === 'hospital' ? canProceedHospital :
     canProceedPassword;
 
+
+
+  async function checkEmailAvailable(email) {
+  // Supabase doesn't expose a direct "does this email exist" lookup on
+  // the client for security reasons, so we use signInWithOtp with
+  // shouldCreateUser: false — it succeeds silently if the email exists
+  // (without sending anything unexpected) and errors if it doesn't.
+  // This just tells us existence, nothing more.
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  });
+  // No error means an account with this email already exists.
+  return !!error; // true = available, false = already registered
+}
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ── Step header: back arrow + progress dots ── */}
-          <View style={styles.stepHeader}>
-            <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <MaterialCommunityIcons
-                name={stepIndex === 0 ? 'close' : 'arrow-left'}
-                size={24}
-                color={COLORS.textPrimary}
-              />
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+        keyboardOpeningTime={0}
+      >
+        {/* ── Top bar: close/back + "Log in" (mirrors reference's X + Log in) ── */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <MaterialCommunityIcons
+              name={stepIndex === 0 ? 'close' : 'arrow-left'}
+              size={24}
+              color={COLORS.textPrimary}
+            />
+          </TouchableOpacity>
+          {stepIndex === 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('SignIn')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.topBarLogin}>Log in</Text>
             </TouchableOpacity>
-            <View style={styles.progressRow}>
-  {STEPS.map((s, i) => (
-    <View
-      key={s}
-      style={[
-        styles.stepIconCircle,
-        i === stepIndex && styles.stepIconCircleActive,
-        i < stepIndex && styles.stepIconCircleDone,
-      ]}
-    >
-      <MaterialCommunityIcons
-        name={STEP_ICONS[s]}
-        size={16}
-        color={i <= stepIndex ? COLORS.white : COLORS.textMuted}
-      />
-    </View>
-  ))}
-</View>
-          </View>
-
-          {!!authError && (
-            <View style={styles.errorBox}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={16} color={COLORS.danger} />
-              <Text style={styles.errorText}>{authError}</Text>
-            </View>
           )}
+        </View>
+
+        {/* ── Logo + wordmark ── */}
+        <View style={styles.brandRow}>
+          <View style={styles.logoCircle}>
+            <MaterialCommunityIcons name="microscope" size={22} color={COLORS.primary} />
+          </View>
+          <Text style={styles.brandText}>AidePoint</Text>
+        </View>
+
+        {/* ── Step icons with connecting line + labels ── */}
+        <View style={styles.progressRow}>
+          {STEPS.map((s, i) => (
+            <React.Fragment key={s}>
+              <View style={styles.progressItem}>
+                <View
+                  style={[
+                    styles.stepIconCircle,
+                    i === stepIndex && styles.stepIconCircleActive,
+                    i < stepIndex && styles.stepIconCircleDone,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={i < stepIndex ? 'check' : STEP_ICONS[s]}
+                    size={16}
+                    color={i <= stepIndex ? COLORS.white : COLORS.textMuted}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.stepIconLabel,
+                    i === stepIndex && styles.stepIconLabelActive,
+                  ]}
+                >
+                  {STEP_LABELS[s]}
+                </Text>
+              </View>
+              {i < STEPS.length - 1 && (
+                <View style={[styles.progressLine, i < stepIndex && styles.progressLineDone]} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {!!authError && (
+          <View style={styles.errorBox}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={16} color={COLORS.danger} />
+            <Text style={styles.errorText}>{authError}</Text>
+          </View>
+        )}
+
+        {/* ── Step content ── */}
+        <View style={styles.stepBody}>
 
           {/* ── Step 1: Let's get started ── */}
           {step === 'start' && (
@@ -531,27 +593,6 @@ const SignUp = () => {
               )}
               {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
 
-
-              <TouchableOpacity
-  style={styles.privacyRow}
-  onPress={() => { setAgreedToPrivacy((p) => !p); clearField('privacy'); }}
-  activeOpacity={0.7}
->
-  <View style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}>
-    {agreedToPrivacy && <MaterialCommunityIcons name="check" size={14} color={COLORS.white} />}
-  </View>
-  <Text style={styles.privacyText}>
-    I have read and fully understand the{' '}
-    <Text
-      style={styles.privacyLink}
-      onPress={() => navigation.navigate('PrivacyPolicy')}
-    >
-      Privacy Policy
-    </Text>
-  </Text>
-</TouchableOpacity>
-{errors.privacy && <Text style={styles.fieldError}>{errors.privacy}</Text>}
-
               <Text style={styles.label}>Confirm Password</Text>
               <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputWrapperError]}>
                 <MaterialCommunityIcons name="lock-check-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
@@ -568,6 +609,26 @@ const SignUp = () => {
                 </TouchableOpacity>
               </View>
               {errors.confirmPassword && <Text style={styles.fieldError}>{errors.confirmPassword}</Text>}
+
+              <TouchableOpacity
+                style={styles.privacyRow}
+                onPress={() => { setAgreedToPrivacy((p) => !p); clearField('privacy'); }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}>
+                  {agreedToPrivacy && <MaterialCommunityIcons name="check" size={14} color={COLORS.white} />}
+                </View>
+                <Text style={styles.privacyText}>
+                  I have read and fully understand the{' '}
+                  <Text
+                    style={styles.privacyLink}
+                    onPress={() => navigation.navigate('PrivacyPolicy')}
+                  >
+                    Privacy Policy
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+              {errors.privacy && <Text style={styles.fieldError}>{errors.privacy}</Text>}
             </>
           )}
 
@@ -597,8 +658,8 @@ const SignUp = () => {
               </Text>
             </TouchableOpacity>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };

@@ -54,7 +54,7 @@ export function AuthProvider({ children }) {
         // This works offline because the session is stored in AsyncStorage
         const { data } = await supabase.auth.getSession();
         const session = data?.session;
-        console.log("SESSION =", data.session);
+        if (__DEV__) console.log("Session present:", !!data.session);
 
         if (!alive) return;
 
@@ -178,7 +178,6 @@ export function AuthProvider({ children }) {
       storeImages: profile?.store_images     ?? false,
       avatarUrl:   profile?.avatar_url       || null,
       consentDone: profile?.consent_required === false,
-      token:       session.access_token,
     };
 
     // Save to device so it works offline next time

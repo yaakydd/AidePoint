@@ -68,7 +68,7 @@ const SignIn = () => {
         extraScrollHeight={30}
         keyboardOpeningTime={0}
       >
-        {/* Curved header / logo */}
+        {/* Curved header / log*/}
         <View style={styles.headerSection}>
           {/* PLACEHOLDER: replace this whole View with your logo Image
               once you have the asset in /assets. Example:

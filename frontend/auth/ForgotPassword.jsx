@@ -61,6 +61,8 @@ const ForgotPassword = () => {
   const [step,    setStep]    = useState(1);   // 1 | 2 | 3
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(null);
 
   // Step 1
   const [email, setEmail] = useState('');
@@ -76,6 +78,7 @@ const ForgotPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew,         setShowNew]         = useState(false);
   const [showConfirm,     setShowConfirm]     = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const strength = getStrength(newPassword);
 
@@ -138,47 +141,60 @@ const ForgotPassword = () => {
     }
   }
 
-  async function handleVerifyOTP() {
-    const token = digits.join('');
-    if (token.length < OTP_BOXES) { setError('Please enter all 6 digits.'); return; }
 
-    setLoading(true);
-    setError('');
 
-    const { error: err } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'recovery',   // ← must be 'recovery' for password reset flow
-    });
+async function handleVerifyOTP() {
+  if (lockedUntil && Date.now() < lockedUntil) {
+    setError('Too many attempts. Please wait a minute and try again.');
+    return;
+  }
+  const token = digits.join('');
+  if (token.length < OTP_BOXES) { setError('Please enter all 6 digits.'); return; }
 
-    setLoading(false);
+  setLoading(true);
+  setError('');
 
-    if (err) {
+  const { error: err } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+
+  setLoading(false);
+
+  if (err) {
+    const attempts = failedAttempts + 1;
+    setFailedAttempts(attempts);
+    if (attempts >= 5) {
+      setLockedUntil(Date.now() + 60_000); // 1 min lockout
+      setError('Too many failed attempts. Please wait a minute and try again.');
+    } else {
       setError('Invalid or expired code. Please try again.');
-      setDigits(Array(OTP_BOXES).fill(''));
-      otpRefs.current[0]?.focus();
-      return;
     }
-
-    // A recovery session now exists. Tell AuthContext to ignore auth-state
-    // events until handleSetPassword explicitly signs it back out below —
-    // otherwise the listener can treat it as a real login and briefly
-    // swap the navigator to the Home stack.
-    beginPasswordRecovery();
-    setStep(3);
+    setDigits(Array(OTP_BOXES).fill(''));
+    otpRefs.current[0]?.focus();
+    return;
   }
 
-  async function handleResend() {
-    setResending(true);
-    setResendMsg('');
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email);
-    setResending(false);
-    setResendMsg(
-      err
-        ? 'Could not resend. Please try again.'
-        : 'A new code has been sent to your email.'
-    );
-  }
+  setFailedAttempts(0);
+  beginPasswordRecovery();
+  setStep(3);
+}
+
+
+
+
+useEffect(() => {
+  if (resendCooldown <= 0) return;
+  const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+  return () => clearInterval(t);
+}, [resendCooldown]);
+
+async function handleResend() {
+  if (resendCooldown > 0) return;
+  setResending(true);
+  setResendMsg('');
+  const { error: err } = await supabase.auth.resetPasswordForEmail(email);
+  setResending(false);
+  setResendCooldown(30); // 30s before they can resend again
+  setResendMsg(err ? 'Could not resend. Please try again.' : 'A new code has been sent to your email.');
+}
 
   // STEP 3: Set new password 
 

@@ -236,6 +236,6 @@ export const HEADER = {
   avatarSize: 48,
   avatarRadius: 24,
 
-  // Gap between an icon/avatar and the title/greeting text next to it
+  // Gap between an icon/avatar and the title/greeting text next to it New Color:  rgb(51, 203, 213)
   contentGap: SPACING.sm,
 };
