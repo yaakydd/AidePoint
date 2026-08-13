@@ -11,20 +11,31 @@
 // Navigation:
 //   From AuthNavigator:  navigation.goBack() → returns to SignIn
 //   From ProfileScreen:  navigation.goBack() → returns to Profile
+//
+// IMPORTANT — password recovery session handling:
+//   verifyOtp({ type: 'recovery' }) creates a live Supabase session as a
+//   side effect (that's how updateUser() below is able to work without
+//   re-entering credentials). AuthContext's onAuthStateChange listener
+//   would otherwise treat that session like a real login and swap the
+//   whole navigator to the Home stack. beginPasswordRecovery()/
+//   endPasswordRecovery() (from AuthContext) bracket that window so the
+//   listener ignores it, and signOut() below closes the session out once
+//   the new password is set — the user has to sign in again from scratch.
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ActivityIndicator, StyleSheet, StatusBar,
-  KeyboardAvoidingView, Platform, ScrollView,
   Alert,
 } from 'react-native';
 import { SafeAreaView }  from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { supabase }  from '../utils/supabase';
 import { COLORS }    from '../assets/theme';
+import { useAuth }   from '../context/AuthContext';
 
 const OTP_BOXES = 6;
 
@@ -45,6 +56,7 @@ function getStrength(pwd) {
 
 const ForgotPassword = () => {
   const navigation = useNavigation();
+  const { beginPasswordRecovery, endPasswordRecovery } = useAuth();
 
   const [step,    setStep]    = useState(1);   // 1 | 2 | 3
   const [loading, setLoading] = useState(false);
@@ -66,6 +78,15 @@ const ForgotPassword = () => {
   const [showConfirm,     setShowConfirm]     = useState(false);
 
   const strength = getStrength(newPassword);
+
+  // Safety net: if the user backs out mid-flow (back button, etc.) before
+  // reaching the signOut() in handleSetPassword, make sure we don't leave
+  // AuthContext permanently ignoring auth-state events.
+  useEffect(() => {
+    return () => {
+      endPasswordRecovery();
+    };
+  }, []);
 
   // STEP 1: Send reset email 
 
@@ -139,6 +160,11 @@ const ForgotPassword = () => {
       return;
     }
 
+    // A recovery session now exists. Tell AuthContext to ignore auth-state
+    // events until handleSetPassword explicitly signs it back out below —
+    // otherwise the listener can treat it as a real login and briefly
+    // swap the navigator to the Home stack.
+    beginPasswordRecovery();
     setStep(3);
   }
 
@@ -184,6 +210,11 @@ const ForgotPassword = () => {
       });
     }
 
+    // Kill the recovery session so it's never mistaken for a real login,
+    // then let AuthContext resume normal hydration on future events.
+    await supabase.auth.signOut();
+    endPasswordRecovery();
+
     setLoading(false);
 
     Alert.alert(
@@ -197,232 +228,230 @@ const ForgotPassword = () => {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+        keyboardOpeningTime={0}
       >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
 
-          {/* Back button */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+        {/* Back button */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.primary} />
+        </TouchableOpacity>
 
-          {/* Step indicator */}
-          <View style={styles.stepRow}>
-            {[1, 2, 3].map(s => (
-              <View key={s} style={styles.stepItem}>
-                <View style={[styles.stepDot, step >= s && styles.stepDotActive]}>
-                  {step > s
-                    ? <MaterialCommunityIcons name="check" size={13} color="#fff" />
-                    : <Text style={[styles.stepNum, step === s && styles.stepNumActive]}>{s}</Text>
-                  }
+        {/* Step indicator */}
+        <View style={styles.stepRow}>
+          {[1, 2, 3].map(s => (
+            <View key={s} style={styles.stepItem}>
+              <View style={[styles.stepDot, step >= s && styles.stepDotActive]}>
+                {step > s
+                  ? <MaterialCommunityIcons name="check" size={13} color="#fff" />
+                  : <Text style={[styles.stepNum, step === s && styles.stepNumActive]}>{s}</Text>
+                }
+              </View>
+              {s < 3 && (
+                <View style={[styles.stepLine, step > s && styles.stepLineActive]} />
+              )}
+            </View>
+          ))}
+        </View>
+
+        {/* STEP 1: Email */}
+        {step === 1 && (
+          <>
+            <View style={styles.iconWrap}>
+              <MaterialCommunityIcons name="lock-reset" size={48} color={COLORS.primary} />
+            </View>
+            <Text style={styles.title}>Reset Password</Text>
+            <Text style={styles.subtitle}>
+              Enter the email you signed up with and we'll send you a reset code.
+            </Text>
+
+            {!!error && <Text style={styles.err}>{error}</Text>}
+
+            <Text style={styles.label}>Email Address</Text>
+            <View style={[styles.inputRow, error && styles.inputError]}>
+              <MaterialCommunityIcons name="email-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="you@example.com"
+                placeholderTextColor="#9CA3AF"
+                value={email}
+                onChangeText={t => { setEmail(t); setError(''); }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.btn, loading && styles.btnDisabled]}
+              disabled={loading}
+              onPress={handleSendOTP}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>Send Reset Code</Text>
+              }
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* ─── STEP 2: OTP ─── */}
+        {step === 2 && (
+          <>
+            <View style={styles.iconWrap}>
+              <MaterialCommunityIcons name="email-check-outline" size={48} color={COLORS.primary} />
+            </View>
+            <Text style={styles.title}>Check your email</Text>
+            <Text style={styles.subtitle}>
+              We sent a 6-digit reset code to{'\n'}
+              <Text style={styles.emailHighlight}>{email}</Text>
+            </Text>
+
+            {!!error && <Text style={styles.err}>{error}</Text>}
+            {!!resendMsg && (
+              <Text style={[styles.resendMsg, { color: resendMsg.includes('sent') ? '#10B981' : '#EF4444' }]}>
+                {resendMsg}
+              </Text>
+            )}
+
+            {/* OTP boxes */}
+            <View style={styles.otpRow}>
+              {digits.map((d, i) => (
+                <TextInput
+                  key={i}
+                  ref={r => (otpRefs.current[i] = r)}
+                  style={[
+                    styles.otpBox,
+                    d && styles.otpBoxFilled,
+                    error && styles.otpBoxError,
+                  ]}
+                  value={d}
+                  onChangeText={t => handleOtpChange(t, i)}
+                  onKeyPress={e => handleOtpKeyPress(e, i)}
+                  keyboardType="number-pad"
+                  maxLength={OTP_BOXES}
+                  textAlign="center"
+                  autoFocus={i === 0}
+                  selectTextOnFocus
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.btn, (loading || digits.join('').length < OTP_BOXES) && styles.btnDisabled]}
+              disabled={loading || digits.join('').length < OTP_BOXES}
+              onPress={handleVerifyOTP}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>Verify Code</Text>
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending}>
+              {resending
+                ? <ActivityIndicator size="small" color={COLORS.primary} />
+                : <Text style={styles.resendText}>
+                    Didn't get a code? <Text style={styles.resendLink}>Resend</Text>
+                  </Text>
+              }
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* ─── STEP 3: New password ─── */}
+        {step === 3 && (
+          <>
+            <View style={styles.iconWrap}>
+              <MaterialCommunityIcons name="lock-check-outline" size={48} color={COLORS.primary} />
+            </View>
+            <Text style={styles.title}>New Password</Text>
+            <Text style={styles.subtitle}>
+              Choose a strong password for your account.
+            </Text>
+
+            {!!error && <Text style={styles.err}>{error}</Text>}
+
+            {/* New password */}
+            <Text style={styles.label}>New Password</Text>
+            <View style={styles.inputRow}>
+              <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Enter new password"
+                placeholderTextColor="#9CA3AF"
+                value={newPassword}
+                onChangeText={t => { setNewPassword(t); setError(''); }}
+                secureTextEntry={!showNew}
+                style={styles.input}
+              />
+              <TouchableOpacity onPress={() => setShowNew(p => !p)}>
+                <Feather name={showNew ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Strength */}
+            {newPassword.length > 0 && (
+              <>
+                <View style={styles.barRow}>
+                  {[1, 2, 3, 4].map(i => (
+                    <View
+                      key={i}
+                      style={[styles.bar, { backgroundColor: i <= strength.score ? strength.color : '#E5E7EB' }]}
+                    />
+                  ))}
+                  <Text style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
                 </View>
-                {s < 3 && (
-                  <View style={[styles.stepLine, step > s && styles.stepLineActive]} />
-                )}
-              </View>
-            ))}
-          </View>
-
-          {/* STEP 1: Email */}
-          {step === 1 && (
-            <>
-              <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name="lock-reset" size={48} color={COLORS.primary} />
-              </View>
-              <Text style={styles.title}>Reset Password</Text>
-              <Text style={styles.subtitle}>
-                Enter the email you signed up with and we'll send you a reset code.
-              </Text>
-
-              {!!error && <Text style={styles.err}>{error}</Text>}
-
-              <Text style={styles.label}>Email Address</Text>
-              <View style={[styles.inputRow, error && styles.inputError]}>
-                <MaterialCommunityIcons name="email-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-                <TextInput
-                  placeholder="you@example.com"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={t => { setEmail(t); setError(''); }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  style={styles.input}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.btn, loading && styles.btnDisabled]}
-                disabled={loading}
-                onPress={handleSendOTP}
-                activeOpacity={0.85}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnText}>Send Reset Code</Text>
-                }
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* ─── STEP 2: OTP ─── */}
-          {step === 2 && (
-            <>
-              <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name="email-check-outline" size={48} color={COLORS.primary} />
-              </View>
-              <Text style={styles.title}>Check your email</Text>
-              <Text style={styles.subtitle}>
-                We sent a 6-digit reset code to{'\n'}
-                <Text style={styles.emailHighlight}>{email}</Text>
-              </Text>
-
-              {!!error && <Text style={styles.err}>{error}</Text>}
-              {!!resendMsg && (
-                <Text style={[styles.resendMsg, { color: resendMsg.includes('sent') ? '#10B981' : '#EF4444' }]}>
-                  {resendMsg}
-                </Text>
-              )}
-
-              {/* OTP boxes */}
-              <View style={styles.otpRow}>
-                {digits.map((d, i) => (
-                  <TextInput
-                    key={i}
-                    ref={r => (otpRefs.current[i] = r)}
-                    style={[
-                      styles.otpBox,
-                      d && styles.otpBoxFilled,
-                      error && styles.otpBoxError,
-                    ]}
-                    value={d}
-                    onChangeText={t => handleOtpChange(t, i)}
-                    onKeyPress={e => handleOtpKeyPress(e, i)}
-                    keyboardType="number-pad"
-                    maxLength={OTP_BOXES}
-                    textAlign="center"
-                    autoFocus={i === 0}
-                    selectTextOnFocus
-                  />
-                ))}
-              </View>
-
-              <TouchableOpacity
-                style={[styles.btn, (loading || digits.join('').length < OTP_BOXES) && styles.btnDisabled]}
-                disabled={loading || digits.join('').length < OTP_BOXES}
-                onPress={handleVerifyOTP}
-                activeOpacity={0.85}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnText}>Verify Code</Text>
-                }
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending}>
-                {resending
-                  ? <ActivityIndicator size="small" color={COLORS.primary} />
-                  : <Text style={styles.resendText}>
-                      Didn't get a code? <Text style={styles.resendLink}>Resend</Text>
+                <View style={{ gap: 3, marginBottom: 8 }}>
+                  {PASSWORD_CHECKS.map(c => (
+                    <Text
+                      key={c.key}
+                      style={[styles.check, c.test(newPassword) ? styles.checkPass : styles.checkFail]}
+                    >
+                      {c.test(newPassword) ? '✓' : '✗'}  {c.label}
                     </Text>
-                }
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Confirm */}
+            <Text style={styles.label}>Confirm New Password</Text>
+            <View style={styles.inputRow}>
+              <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Re-enter new password"
+                placeholderTextColor="#9CA3AF"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirm}
+                style={styles.input}
+              />
+              <TouchableOpacity onPress={() => setShowConfirm(p => !p)}>
+                <Feather name={showConfirm ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
               </TouchableOpacity>
-            </>
-          )}
+            </View>
 
-          {/* ─── STEP 3: New password ─── */}
-          {step === 3 && (
-            <>
-              <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name="lock-check-outline" size={48} color={COLORS.primary} />
-              </View>
-              <Text style={styles.title}>New Password</Text>
-              <Text style={styles.subtitle}>
-                Choose a strong password for your account.
-              </Text>
+            <TouchableOpacity
+              style={[styles.btn, loading && styles.btnDisabled]}
+              disabled={loading}
+              onPress={handleSetPassword}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>Update Password</Text>
+              }
+            </TouchableOpacity>
+          </>
+        )}
 
-              {!!error && <Text style={styles.err}>{error}</Text>}
-
-              {/* New password */}
-              <Text style={styles.label}>New Password</Text>
-              <View style={styles.inputRow}>
-                <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-                <TextInput
-                  placeholder="Enter new password"
-                  placeholderTextColor="#9CA3AF"
-                  value={newPassword}
-                  onChangeText={t => { setNewPassword(t); setError(''); }}
-                  secureTextEntry={!showNew}
-                  style={styles.input}
-                />
-                <TouchableOpacity onPress={() => setShowNew(p => !p)}>
-                  <Feather name={showNew ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Strength */}
-              {newPassword.length > 0 && (
-                <>
-                  <View style={styles.barRow}>
-                    {[1, 2, 3, 4].map(i => (
-                      <View
-                        key={i}
-                        style={[styles.bar, { backgroundColor: i <= strength.score ? strength.color : '#E5E7EB' }]}
-                      />
-                    ))}
-                    <Text style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
-                  </View>
-                  <View style={{ gap: 3, marginBottom: 8 }}>
-                    {PASSWORD_CHECKS.map(c => (
-                      <Text
-                        key={c.key}
-                        style={[styles.check, c.test(newPassword) ? styles.checkPass : styles.checkFail]}
-                      >
-                        {c.test(newPassword) ? '✓' : '✗'}  {c.label}
-                      </Text>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              {/* Confirm */}
-              <Text style={styles.label}>Confirm New Password</Text>
-              <View style={styles.inputRow}>
-                <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-                <TextInput
-                  placeholder="Re-enter new password"
-                  placeholderTextColor="#9CA3AF"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirm}
-                  style={styles.input}
-                />
-                <TouchableOpacity onPress={() => setShowConfirm(p => !p)}>
-                  <Feather name={showConfirm ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.btn, loading && styles.btnDisabled]}
-                disabled={loading}
-                onPress={handleSetPassword}
-                activeOpacity={0.85}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnText}>Update Password</Text>
-                }
-              </TouchableOpacity>
-            </>
-          )}
-
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

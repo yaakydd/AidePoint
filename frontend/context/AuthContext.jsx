@@ -34,6 +34,16 @@ export function AuthProvider({ children }) {
   // the initial session check finishes (avoids double-running hydrate)
   const initialized = useRef(false);
 
+  // While true, onAuthStateChange ignores every event it receives.
+  // Set by ForgotPassword.js the moment verifyOtp({ type: 'recovery' })
+  // succeeds, and cleared once it signs that recovery session back out.
+  // Needed because Supabase doesn't reliably fire only PASSWORD_RECOVERY —
+  // some supabase-js versions also fire SIGNED_IN/TOKEN_REFRESHED once the
+  // recovery session exists, and filtering by event name alone let those
+  // slip through and briefly flash the Home screen before signOut() kicked
+  // the user back to AUTH.
+  const suppressHydration = useRef(false);
+
   // ─── STARTUP ─────────────────────────────────────────────
   useEffect(() => {
     let alive = true; // prevents state updates if component unmounts mid-way
@@ -69,11 +79,18 @@ export function AuthProvider({ children }) {
 
     bootstrap();
 
-    // This listener fires whenever auth changes (login, logout, token refresh).
-    // We skip it until bootstrap() finishes to avoid duplicate calls.
+    // This listener fires whenever auth changes (login, logout, token refresh,
+    // password recovery). We skip it until bootstrap() finishes to avoid
+    // duplicate calls.
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!initialized.current) return;
+
+        // Covers PASSWORD_RECOVERY explicitly, and also any other event
+        // that may fire while a password-recovery session is active
+        // (see suppressHydration comment above). ForgotPassword.js owns
+        // this flag end-to-end.
+        if (event === 'PASSWORD_RECOVERY' || suppressHydration.current) return;
 
         if (session?.user) {
           await hydrateUser(session, true);
@@ -198,51 +215,51 @@ export function AuthProvider({ children }) {
   }
 
   // ─── REGISTER ────────────────────────────────────────────
-async function register({ name, email, password, hospitalLab }) {
-  setAuthError(null);
+  async function register({ name, email, password, hospitalLab }) {
+    setAuthError(null);
 
-  try {
-    // ── Offline check (from second version)
-    if (!isOnline) {
-      const msg =
-        'No internet connection. You need internet to create an account.';
+    try {
+      // ── Offline check (from second version)
+      if (!isOnline) {
+        const msg =
+          'No internet connection. You need internet to create an account.';
+        setAuthError(msg);
+        return { success: false, error: msg };
+      }
+
+      // ── Supabase signup (merged both versions)
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            hospital_lab: hospitalLab, // stored in auth metadata → used by trigger
+          },
+        },
+      });
+
+      // ── Handle signup error
+      if (error) {
+        setAuthError(error.message);
+        return { success: false, error: error.message };
+      }
+
+      // ── Email verification logic (cleaned + unified)
+      const needsVerification = data.session === null;
+
+      return {
+        success: true,
+        needsVerification,
+        email: email.trim().toLowerCase(),
+        user: data.user,
+      };
+    } catch (err) {
+      const msg = 'Signup failed. Please try again.';
       setAuthError(msg);
       return { success: false, error: msg };
     }
-
-    // ── Supabase signup (merged both versions)
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
-      options: {
-        data: {
-          name: name.trim(),
-          hospital_lab: hospitalLab, // stored in auth metadata → used by trigger
-        },
-      },
-    });
-
-    // ── Handle signup error
-    if (error) {
-      setAuthError(error.message);
-      return { success: false, error: error.message };
-    }
-
-    // ── Email verification logic (cleaned + unified)
-    const needsVerification = data.session === null;
-
-    return {
-      success: true,
-      needsVerification,
-      email: email.trim().toLowerCase(),
-      user: data.user,
-    };
-  } catch (err) {
-    const msg = 'Signup failed. Please try again.';
-    setAuthError(msg);
-    return { success: false, error: msg };
   }
-}
 
   // ─── VERIFY EMAIL OTP ────────────────────────────────────
   // Called from the VerifyEmail screen with the 6-digit code the user types.
@@ -341,7 +358,7 @@ async function register({ name, email, password, hospitalLab }) {
   async function updateProfile(changes) {
     if (!user) return { success: false, error: 'Not logged in' };
 
-const dbChanges = {};
+    const dbChanges = {};
     if (changes.storeImages !== undefined) dbChanges.store_images = changes.storeImages;
     if (changes.hospitalLab !== undefined) dbChanges.hospital_lab = changes.hospitalLab;
     if (changes.name        !== undefined) dbChanges.name         = changes.name;
@@ -390,6 +407,21 @@ const dbChanges = {};
     setAuthError(null);
   }
 
+  // ─── PASSWORD RECOVERY GUARDS ────────────────────────────
+  // ForgotPassword.js calls beginPasswordRecovery() the moment
+  // verifyOtp({ type: 'recovery' }) succeeds, and endPasswordRecovery()
+  // right after it signs that recovery session back out. Between those
+  // two calls, onAuthStateChange ignores every event so the recovery
+  // session never gets mistaken for a real login and swaps the navigator
+  // to the Home stack.
+  function beginPasswordRecovery() {
+    suppressHydration.current = true;
+  }
+
+  function endPasswordRecovery() {
+    suppressHydration.current = false;
+  }
+
   // PROVIDE 
   return (
     <AuthContext.Provider value={{
@@ -406,6 +438,8 @@ const dbChanges = {};
       completeConsent,
       completePinSetup,
       clearError,
+      beginPasswordRecovery,
+      endPasswordRecovery,
     }}>
       {children}
     </AuthContext.Provider>
