@@ -8,13 +8,6 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
 
-  // FIXED: header was reading small/cramped -- paddingTop bumped up
-  // (matches the amount of breathing room ReportStyles.js gives its own
-  // header, SPACING.sm was barely anything), title bumped from FONTS.lg
-  // to FONTS.xl with bold weight to actually read as a screen title
-  // rather than a label, and a marginBottom added so the header has
-  // clear separation from the intro card below it instead of the two
-  // basically touching.
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -29,7 +22,7 @@ export const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     color: COLORS.textPrimary,
   },
 
@@ -65,7 +58,7 @@ export const styles = StyleSheet.create({
 
   introTitle: {
     fontSize: FONTS.lg,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     color: COLORS.primaryDark,
     marginBottom: 4,
   },
@@ -77,10 +70,6 @@ export const styles = StyleSheet.create({
   },
 
   // ── Section card ──
-  // FIXED: internal padding SPACING.md -> SPACING.lg, gap between cards
-  // SPACING.lg -> SPACING['2xl'] -- the old values made every section
-  // feel like it was crowding the next one, especially noticeable
-  // between GET HELP and FAQ.
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -93,7 +82,7 @@ export const styles = StyleSheet.create({
 
   cardTitle: {
     fontSize: FONTS.xs,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     color: COLORS.textMuted,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -102,9 +91,6 @@ export const styles = StyleSheet.create({
   },
 
   // ── Row (tappable list item) ──
-  // FIXED: vertical padding SPACING.sm -> SPACING.md so each row has
-  // more tap-friendly height and doesn't feel squeezed against its
-  // divider.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -124,7 +110,7 @@ export const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     fontSize: FONTS.md,
-    fontWeight: FONTS.medium,
+    fontFamily: FONTS.family.medium,
     color: COLORS.textPrimary,
   },
 
@@ -141,9 +127,6 @@ export const styles = StyleSheet.create({
   },
 
   // ── FAQ accordion ──
-  // FIXED: same vertical padding bump as `row`, plus a touch more
-  // spacing above the answer text when expanded so it doesn't feel
-  // glued to the question.
   faqItem: {
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.xs,
@@ -159,7 +142,7 @@ export const styles = StyleSheet.create({
   faqQuestionText: {
     flex: 1,
     fontSize: FONTS.sm,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
     color: COLORS.textPrimary,
   },
 
@@ -210,7 +193,7 @@ export const styles = StyleSheet.create({
 
   modalTitle: {
     fontSize: FONTS.lg,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
@@ -259,13 +242,13 @@ export const styles = StyleSheet.create({
 
   modalButtonTextCancel: {
     color: COLORS.textSecondary,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
     fontSize: FONTS.sm,
   },
 
   modalButtonTextSend: {
     color: COLORS.white,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     fontSize: FONTS.sm,
   },
 });
