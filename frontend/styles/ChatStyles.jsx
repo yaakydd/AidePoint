@@ -27,7 +27,7 @@ export const ChatStyles = StyleSheet.create({
         textAlign: 'center',
         color: COLORS.textSecondary,
         fontSize: FONTS.xs,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         marginVertical: SPACING.xl,
         letterSpacing: 1,
     },
@@ -64,7 +64,7 @@ export const ChatStyles = StyleSheet.create({
     suggestionText: {
         color: COLORS.primaryDark,
         fontSize: FONTS.sm,
-        fontWeight: FONTS.semibold,
+        fontFamily: FONTS.family.semibold,
     },
 
     // Input Bar Capsule 
@@ -140,7 +140,7 @@ export const ChatStyles = StyleSheet.create({
     },
     sidebarTitle: {
         fontSize: FONTS.lg,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         color: COLORS.textPrimary,
     },
     newChatButton: {
@@ -159,7 +159,7 @@ export const ChatStyles = StyleSheet.create({
     newChatButtonText: {
         color: COLORS.primaryDark,
         fontSize: FONTS.sm,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
     },
     usageBanner: {
         marginHorizontal: SPACING.lg,
@@ -172,14 +172,14 @@ export const ChatStyles = StyleSheet.create({
     },
     usageBannerLabel: {
         fontSize: FONTS.xs,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         color: COLORS.textSecondary,
         letterSpacing: 0.5,
         marginBottom: 4,
     },
     usageBannerValue: {
         fontSize: FONTS.sm,
-        fontWeight: FONTS.semibold,
+        fontFamily: FONTS.family.semibold,
         color: COLORS.textPrimary,
     },
     usageBannerValueWarning: {
@@ -187,7 +187,7 @@ export const ChatStyles = StyleSheet.create({
     },
     sidebarSectionLabel: {
         fontSize: FONTS.xs,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         color: COLORS.textMuted,
         letterSpacing: 1,
         paddingHorizontal: SPACING.lg,
@@ -205,7 +205,7 @@ export const ChatStyles = StyleSheet.create({
     },
     sessionItemTitle: {
         fontSize: FONTS.sm,
-        fontWeight: FONTS.semibold,
+        fontFamily: FONTS.family.semibold,
         color: COLORS.textPrimary,
     },
     sessionItemDate: {
@@ -229,7 +229,7 @@ export const ChatStyles = StyleSheet.create({
     },
     sidebarFooterText: {
         fontSize: FONTS.sm,
-        fontWeight: FONTS.semibold,
+        fontFamily: FONTS.family.semibold,
         color: COLORS.textPrimary,
     },
 
@@ -268,13 +268,13 @@ export const ChatStyles = StyleSheet.create({
     },
     title: {
         fontSize: FONTS.lg,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         color: COLORS.textPrimary,
     },
     subTitle: {
         color: COLORS.primaryDark,
         fontSize: FONTS.sm,
-        fontWeight: FONTS.regular,
+        fontFamily: FONTS.family.regular,
     },
     backButton: {
         padding: SPACING.xs,
@@ -304,13 +304,13 @@ export const ChatStyles = StyleSheet.create({
     },
     botName: {
         color: COLORS.primaryDark,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         fontSize: FONTS.sm,
         marginBottom: SPACING.xs,
     },
     userName: {
         color: COLORS.textSecondary,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         fontSize: FONTS.sm,
         marginBottom: SPACING.xs,
         textAlign: 'right',
@@ -372,7 +372,7 @@ export const ChatStyles = StyleSheet.create({
     },
     modalTitle: {
         fontSize: FONTS.lg,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
         color: COLORS.textPrimary,
         marginBottom: SPACING.lg,
     },
@@ -391,7 +391,7 @@ export const ChatStyles = StyleSheet.create({
     },
     closeButtonText: {
         color: COLORS.white,
-        fontWeight: FONTS.bold,
+        fontFamily: FONTS.family.bold,
     },
     bugModalContent: {
         width: '90%',
