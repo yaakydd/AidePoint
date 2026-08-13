@@ -3,17 +3,14 @@ import {
   COLORS, FONTS, SPACING, RADIUS, SHADOWS,
   layout, scale, mScale,
 } from '../assets/theme';
-
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
   container: { paddingHorizontal: SPACING.pagePad, paddingBottom: 120 },
-
   header: {
     alignItems: 'center',
     paddingTop: scale(40),
     paddingBottom: SPACING['2xl'],
   },
-
   iconWrap: {
     width: scale(88),
     height: scale(88),
@@ -23,22 +20,19 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: SPACING.lg,
   },
-
   title: {
     fontSize: FONTS['2xl'],
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
     textAlign: 'center',
   },
-
   subtitle: {
     fontSize: FONTS.md,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: mScale(22),
   },
-
   infoCard: {
     flexDirection: 'row',
     gap: SPACING.md,
@@ -49,7 +43,6 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
-
   infoIconWrap: {
     width: scale(44),
     height: scale(44),
@@ -57,11 +50,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   infoBody: { flex: 1 },
   infoTitle: {
     fontSize: FONTS.sm,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
@@ -70,7 +62,6 @@ export const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: mScale(19),
   },
-
   toggleCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -83,33 +74,28 @@ export const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     ...SHADOWS.sm,
   },
-
   toggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
     flex: 1,
   },
-
   toggleLabel: {
     fontSize: FONTS.md,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
     color: COLORS.textPrimary,
   },
-
   toggleSub: {
     fontSize: FONTS.xs,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-
   disclaimer: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,
     lineHeight: mScale(18),
     textAlign: 'center',
   },
-
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -122,7 +108,6 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
   },
-
   btn: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -132,12 +117,10 @@ export const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     gap: SPACING.sm,
   },
-
   btnDisabled: { opacity: 0.65 },
-
   btnText: {
     color: COLORS.white,
     fontSize: FONTS.lg,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
   },
 });
