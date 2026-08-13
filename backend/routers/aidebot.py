@@ -299,18 +299,18 @@ async def aidebot_chat(
         }
         contents = [context_message] + contents
 
-        request_body: dict = {
-            "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
-            "contents": contents,
-            "generationConfig": {
+    request_body: dict = {
+        "system_instruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
+        "contents": contents,
+        "generationConfig": {
             "temperature": 0.4,
             "maxOutputTokens": 512,
             "thinkingConfig": {
-                "thinkingLevel": "LOW"  # Reduce the thinking of the model and also save tokens
+                "thinkingLevel": "LOW"
             },
         },
     }
-
+    
     try:
         response = await _gemini_client.post(GEMINI_URL, json=request_body)
     except httpx.TimeoutException:

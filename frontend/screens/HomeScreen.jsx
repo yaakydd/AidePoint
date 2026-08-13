@@ -10,7 +10,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { AuthContext } from '../context/AuthContext';
-import OfflineBanner from '../components/OfflineBanner';
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import { supabase } from '../utils/supabase';
 import { resolveConditionKey } from '../utils/ReportUtils';
@@ -285,7 +284,6 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <OfflineBanner />
 
       {/* ── Header ── */}
       <View style={styles.header}>
