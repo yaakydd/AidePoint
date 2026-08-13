@@ -41,7 +41,7 @@ export const CameraStyles = StyleSheet.create({
   topTitle: {
     color: COLORS.white,
     fontSize: FONTS.sm,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
     letterSpacing: 0.3,
   },
 
@@ -82,7 +82,7 @@ export const CameraStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     fontSize: FONTS.sm,
-    fontWeight: FONTS.medium,
+    fontFamily: FONTS.family.medium,
     marginTop: SPACING.lg,
     paddingHorizontal: SPACING['2xl'],
   },
@@ -110,7 +110,7 @@ export const CameraStyles = StyleSheet.create({
   tipsPanelTitle: {
     color: COLORS.white,
     fontSize: FONTS.md,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
   },
 
   tipRow: {
@@ -133,7 +133,7 @@ export const CameraStyles = StyleSheet.create({
   tipNumberText: {
     color: COLORS.white,
     fontSize: 11,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
   },
 
   tipText: {
@@ -199,7 +199,7 @@ export const CameraStyles = StyleSheet.create({
 
   permissionTitle: {
     fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
+    fontFamily: FONTS.family.bold,
     color: COLORS.white,
     textAlign: 'center',
   },
@@ -222,7 +222,7 @@ export const CameraStyles = StyleSheet.create({
   permissionBtnText: {
     color: COLORS.white,
     fontSize: FONTS.md,
-    fontWeight: FONTS.semibold,
+    fontFamily: FONTS.family.semibold,
   },
 
   cancelLink: {
