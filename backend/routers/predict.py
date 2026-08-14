@@ -232,6 +232,26 @@ async def predict(
             "sample=%s was not persisted.", user.get("id"), patient_sample_id,
         )
 
+    condition_is_unknown = result["is_unreliable"]
+
+response_payload = {
+    **result,
+    "cbc_pattern_summary": cbc_pattern_summary,
+    "morphology_findings": morphology_findings,
+    "explanation": explanation_dict,
+    "prediction_confidence": prediction_confidence,
+    "prediction_id": prediction_id,
+    "inference_ms": elapsed_ms,
+    "was_cropped": preprocessed.was_cropped,
+    "original_preview_base64": preprocessed.original_preview_base64,
+    "cropped_preview_base64": preprocessed.cropped_preview_base64,
+    "image_quality": quality_result.__dict__,
+}
+
+if condition_is_unknown:
+    response_payload["anemia_probability"] = None
+    response_payload["prediction_confidence"] = None
+
     return JSONResponse(content={
         **result,
         "cbc_pattern_summary": cbc_pattern_summary,
