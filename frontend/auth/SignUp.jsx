@@ -384,6 +384,7 @@ const SignUp = () => {
                   value={name}
                   onChangeText={(t) => { setName(t); clearField('name'); }}
                   style={styles.input}
+                  maxLength={100}
                 />
               </View>
               {errors.name && <Text style={styles.fieldError}>{errors.name}</Text>}
@@ -399,6 +400,7 @@ const SignUp = () => {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   style={styles.input}
+                  maxLength={254}
                 />
               </View>
               {errors.email && (
@@ -469,6 +471,7 @@ const SignUp = () => {
                       style={styles.modalSearchInput}
                       autoFocus
                       clearButtonMode="while-editing"
+                      maxLength={100}
                     />
                   </View>
 
@@ -484,6 +487,7 @@ const SignUp = () => {
                           style={styles.customInput}
                           returnKeyType="done"
                           onSubmitEditing={handleConfirmCustom}
+                          maxLength={150}
                         />
                         <TouchableOpacity
                           style={[styles.customConfirmBtn, !customHospital.trim() && styles.customConfirmBtnDisabled]}
@@ -554,6 +558,7 @@ const SignUp = () => {
                   onChangeText={setPassword}
                   secureTextEntry={!showPass}
                   style={styles.input}
+                  maxLength={128}
                 />
                 <TouchableOpacity onPress={() => setShowPass((p) => !p)}>
                   <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
@@ -603,6 +608,7 @@ const SignUp = () => {
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirm}
                   style={styles.input}
+                  maxLength={128}
                 />
                 <TouchableOpacity onPress={() => setShowConfirm((p) => !p)}>
                   <Feather name={showConfirm ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
