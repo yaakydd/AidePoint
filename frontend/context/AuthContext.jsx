@@ -191,6 +191,30 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ─── DB ERROR SANITIZATION ───────────────────────────────
+  // completeConsent/updateProfile hit the profiles table directly, so a
+  // failure there can carry a raw Postgres/PostgREST message — column
+  // names, constraint names, or RLS policy detail if something's
+  // misconfigured. That's fine to log for debugging but not to show a
+  // user. This maps known error codes to a generic, safe message and logs
+  // the real one behind __DEV__ only.
+  function sanitizeDbError(error) {
+    if (__DEV__) console.log('DB error:', error?.code, error?.message);
+
+    switch (error?.code) {
+      case '23505': // unique_violation
+        return 'That value is already in use.';
+      case '23503': // foreign_key_violation
+      case '23502': // not_null_violation
+      case '22P02': // invalid_text_representation (bad input type)
+        return 'That value is not valid. Please check and try again.';
+      case '42501': // insufficient_privilege (RLS denial)
+        return "You don't have permission to make that change.";
+      default:
+        return 'Could not save your changes. Please try again.';
+    }
+  }
+
   // ─── CACHE HELPERS ───────────────────────────────────────
   async function cacheUser(data) {
     try {
@@ -335,7 +359,7 @@ export function AuthProvider({ children }) {
       .update({ store_images: storeImages, consent_required: false })
       .eq('id', user.id);
 
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: sanitizeDbError(error) };
 
     await cacheUser(updated);
     setUser(updated);
@@ -385,7 +409,7 @@ export function AuthProvider({ children }) {
         // Revert on failure
         await cacheUser(user);
         setUser(user);
-        return { success: false, error: error.message };
+        return { success: false, error: sanitizeDbError(error) };
       }
     }
 
@@ -425,7 +449,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       authState,          // 'BOOTING' | 'AUTH' | 'CONSENT' | 'PIN_SETUP' | 'APP'
-      user,               // { id, email, name, role, storeImages, consentDone, token }
+      user,               // { id, email, name, role, storeImages, consentDone }
       authError,          // string or null
       isOnline,           // boolean
       register,
