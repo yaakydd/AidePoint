@@ -25,8 +25,15 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, StatusBar, Keyboard, Modal, FlatList,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  StatusBar,
+  Keyboard,
+  Modal,
+  FlatList,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,7 +50,11 @@ const PASSWORD_CHECKS = [
   { key: 'length', label: 'At least 8 characters', test: (p) => p.length >= 8 },
   { key: 'upper', label: 'At least one uppercase letter', test: (p) => /[A-Z]/.test(p) },
   { key: 'number', label: 'At least one number', test: (p) => /[0-9]/.test(p) },
-  { key: 'special', label: 'At least one special character', test: (p) => /[@#!$%^&*()\-_=+]/.test(p) },
+  {
+    key: 'special',
+    label: 'At least one special character',
+    test: (p) => /[@#!$%^&*()\-_=+]/.test(p),
+  },
 ];
 
 const STEP_ICONS = {
@@ -60,8 +71,10 @@ const STEP_LABELS = {
 
 const getStrength = (pwd) => {
   const passed = PASSWORD_CHECKS.filter((c) => c.test(pwd)).length;
-  if (passed <= 1) return { label: 'Too weak: try adding more numbers', color: COLORS.danger, score: 1 };
-  if (passed === 2) return { label: 'Fair: add a symbol or capital letter', color: COLORS.warning, score: 2 };
+  if (passed <= 1)
+    return { label: 'Too weak: try adding more numbers', color: COLORS.danger, score: 1 };
+  if (passed === 2)
+    return { label: 'Fair: add a symbol or capital letter', color: COLORS.warning, score: 2 };
   if (passed === 3) return { label: 'Strong', color: '#84CC16', score: 3 };
   return { label: 'Very strong — nice work', color: COLORS.success, score: 4 };
 };
@@ -123,34 +136,44 @@ const SignUp = () => {
 
   const strength = getStrength(password);
 
-  // Server-side hospital search — queries Postgres directly instead of
-  // pulling the whole ghana_hospitals table into memory. Debounced 150ms
-  // so we're not firing a query per keystroke.
   useEffect(() => {
-    let alive = true;
-    setHospitalsLoading(true);
-
     const timeout = setTimeout(async () => {
       const q = hospitalQuery.trim();
+      if (!q) {
+        const { data } = await supabase
+          .from('ghana_hospitals')
+          .select('name, city, type')
+          .order('name')
+          .limit(20);
+        setFilteredList(data ?? []);
+        return;
+      }
+      const { data } = await supabase
+        .from('ghana_hospitals')
+        .select('name, city, type')
+        .or(`name.ilike.%${q}%,city.ilike.%${q}%,type.ilike.%${q}%`)
+        .order('name')
+        .limit(30);
+      setFilteredList(data ?? []);
+    }, 150);
 
-      const query = q
-        ? supabase
-            .from('ghana_hospitals')
-            .select('name, city, type')
-            .or(`name.ilike.%${q}%,city.ilike.%${q}%,type.ilike.%${q}%`)
-            .order('name')
-            .limit(30)
-        : supabase
-            .from('ghana_hospitals')
-            .select('name, city, type')
-            .order('name')
-            .limit(20);
+    return () => clearTimeout(timeout);
+  }, [hospitalQuery]);
 
-      const { data, error } = await query;
-
-      if (!alive) return;
-      setFilteredList(error ? [] : (data ?? []));
-      setHospitalsLoading(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const q = hospitalQuery.trim().toLowerCase();
+      if (!q) {
+        setFilteredList(hospitalList.slice(0, 20));
+        return;
+      }
+      const results = hospitalList.filter(
+        (item) =>
+          item.name?.toLowerCase().includes(q) ||
+          item.city?.toLowerCase().includes(q) ||
+          item.type?.toLowerCase().includes(q)
+      );
+      setFilteredList(results.slice(0, 30));
     }, 150);
 
     return () => {
@@ -245,6 +268,16 @@ const SignUp = () => {
   const handleNext = async () => {
     if (step === 'start') {
       if (!validateStart()) return;
+
+      setLoading(true);
+      const available = await checkEmailAvailable(email.trim().toLowerCase());
+      setLoading(false);
+
+      if (!available) {
+        setErrors({ email: 'An account with this email already exists. Try signing in instead.' });
+        return;
+      }
+
       setStepIndex(1);
       return;
     }
@@ -286,9 +319,25 @@ const SignUp = () => {
   };
 
   const nextEnabled =
-    step === 'start' ? canProceedStart :
-    step === 'hospital' ? canProceedHospital :
-    canProceedPassword;
+    step === 'start'
+      ? canProceedStart
+      : step === 'hospital'
+        ? canProceedHospital
+        : canProceedPassword;
+
+  async function checkEmailAvailable(email) {
+    // Supabase doesn't expose a direct "does this email exist" lookup on
+    // the client for security reasons, so we use signInWithOtp with
+    // shouldCreateUser: false — it succeeds silently if the email exists
+    // (without sending anything unexpected) and errors if it doesn't.
+    // This just tells us existence, nothing more.
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    // No error means an account with this email already exists.
+    return !!error; // true = available, false = already registered
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -303,7 +352,10 @@ const SignUp = () => {
       >
         {/* ── Top bar: close/back + "Log in" (mirrors reference's X + Log in) ── */}
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <MaterialCommunityIcons
               name={stepIndex === 0 ? 'close' : 'arrow-left'}
               size={24}
@@ -311,7 +363,10 @@ const SignUp = () => {
             />
           </TouchableOpacity>
           {stepIndex === 0 && (
-            <TouchableOpacity onPress={() => navigation.navigate('SignIn')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('SignIn')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Text style={styles.topBarLogin}>Log in</Text>
             </TouchableOpacity>
           )}
@@ -343,12 +398,7 @@ const SignUp = () => {
                     color={i <= stepIndex ? COLORS.white : COLORS.textMuted}
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.stepIconLabel,
-                    i === stepIndex && styles.stepIconLabelActive,
-                  ]}
-                >
+                <Text style={[styles.stepIconLabel, i === stepIndex && styles.stepIconLabelActive]}>
                   {STEP_LABELS[s]}
                 </Text>
               </View>
@@ -368,21 +418,30 @@ const SignUp = () => {
 
         {/* ── Step content ── */}
         <View style={styles.stepBody}>
-
           {/* ── Step 1: Let's get started ── */}
           {step === 'start' && (
             <>
               <Text style={styles.stepTitle}>Let's get started</Text>
-              <Text style={styles.stepSubtitle}>Tell us a bit about yourself to set up your AidePoint account.</Text>
+              <Text style={styles.stepSubtitle}>
+                Tell us a bit about yourself to set up your AidePoint account.
+              </Text>
 
               <Text style={styles.label}>Full Name</Text>
               <View style={[styles.inputWrapper, errors.name && styles.inputWrapperError]}>
-                <MaterialCommunityIcons name="account-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+                <MaterialCommunityIcons
+                  name="account-outline"
+                  size={18}
+                  color={COLORS.textMuted}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   placeholder="e.g. Kwame Mensah"
                   placeholderTextColor={COLORS.textMuted}
                   value={name}
-                  onChangeText={(t) => { setName(t); clearField('name'); }}
+                  onChangeText={(t) => {
+                    setName(t);
+                    clearField('name');
+                  }}
                   style={styles.input}
                   maxLength={100}
                 />
@@ -391,12 +450,20 @@ const SignUp = () => {
 
               <Text style={styles.label}>Email Address</Text>
               <View style={[styles.inputWrapper, errors.email && styles.inputWrapperError]}>
-                <MaterialCommunityIcons name="email-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+                <MaterialCommunityIcons
+                  name="email-outline"
+                  size={18}
+                  color={COLORS.textMuted}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   placeholder="you@example.com"
                   placeholderTextColor={COLORS.textMuted}
                   value={email}
-                  onChangeText={(t) => { setEmail(t); clearField('email'); }}
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    clearField('email');
+                  }}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   style={styles.input}
@@ -420,7 +487,9 @@ const SignUp = () => {
           {step === 'hospital' && (
             <>
               <Text style={styles.stepTitle}>Where do you work?</Text>
-              <Text style={styles.stepSubtitle}>Search for your hospital or lab, or add your own.</Text>
+              <Text style={styles.stepSubtitle}>
+                Search for your hospital or lab, or add your own.
+              </Text>
 
               <Text style={styles.label}>Hospital / Lab</Text>
               <TouchableOpacity
@@ -435,10 +504,15 @@ const SignUp = () => {
                   style={styles.inputIcon}
                 />
                 <Text
-                  style={[styles.hospitalInputText, !hospitalSelected && styles.hospitalInputPlaceholder]}
+                  style={[
+                    styles.hospitalInputText,
+                    !hospitalSelected && styles.hospitalInputPlaceholder,
+                  ]}
                   numberOfLines={1}
                 >
-                  {hospitalSelected || 'Search hospital or lab'}
+                  {hospitalsLoading
+                    ? 'Loading hospitals…'
+                    : hospitalSelected || 'Search hospital or lab'}
                 </Text>
                 {hospitalSelected ? (
                   <MaterialCommunityIcons name="check-circle" size={18} color={COLORS.success} />
@@ -448,7 +522,12 @@ const SignUp = () => {
               </TouchableOpacity>
               {errors.hospital && <Text style={styles.fieldError}>{errors.hospital}</Text>}
 
-              <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
+              <Modal
+                visible={modalVisible}
+                animationType="slide"
+                transparent
+                onRequestClose={closeModal}
+              >
                 <TouchableWithoutFeedback onPress={closeModal}>
                   <View style={styles.modalOverlay} />
                 </TouchableWithoutFeedback>
@@ -456,18 +535,29 @@ const SignUp = () => {
                 <View style={styles.modalSheet}>
                   <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>Select Hospital / Lab</Text>
-                    <TouchableOpacity onPress={closeModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <TouchableOpacity
+                      onPress={closeModal}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
                       <MaterialCommunityIcons name="close" size={22} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                   </View>
 
                   <View style={styles.modalSearchRow}>
-                    <MaterialCommunityIcons name="magnify" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+                    <MaterialCommunityIcons
+                      name="magnify"
+                      size={18}
+                      color={COLORS.textMuted}
+                      style={styles.inputIcon}
+                    />
                     <TextInput
                       placeholder="Search hospital or city…"
                       placeholderTextColor={COLORS.textMuted}
                       value={hospitalQuery}
-                      onChangeText={(t) => { setHospitalQuery(t); setShowCustomInput(false); }}
+                      onChangeText={(t) => {
+                        setHospitalQuery(t);
+                        setShowCustomInput(false);
+                      }}
                       style={styles.modalSearchInput}
                       autoFocus
                       clearButtonMode="while-editing"
@@ -490,7 +580,10 @@ const SignUp = () => {
                           maxLength={150}
                         />
                         <TouchableOpacity
-                          style={[styles.customConfirmBtn, !customHospital.trim() && styles.customConfirmBtnDisabled]}
+                          style={[
+                            styles.customConfirmBtn,
+                            !customHospital.trim() && styles.customConfirmBtnDisabled,
+                          ]}
                           onPress={handleConfirmCustom}
                           disabled={!customHospital.trim()}
                         >
@@ -512,17 +605,36 @@ const SignUp = () => {
                     removeClippedSubviews
                     ItemSeparatorComponent={() => <View style={styles.separator} />}
                     renderItem={({ item }) => (
-                      <TouchableOpacity style={styles.listItem} onPress={() => handleSelectHospital(item)} activeOpacity={0.7}>
+                      <TouchableOpacity
+                        style={styles.listItem}
+                        onPress={() => handleSelectHospital(item)}
+                        activeOpacity={0.7}
+                      >
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.listItemName, hospitalSelected === item.name && { color: COLORS.primary }]}>
+                          <Text
+                            style={[
+                              styles.listItemName,
+                              hospitalSelected === item.name && { color: COLORS.primary },
+                            ]}
+                          >
                             {item.name}
                           </Text>
                           {item.city ? <Text style={styles.listItemCity}>{item.city}</Text> : null}
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                           {item.type && item.name !== 'Other' && (
-                            <View style={[styles.typePill, { backgroundColor: getTypePillStyle(item.type).backgroundColor }]}>
-                              <Text style={[styles.typePillText, { color: getTypePillStyle(item.type).color }]}>
+                            <View
+                              style={[
+                                styles.typePill,
+                                { backgroundColor: getTypePillStyle(item.type).backgroundColor },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.typePillText,
+                                  { color: getTypePillStyle(item.type).color },
+                                ]}
+                              >
                                 {item.type}
                               </Text>
                             </View>
@@ -534,7 +646,9 @@ const SignUp = () => {
                       </TouchableOpacity>
                     )}
                     ListEmptyComponent={
-                      <Text style={styles.emptyText}>{hospitalsLoading ? 'Loading…' : 'No results found'}</Text>
+                      <Text style={styles.emptyText}>
+                        {hospitalsLoading ? 'Loading…' : 'No results found'}
+                      </Text>
                     }
                   />
                 </View>
@@ -550,7 +664,12 @@ const SignUp = () => {
 
               <Text style={styles.label}>Password</Text>
               <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
-                <MaterialCommunityIcons name="lock-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+                <MaterialCommunityIcons
+                  name="lock-outline"
+                  size={18}
+                  color={COLORS.textMuted}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   placeholder="Create a strong password"
                   placeholderTextColor={COLORS.textMuted}
@@ -571,11 +690,16 @@ const SignUp = () => {
                     <View
                       style={[
                         styles.strengthBarFill,
-                        { width: `${(strength.score / 4) * 100}%`, backgroundColor: strength.color },
+                        {
+                          width: `${(strength.score / 4) * 100}%`,
+                          backgroundColor: strength.color,
+                        },
                       ]}
                     />
                   </View>
-                  <Text style={[styles.strengthHint, { color: strength.color }]}>{strength.label}</Text>
+                  <Text style={[styles.strengthHint, { color: strength.color }]}>
+                    {strength.label}
+                  </Text>
 
                   <View style={styles.checkList}>
                     {PASSWORD_CHECKS.map((c) => {
@@ -587,7 +711,9 @@ const SignUp = () => {
                             size={14}
                             color={pass ? COLORS.success : COLORS.textMuted}
                           />
-                          <Text style={[styles.checkText, pass ? styles.checkPass : styles.checkFail]}>
+                          <Text
+                            style={[styles.checkText, pass ? styles.checkPass : styles.checkFail]}
+                          >
                             {c.label}
                           </Text>
                         </View>
@@ -599,8 +725,15 @@ const SignUp = () => {
               {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
 
               <Text style={styles.label}>Confirm Password</Text>
-              <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputWrapperError]}>
-                <MaterialCommunityIcons name="lock-check-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+              <View
+                style={[styles.inputWrapper, errors.confirmPassword && styles.inputWrapperError]}
+              >
+                <MaterialCommunityIcons
+                  name="lock-check-outline"
+                  size={18}
+                  color={COLORS.textMuted}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   placeholder="Re-enter your password"
                   placeholderTextColor={COLORS.textMuted}
@@ -611,18 +744,29 @@ const SignUp = () => {
                   maxLength={128}
                 />
                 <TouchableOpacity onPress={() => setShowConfirm((p) => !p)}>
-                  <Feather name={showConfirm ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
+                  <Feather
+                    name={showConfirm ? 'eye-off' : 'eye'}
+                    size={19}
+                    color={COLORS.textMuted}
+                  />
                 </TouchableOpacity>
               </View>
-              {errors.confirmPassword && <Text style={styles.fieldError}>{errors.confirmPassword}</Text>}
+              {errors.confirmPassword && (
+                <Text style={styles.fieldError}>{errors.confirmPassword}</Text>
+              )}
 
               <TouchableOpacity
                 style={styles.privacyRow}
-                onPress={() => { setAgreedToPrivacy((p) => !p); clearField('privacy'); }}
+                onPress={() => {
+                  setAgreedToPrivacy((p) => !p);
+                  clearField('privacy');
+                }}
                 activeOpacity={0.7}
               >
                 <View style={[styles.checkbox, agreedToPrivacy && styles.checkboxChecked]}>
-                  {agreedToPrivacy && <MaterialCommunityIcons name="check" size={14} color={COLORS.white} />}
+                  {agreedToPrivacy && (
+                    <MaterialCommunityIcons name="check" size={14} color={COLORS.white} />
+                  )}
                 </View>
                 <Text style={styles.privacyText}>
                   I have read and fully understand the{' '}
@@ -658,7 +802,10 @@ const SignUp = () => {
           </TouchableOpacity>
 
           {step === 'start' && (
-            <TouchableOpacity style={styles.signinRow} onPress={() => navigation.navigate('SignIn')}>
+            <TouchableOpacity
+              style={styles.signinRow}
+              onPress={() => navigation.navigate('SignIn')}
+            >
               <Text style={styles.signinText}>
                 Already have an account? <Text style={styles.signinLink}>Sign In</Text>
               </Text>
