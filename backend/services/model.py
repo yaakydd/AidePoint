@@ -22,7 +22,6 @@ import onnxruntime as ort
 
 from services.quality_checks import run_reliability_gate
 from services.shape_screening import (
-    run_shape_screening,
     get_cell_overlay,
     ShapeScreeningResult,
     CellOverlayResult
@@ -309,14 +308,35 @@ class AidePointONNX:
               f"{[key for key, reliable in MORPHOLOGY_FLAG_IS_RELIABLE.items() if not reliable]}, "
               f"reliability gate: active, shape screening + cell overlay: active)")
 
-    def predict(self, model_input: np.ndarray, raw_resized_image: np.ndarray) -> dict:
-        """
-        model_input       : (1, 3, 260, 260) float32 NCHW, from preprocess_image().
-        raw_resized_image : (260, 260, 3) uint8 BGR, also from preprocess_image()
-                             needed for the pixel-level reliability checks and
-                            the shape screening / overlay.
 
-        Returns a plain dict, kept JSON-serializable end to end  this
+    def predict(
+        self,
+        model_input: np.ndarray,
+        raw_resized_image: np.ndarray,
+        shape_screening_result: ShapeScreeningResult,
+        contours: list,
+    ) -> dict:
+        """
+        model_input             : (1, 3, 260, 260) float32 NCHW, from preprocess_image().
+        raw_resized_image       : (260, 260, 3) uint8 BGR, also from preprocess_image()
+                                   needed for the pixel-level reliability checks and
+                                   the shape screening / overlay.
+        shape_screening_result  : ShapeScreeningResult already computed once by
+                                   predict.py before calling this method. Passed
+                                   in rather than recomputed here , shape
+                                   screening runs a full watershed segmentation
+                                   pass, which is the most expensive step in this
+                                   request outside ONNX inference itself. Running
+                                   it a second time inside predict() (the old
+                                   behavior) doubled that cost for no benefit,
+                                   since the router already has the answer.
+        contours                : the raw contour list from
+                                   shape_screening.detect_cell_contours(),
+                                   also computed once by predict.py and threaded
+                                   through here so get_cell_overlay() below reuses
+                                   it instead of running watershed a third time.
+
+        Returns a plain dict, kept JSON-serializable end to end , this
         is what predict.py spreads directly into its JSONResponse, so it
         stays a dict even though shape_screening/cell_overlay are typed
         dataclasses internally (see shape_screening.py). asdict() at the
@@ -349,32 +369,42 @@ class AidePointONNX:
             image_embedding, raw_resized_image, self.out_of_distribution_stats
         )
 
-        try:
-            shape_screening_result: ShapeScreeningResult = run_shape_screening(raw_resized_image)
-        except Exception as error:
-            shape_screening_result = ShapeScreeningResult(
-                needs_review=False,
-                flagged_fraction=None,
-                mean_eccentricity=None,
-                cells_detected=0,
-                reason=f"shape screening failed: {error}",
+        # CHANGED: previously this block called run_shape_screening() a
+        # second time internally, wrapped in its own try/except, and had
+        # a bug where the needs_review/reason handling was accidentally
+        # indented *inside* the except clause , meaning it only ever ran
+        # when shape screening itself threw an exception, never on a
+        # normal successful call. That silently dropped the shape-based
+        # unreliable signal from is_unreliable on the overwhelming
+        # majority of requests.
+        #
+        # Now: shape_screening_result is computed exactly once, by
+        # predict.py, before this method is even called, and its
+        # needs_review/reason are applied here unconditionally , no
+        # try/except needed, since predict.py already handled the
+        # failure case when it produced shape_screening_result in the
+        # first place.
+        if shape_screening_result.needs_review:
+            is_unreliable = True
+        if shape_screening_result.reason:
+            unreliable_reasons.append(
+                f"unusual cell shape: {shape_screening_result.reason}"
             )
 
-            if shape_screening_result.needs_review:
-                is_unreliable = True
-            if shape_screening_result.reason:
-                unreliable_reasons.append(
-                    f"unusual cell shape: {shape_screening_result.reason}"
-                )
-
-        # Cell overlay runs regardless of is_unreliable  if anything, an
+        # Cell overlay runs regardless of is_unreliable , if anything, an
         # unreliable result is exactly when seeing WHY matters most. This
         # is the headline feature: real per-cell shape data the app draws
         # directly on the photo. Wrapped in try/except like the other
-        # auxiliary checks  a failure here shouldn't take down the core
+        # auxiliary checks , a failure here shouldn't take down the core
         # anemia prediction.
+        #
+        # CHANGED: passes the pre-computed `contours` through instead of
+        # letting get_cell_overlay() re-run detect_cell_contours() a
+        # third time on the same image.
         try:
-            cell_overlay_result: CellOverlayResult = get_cell_overlay(raw_resized_image)
+            cell_overlay_result: CellOverlayResult = get_cell_overlay(
+                raw_resized_image, contours=contours
+            )
         except Exception as error:
             cell_overlay_result = CellOverlayResult(
                 cells=[], cell_count=0, flagged_count=0,
@@ -383,7 +413,7 @@ class AidePointONNX:
 
         # asdict() converts the dataclasses (and any nested dataclasses,
         # e.g. each CellOverlayEntry inside cell_overlay_result.cells)
-        # back into plain dicts/lists  the JSON response shape is
+        # back into plain dicts/lists , the JSON response shape is
         # unchanged from before shape_screening.py returned dataclasses.
         shape_screening_dict = asdict(shape_screening_result)
         cell_overlay_dict = asdict(cell_overlay_result)

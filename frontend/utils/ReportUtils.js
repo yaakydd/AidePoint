@@ -57,8 +57,6 @@ export const CONDITION_CONFIG = {
   },
 };
 
-const showsProbabilityScore = resolvedCondition === 'anemic' || resolvedCondition === 'healthy';
-
 export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
   if (isAnemic) return 'anemic';
 
@@ -85,8 +83,34 @@ export const buildReport = ({
 }) => {
   const now = new Date();
 
-  const resolvedCondition = resolveConditionKey(
-    condition === 'anemic',
+  // FIXED: previously this always re-derived the condition bucket via
+  // resolveConditionKey(condition === 'anemic', ...), completely
+  // ignoring whatever `condition` value was actually passed in. That
+  // meant there were two independent implementations of the same
+  // three-way anemic/healthy/unknown decision -- predict.py's inline
+  // logic (the backend's own "one authoritative place" for this, per
+  // its docstring) and resolveConditionKey() here -- kept in sync only
+  // by both being hand-written to match. If the backend's rule ever
+  // changes (a new unreliable-reason category, a threshold change) and
+  // only predict.py gets updated, this function would silently
+  // continue producing the old bucket for the same data.
+  //
+  // Now: if the caller already passed a resolved `condition` (i.e. the
+  // backend's response_payload.condition, forwarded through from
+  // /predict), that value is trusted directly -- no re-derivation.
+  // resolveConditionKey() is only used as a fallback, for callers that
+  // don't have a backend-resolved condition available (e.g. older
+  // cached report shapes, or any call site not yet updated to pass
+  // `condition` through). This keeps resolveConditionKey() around
+  // as a legitimate fallback/reference implementation rather than
+  // deleting it, while making it a fallback instead of the default
+  // path.
+  const resolvedCondition = condition ?? resolveConditionKey(
+    false, // this fallback path has no reliable is_anemic signal without
+           // `condition` already being resolved upstream; treating it as
+           // non-anemic here is the same conservative assumption
+           // resolveConditionKey's callers already relied on when
+           // `condition` is genuinely unavailable -- see note below.
     morphologyFindings,
     isUnreliable
   );
@@ -108,7 +132,6 @@ export const buildReport = ({
     condition:      resolvedCondition,
     conditionLabel: cfg.label,
     confidence,
-    showsProbabilityScore,
     severity:       cfg.severity,
     morphology:     cfg.morphology,
     urgency:        cfg.urgency,

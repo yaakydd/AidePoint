@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from auth import verify_supabase_token
 from services.image_quality import assess_image_quality, should_block_inference
-from services.shape_screening import run_shape_screening, ShapeScreeningResult
+from services.shape_screening import run_shape_screening, detect_cell_contours, ShapeScreeningResult
 from services.preprocess import preprocess_image, PreprocessResult
 from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
 from services.morphology_explanations import build_explanation, classify_confidence, Explanation
@@ -99,6 +99,12 @@ async def predict(
     # model-ready tensor, the raw resized image the reliability/shape
     # checks need and the before/after crop preview data used by the
     # app's transparency trail.
+
+
+    # preprocess_image() now returns a PreprocessResult dataclass, the
+    # model-ready tensor, the raw resized image the reliability/shape
+    # checks need and the before/after crop preview data used by the
+    # app's transparency trail.
     try:
         preprocessed: PreprocessResult = preprocess_image(image_bytes)
     except Exception as exc:
@@ -113,12 +119,21 @@ async def predict(
     # question from the reliability gate further down, which asks "does
     # this usable photo look like our training data."
     #
-    # shape_result is computed exactly once, here, and passed into
-    # _model.predict() below instead of letting it recompute internally.
-    # It used to run twice per request (once here, once again inside
-    # AidePointONNX.predict()) — same image, same cost, paid twice on
-    # every single call.
-    shape_result: ShapeScreeningResult = run_shape_screening(preprocessed.raw_resized_image)
+    # CHANGED: contours are now computed exactly once, here, via
+    # detect_cell_contours(), and threaded through both
+    # run_shape_screening() and _model.predict() below (which forwards
+    # them into get_cell_overlay() internally). Previously this same
+    # watershed segmentation ran up to three times per request , once
+    # implicitly inside run_shape_screening() here, once again inside
+    # model.py's old internal run_shape_screening() call, and a third
+    # time inside get_cell_overlay(). Watershed + distance-transform +
+    # per-contour ellipse fitting is the most expensive step in this
+    # endpoint outside ONNX inference itself, so this was real,
+    # avoidable cost on every single request.
+    contours = detect_cell_contours(preprocessed.raw_resized_image)
+    shape_result: ShapeScreeningResult = run_shape_screening(
+        preprocessed.raw_resized_image, contours=contours
+    )
     quality_result = assess_image_quality(
         preprocessed.raw_resized_image, shape_result.cells_detected
     )
@@ -144,6 +159,7 @@ async def predict(
             preprocessed.model_input,
             preprocessed.raw_resized_image,
             shape_screening_result=shape_result,
+            contours=contours,
         )
     except Exception as exc:
         log.error("Inference error for user %s: %s", user.get("id"), exc)
@@ -152,6 +168,8 @@ async def predict(
             detail="Inference failed. Please try again.",
         )
     elapsed_ms: float = round((time.perf_counter() - t0) * 1000, 1)
+
+
     # Photo quality is deliberately kept separate from is_unreliable.
     # is_unreliable (from run_reliability_gate + shape_screening) answers
     # "does this sample look like something the model wasn't trained to
@@ -289,5 +307,14 @@ async def predict(
     if condition_is_unknown:
         response_payload["anemia_probability"] = None
         response_payload["prediction_confidence"] = None
+        # CHANGED: explanation_dict carries its own independent
+        # "confidence" field (from build_explanation()/classify_confidence()),
+        # which TransparencyTrail.js reads directly as
+        # prediction.explanation?.confidence rather than the top-level
+        # prediction_confidence field nulled above. Without this line,
+        # an unknown result's PDF/UI never saw the top-level null, but
+        # the frontend was actually reading this nested copy, so the
+        # confidence label kept rendering regardless.
+        response_payload["explanation"]["confidence"] = None
 
     return JSONResponse(content=response_payload)

@@ -207,12 +207,21 @@ def measure_contour_shape(contour: np.ndarray) -> ShapeMeasurement | None:
     )
 
 
-def run_shape_screening(image_bgr: np.ndarray) -> ShapeScreeningResult:
+def run_shape_screening(
+    image_bgr: np.ndarray,
+    contours: list[np.ndarray] | None = None,
+) -> ShapeScreeningResult:
     """
     The reliability check that decides whether an anemia result should be
     shown with confidence. This is the fix for the sickle-cell-called-
     healthy case, and stays conservative (fails toward "needs review")
     when too few cells can be separated to judge at all.
+
+    CHANGED: now accepts an optional pre-computed `contours` list so
+    callers that already ran detect_cell_contours() (predict.py, and
+    model.py's get_cell_overlay() call) don't pay for watershed
+    segmentation a second/third time on the same image. Falls back to
+    running detection itself when called standalone (tests, notebooks).
 
     FIXED: the "too few cells" bar is now MINIMUM_CELLS_FOR_SHAPE_VERDICT
     (15), not 5. Below 15, detect_cell_contours' watershed segmentation
@@ -224,7 +233,9 @@ def run_shape_screening(image_bgr: np.ndarray) -> ShapeScreeningResult:
     could not be assessed, rather than asserting a specific , and
     likely wrong , shape verdict built on broken segmentation.
     """
-    contours = detect_cell_contours(image_bgr)
+    if contours is None:
+        contours = detect_cell_contours(image_bgr)
+
     cell_measurements = [
         measurement for measurement in (measure_contour_shape(contour) for contour in contours)
         if measurement is not None
@@ -267,43 +278,10 @@ def run_shape_screening(image_bgr: np.ndarray) -> ShapeScreeningResult:
     )
 
 
-def compute_severity_color(eccentricity: float, circularity: float) -> SeverityInfo:
-    """
-    Maps a cell's shape to a color along a green -> yellow -> red
-    gradient, rather than a binary flagged/not-flagged split. A cell
-    that's mildly irregular (motion blur, slight overlap) reads visually
-    different from one that's dramatically non-round (a real sickle
-    shape) , the gradient makes that difference legible at a glance
-    instead of collapsing it to two buckets.
-
-    severity_score (0.0-1.0) is the underlying number the color is
-    derived from, returned alongside the color so the app can also
-    sort or filter cells by it later, rather than only having a color string.
-    """
-    eccentricity_severity = max(0.0, (eccentricity - 0.15) / (0.95 - 0.15))
-    circularity_severity = max(0.0, (0.95 - circularity) / (0.95 - 0.30))
-    severity_score = float(
-        np.clip((eccentricity_severity + circularity_severity) / 2, 0.0, 1.0)
-    )
-
-    if severity_score < 0.5:
-        blend_ratio = severity_score / 0.5
-        red_value = int(0x16 + (0xEA - 0x16) * blend_ratio)
-        green_value = int(0xA3 + (0xB3 - 0xA3) * blend_ratio)
-        blue_value = int(0x4A + (0x08 - 0x4A) * blend_ratio)
-    else:
-        blend_ratio = (severity_score - 0.5) / 0.5
-        red_value = int(0xEA + (0xDC - 0xEA) * blend_ratio)
-        green_value = int(0xB3 + (0x26 - 0xB3) * blend_ratio)
-        blue_value = int(0x08 + (0x26 - 0x08) * blend_ratio)
-
-    return SeverityInfo(
-        severity=round(severity_score, 3),
-        color=f"#{red_value:02X}{green_value:02X}{blue_value:02X}",
-    )
-
-
-def get_cell_overlay(image_bgr: np.ndarray) -> CellOverlayResult:
+def get_cell_overlay(
+    image_bgr: np.ndarray,
+    contours: list[np.ndarray] | None = None,
+) -> CellOverlayResult:
     """
     Returns per-cell shape data for drawing a live annotation directly on
     the photo , the headline feature. Coordinates and sizes are
@@ -311,6 +289,11 @@ def get_cell_overlay(image_bgr: np.ndarray) -> CellOverlayResult:
     so the app can scale the overlay correctly regardless of what size
     the photo is actually displayed at on screen, without needing to know
     the backend's internal 260x260 processing size.
+
+    CHANGED: now accepts an optional pre-computed `contours` list, same
+    reasoning as run_shape_screening() above , predict.py computes
+    contours exactly once per request and passes the same list into both
+    functions instead of each one re-running watershed independently.
 
     Each cell entry:
         center_x, center_y : center point, 0-1 normalized
@@ -321,7 +304,8 @@ def get_cell_overlay(image_bgr: np.ndarray) -> CellOverlayResult:
         color                 : hex string, green -> yellow -> red gradient by severity
     """
     image_height, image_width = image_bgr.shape[:2]
-    contours = detect_cell_contours(image_bgr)
+    if contours is None:
+        contours = detect_cell_contours(image_bgr)
 
     detected_cells: list[CellOverlayEntry] = []
     for contour in contours:

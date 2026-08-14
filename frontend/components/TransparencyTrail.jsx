@@ -11,6 +11,9 @@ import { CONDITION_CONFIG, resolveConditionKey, updateReportNotes } from '../uti
 import { ReportStyles } from '../styles/ReportStyles';
 import { COLORS, FONTS, SPACING, RADIUS, scale } from '../assets/theme';
 
+
+const [selectedSeverityBand, setSelectedSeverityBand] = useState(null); 
+
 const SEVERITY_COLORS = {
   red:    { bg: '#FEE2E2', text: '#B91C1C', icon: 'alert-circle' },
   yellow: { bg: '#FEF3C7', text: '#92400E', icon: 'alert' },
@@ -23,6 +26,45 @@ const CONFIDENCE_LABELS = {
   moderate: { text: 'Moderate confidence', color: '#92400E' },
   low:      { text: 'Low confidence',      color: '#B91C1C' },
 };
+
+// Same three bands as the current gradient labels, now used to actually
+// bucket and count real cells instead of just labeling a reference scale.
+const SEVERITY_BUCKETS = [
+  { key: 'normal',  label: 'Normal shape',   min: 0.0,  max: 0.33 },
+  { key: 'mild',    label: 'Mild variation', min: 0.33, max: 0.66 },
+  { key: 'unusual', label: 'Unusual shape',  min: 0.66, max: 1.001 }, // 1.001: severity===1.0 falls in top bucket
+];
+
+function computeSeverityBreakdown(cells) {
+  const total = cells.length;
+  return SEVERITY_BUCKETS.map((bucket) => {
+    const count = cells.filter(
+      (cell) => cell.severity >= bucket.min && cell.severity < bucket.max
+    ).length;
+    const midpoint = (bucket.min + Math.min(bucket.max, 1)) / 2;
+    return {
+      ...bucket,
+      count,
+      percent: total > 0 ? Math.round((count / total) * 100) : 0,
+      color: severityToColor(midpoint), // reuses your existing gradient math for the swatch
+    };
+  });
+}
+
+// The anemia-probability model only scores two outcomes: anemic vs
+// healthy. 'unknown' is a derived bucket (flagged morphology or an
+// unreliable-result warning), not a third class the model assigns a
+// probability/confidence to. Gated here rather than trusting the
+// backend payload alone to already be null -- the backend nulls
+// prediction.anemia_probability and prediction.explanation.confidence
+// for unknown results, but this component reads that same
+// explanation.confidence field, so this check is the belt to that
+// backend's suspenders. It also protects against
+// prediction.anemia_probability arriving as `null`, which would
+// otherwise render as "0% probability" (null * 100 === 0 in JS) rather
+// than simply not rendering.
+const shouldShowProbabilityAndConfidence = (conditionKey) =>
+  conditionKey === 'anemic' || conditionKey === 'healthy';
 
 const getRecommendation = (conditionKey, isUnreliable, imageQualityWarning) => {
   if (conditionKey === 'unknown' && isUnreliable) {
@@ -87,13 +129,16 @@ const severityToColor = (severityScore) => {
 // banding, without generating an excessive number of Views.
 const GRADIENT_BAR_SLICES = 40;
 
-function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop }) {
+function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop, selectedSeverityBand }) {
   const { width: screenWidth } = useWindowDimensions();
   const displaySize = screenWidth - SPACING['2xl'] * 2;
 
   if (!imageBase64) return null;
 
   const canShowOverlay = showOverlay && cellOverlay && isShowingAnalyzedCrop;
+  const bucket = selectedSeverityBand
+    ? SEVERITY_BUCKETS.find((b) => b.key === selectedSeverityBand)
+    : null;
 
   return (
     <View style={{ width: displaySize, height: displaySize }}>
@@ -107,6 +152,9 @@ function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnal
           cellOverlay={cellOverlay}
           displayWidth={displaySize}
           displayHeight={displaySize}
+          showAllCells={!bucket}
+          minimumSeverityToDraw={bucket ? bucket.min : 0}
+          maximumSeverityToDraw={bucket ? bucket.max : 1.001}
         />
       )}
     </View>
@@ -128,6 +176,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   );
   const cfg = CONDITION_CONFIG[conditionKey] ?? CONDITION_CONFIG.healthy;
   const sevStyle = SEVERITY_COLORS[cfg.severity] ?? SEVERITY_COLORS.yellow;
+  const showProbabilityConfidence = shouldShowProbabilityAndConfidence(conditionKey);
 
   const confidenceInfo =
     CONFIDENCE_LABELS[prediction.explanation?.confidence]
@@ -221,12 +270,18 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
             <Text style={[styles.conditionLabel, { color: sevStyle.text }]}>
               {cfg.label}
             </Text>
-            <Text style={styles.probabilityText}>
-              {(prediction.anemia_probability * 100).toFixed(0)}% probability
-            </Text>
-            <Text style={[styles.confidenceText, { color: confidenceInfo.color }]}>
-              {confidenceInfo.text}
-            </Text>
+            {showProbabilityConfidence ? (
+              <>
+                <Text style={styles.probabilityText}>
+                  {(prediction.anemia_probability * 100).toFixed(0)}% probability
+                </Text>
+                <Text style={[styles.confidenceText, { color: confidenceInfo.color }]}>
+                  {confidenceInfo.text}
+                </Text>
+              </>
+            ) : (
+              <View style={{ marginBottom: SPACING.md }} />
+            )}
 
             <View style={styles.imageSection}>
               <ImageWithOverlay
@@ -234,6 +289,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 cellOverlay={prediction.cell_overlay}
                 showOverlay={showOverlay}
                 isShowingAnalyzedCrop={!showBeforeCrop}
+                selectedSeverityBand={selectedSeverityBand}
               />
               <View style={styles.imageControls}>
                 {prediction.was_cropped && (
@@ -269,51 +325,23 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               {prediction.cell_overlay && showOverlay && !showBeforeCrop && (
                 <View style={{ width: '100%' }}>
                   <Text style={styles.legendCaption}>
-                    Each flagged cell is colored by how abnormal its shape looks, on a
-                    continuous scale from green (normal) to red (most unusual). A cell's
-                    exact position on this bar is what its color on the image means.
+                    Each detected cell is scored on how far its shape departs from a
+                    normal round cell. Breakdown for this sample:
                   </Text>
 
-                  <View style={styles.gradientBar}>
-                    {Array.from({ length: GRADIENT_BAR_SLICES }).map((_, index) => (
-                      <View
-                        key={index}
-                        style={{
-                          flex: 1,
-                          backgroundColor: severityToColor(index / (GRADIENT_BAR_SLICES - 1)),
-                        }}
-                      />
-                    ))}
-                  </View>
-
-                  <View style={styles.gradientTickRow}>
-                    <Text style={styles.gradientTickText}>0.0</Text>
-                    <Text style={styles.gradientTickText}>0.5</Text>
-                    <Text style={styles.gradientTickText}>1.0</Text>
-                  </View>
-
-                  <View style={styles.gradientLabelRow}>
-                    <Text style={[styles.gradientBandLabel, { textAlign: 'left' }]}>Normal shape</Text>
-                    <Text style={[styles.gradientBandLabel, { textAlign: 'center' }]}>Mild variation</Text>
-                    <Text style={[styles.gradientBandLabel, { textAlign: 'right' }]}>Unusual shape</Text>
-                  </View>
+                  {computeSeverityBreakdown(prediction.cell_overlay.cells).map((bucket) => (
+                    <View key={bucket.key} style={styles.breakdownRow}>
+                        <View style={[styles.breakdownSwatch, { backgroundColor: bucket.color }]} />
+                        <Text style={styles.breakdownLabel}>{bucket.label}</Text>
+                        <Text style={styles.breakdownCount}>
+                          {bucket.count} cell{bucket.count !== 1 ? 's' : ''} ({bucket.percent}%)
+                        </Text>
+                    </View>
+                  ))}
                 </View>
               )}
+          
             </View>
-
-            {morphologyEntries.length > 0 && (
-              <View style={styles.sectionBlock}>
-                <Text style={styles.sectionHeading}>Morphology findings</Text>
-                {morphologyEntries.map(([flagName]) => (
-                  <View key={flagName} style={styles.findingRow}>
-                    <MaterialCommunityIcons name="circle-medium" size={18} color={COLORS.primary} />
-                    <Text style={styles.findingText}>
-                      {flagName.replace(/_/g, ' ')}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
 
             {cbcPatternEntries.length > 0 && (
               <View style={styles.sectionBlock}>
@@ -593,4 +621,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background, borderRadius: RADIUS.md, paddingVertical: SPACING.md + 2,
   },
   btnSecondaryText: { fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
+  breakdownRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 6,
+},
+breakdownSwatch: {
+  width: 14,
+  height: 14,
+  borderRadius: 4,
+  marginRight: SPACING.sm,
+},
+breakdownLabel: {
+  flex: 1,
+  fontSize: FONTS.sm,
+  color: COLORS.textPrimary,
+},
+breakdownCount: {
+  fontSize: FONTS.sm,
+  fontWeight: FONTS.semibold,
+  color: COLORS.textSecondary,
+},
 });

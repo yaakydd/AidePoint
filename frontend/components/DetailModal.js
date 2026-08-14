@@ -306,4 +306,4 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
       </View>
     </Modal>
   );
-    }
+}

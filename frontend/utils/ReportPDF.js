@@ -4,12 +4,45 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { CONDITION_CONFIG } from './ReportUtils';
 
+// The anemia-probability model only scores two outcomes: anemic vs
+// healthy. 'unknown' is a derived bucket (flagged morphology or an
+// unreliable-result warning), not a third class the model assigns a
+// confidence score to -- so the exported PDF should not show a
+// Confidence row for it, matching the in-app DetailModal/TransparencyTrail
+// gating.
+const shouldShowProbabilityAndConfidence = (conditionKey) =>
+  conditionKey === 'anemic' || conditionKey === 'healthy';
+
+// SECURITY: patientName, patientId, labTechName, labTechNotes,
+// doctorName, temperature, and bloodPressure all originate from
+// technician-entered form fields or free-text notes -- none of it is
+// backend-controlled or validated against a fixed set of values.
+// Interpolating any of it directly into this HTML template without
+// escaping means a stray '<', '>', or '"' (accidental, or a technician
+// pasting text copied from elsewhere) can corrupt the rendered PDF's
+// layout or, worst case, inject markup that changes how the report
+// displays -- a real data-integrity problem for a clinical document,
+// even though expo-print's WebView sandbox means this isn't a
+// code-execution risk. Every user-supplied field must go through this
+// before being placed in the template. Fields sourced from
+// CONDITION_CONFIG (cfg.label, cfg.urgency, cfg.morphology) do NOT need
+// escaping -- they're fixed strings from our own config, not user input.
+const escapeHtml = (value) => {
+  if (value === undefined || value === null) return value;
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const row = (label, value) => {
   if (value === undefined || value === null || value === '') return '';
   return `
     <tr>
-      <td class="label">${label}</td>
-      <td class="value">${value}</td>
+      <td class="label">${escapeHtml(label)}</td>
+      <td class="value">${escapeHtml(value)}</td>
     </tr>`;
 };
 
@@ -23,6 +56,9 @@ const buildMorphologySection = (morphologyFindings) => {
       <div class="note-text">No abnormal morphology flags detected above the reporting threshold.</div>`;
   }
 
+  // Flag names come from MORPHOLOGY_KEYS on the backend (a fixed list),
+  // not user input -- no escaping needed here, but keeping the
+  // replace(/_/g, ' ') formatting as-is.
   const items = flaggedEntries
     .map(([flagName]) => `<li>${flagName.replace(/_/g, ' ')}</li>`)
     .join('');
@@ -36,6 +72,8 @@ const buildCbcSection = (cbcPatternSummary) => {
   const entries = Object.entries(cbcPatternSummary ?? {});
   if (entries.length === 0) return '';
 
+  // fieldName/display_text come from fixed backend config
+  // (CBC_KEYS / cbc_uncertainty.py), not user input.
   const rows = entries
     .map(([fieldName, fieldData]) => row(
       fieldName.toUpperCase(),
@@ -61,7 +99,11 @@ const buildReliabilitySection = (isUnreliable, unreliableReasons, imageQuality) 
 
   if (!isUnreliable && imageQuality?.quality_score !== 'poor') return '';
 
-  const items = reasons.map((reason) => `<li>${reason}</li>`).join('');
+  // Reasons are backend-generated diagnostic strings (from
+  // quality_checks.py / shape_screening.py), not user input -- no
+  // escaping needed, but left defensively safe since these do get
+  // embedded as list items.
+  const items = reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('');
 
   return `
     <div class="reliability-banner">
@@ -71,6 +113,8 @@ const buildReliabilitySection = (isUnreliable, unreliableReasons, imageQuality) 
 };
 
 const buildTechnicianNotesSection = (report) => {
+  // labTechName and labTechNotes are both technician-entered --
+  // row() already escapes both label and value.
   const rows = [
     row('Lab Technician', report.labTechName),
     row('Notes', report.labTechNotes || 'No notes recorded'),
@@ -83,6 +127,7 @@ const buildTechnicianNotesSection = (report) => {
 
 const buildReportHtml = (report) => {
   const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
+  const showProbabilityConfidence = shouldShowProbabilityAndConfidence(report.condition);
   const confidencePct = typeof report.confidence === 'number'
     ? `${Math.round(report.confidence * 100)}%`
     : (report.confidence ?? '—');
@@ -92,6 +137,19 @@ const buildReportHtml = (report) => {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
+
+  // Pre-escape every user-supplied field once, up front, rather than
+  // scattering escapeHtml(...) calls through the template below --
+  // keeps the template itself readable and makes it obvious at a glance
+  // which fields have been sanitized.
+  const safePatientName = escapeHtml(report.patientName) ?? '—';
+  const safePatientId = escapeHtml(report.patientId) ?? '—';
+  const safeLabTechName = escapeHtml(report.labTechName) ?? '—';
+  const safeTemperature = escapeHtml(report.temperature);
+  const safeBloodPressure = escapeHtml(report.bloodPressure);
+  const safeScanId = escapeHtml(report.scanId) ?? '—';
+  const safeDateDisplay = escapeHtml(report.dateDisplay) ?? '—';
+  const safeTimeDisplay = escapeHtml(report.timeDisplay) ?? '';
 
   return `
   <html>
@@ -191,28 +249,28 @@ const buildReportHtml = (report) => {
           </div>
         </div>
         <div class="meta-right">
-          <div class="meta-line">Report ID<br/><strong>${report.scanId ?? '—'}</strong></div>
-          <div class="meta-line">Scan Date<br/><strong>${report.dateDisplay ?? '—'} ${report.timeDisplay ?? ''}</strong></div>
+          <div class="meta-line">Report ID<br/><strong>${safeScanId}</strong></div>
+          <div class="meta-line">Scan Date<br/><strong>${safeDateDisplay} ${safeTimeDisplay}</strong></div>
           <div class="meta-line">Report Printed<br/><strong>${printedAtDisplay}</strong></div>
         </div>
       </div>
 
       <div class="info-bar-row">
-        <div class="info-bar">Scan ID <span>${report.scanId ?? '—'}</span></div>
-        <div class="info-bar">Scan Date <span>${report.dateDisplay ?? '—'} ${report.timeDisplay ?? ''}</span></div>
+        <div class="info-bar">Scan ID <span>${safeScanId}</span></div>
+        <div class="info-bar">Scan Date <span>${safeDateDisplay} ${safeTimeDisplay}</span></div>
       </div>
 
       <div class="info-columns">
         <div class="info-col">
           <div class="info-col-title">Lab Technician</div>
-          <div class="info-col-line"><strong>${report.labTechName ?? '—'}</strong></div>
+          <div class="info-col-line"><strong>${safeLabTechName}</strong></div>
         </div>
         <div class="info-col">
           <div class="info-col-title">Patient Information</div>
-          <div class="info-col-line">Patient: <strong>${report.patientName ?? '—'}</strong></div>
-          <div class="info-col-line">Patient ID: <strong>${report.patientId ?? '—'}</strong></div>
-          ${report.temperature ? `<div class="info-col-line">Temperature: <strong>${report.temperature} °C</strong></div>` : ''}
-          ${report.bloodPressure ? `<div class="info-col-line">Blood Pressure: <strong>${report.bloodPressure}</strong></div>` : ''}
+          <div class="info-col-line">Patient: <strong>${safePatientName}</strong></div>
+          <div class="info-col-line">Patient ID: <strong>${safePatientId}</strong></div>
+          ${safeTemperature ? `<div class="info-col-line">Temperature: <strong>${safeTemperature} °C</strong></div>` : ''}
+          ${safeBloodPressure ? `<div class="info-col-line">Blood Pressure: <strong>${safeBloodPressure}</strong></div>` : ''}
         </div>
       </div>
 
@@ -223,10 +281,10 @@ const buildReportHtml = (report) => {
       <div class="section-bar">AI Analysis Result</div>
       <div class="result-statement">
         Based on the blood smear analysis, the screening result is:
-        <strong>${cfg.label}</strong>. ${cfg.morphology}
+        <strong>${escapeHtml(cfg.label)}</strong>. ${escapeHtml(cfg.morphology)}
       </div>
       <table>
-        ${row('Confidence', confidencePct)}
+        ${showProbabilityConfidence ? row('Confidence', confidencePct) : ''}
         ${row('Urgency', cfg.urgency)}
       </table>
 
