@@ -39,6 +39,12 @@ import { useAuth }   from '../context/AuthContext';
 
 const OTP_BOXES = 6;
 
+// Throttling constants — kept identical to VerifyEmail.js so both
+// OTP-entry screens behave the same way from a user's perspective.
+const MAX_ATTEMPTS   = 5;
+const LOCKOUT_MS     = 60_000;   // 1 minute
+const RESEND_COOLDOWN = 30;      // seconds
+
 const PASSWORD_CHECKS = [
   { key: 'length',  label: 'At least 8 characters',         test: p => p.length >= 8 },
   { key: 'upper',   label: 'At least one uppercase letter',  test: p => /[A-Z]/.test(p) },
@@ -63,6 +69,7 @@ const ForgotPassword = () => {
   const [error,   setError]   = useState('');
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState(null);
+  const [lockRemaining, setLockRemaining] = useState(0); // seconds, for display
 
   // Step 1
   const [email, setEmail] = useState('');
@@ -81,6 +88,7 @@ const ForgotPassword = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const strength = getStrength(newPassword);
+  const isLocked = !!lockedUntil && Date.now() < lockedUntil;
 
   // Safety net: if the user backs out mid-flow (back button, etc.) before
   // reaching the signOut() in handleSetPassword, make sure we don't leave
@@ -90,6 +98,23 @@ const ForgotPassword = () => {
       endPasswordRecovery();
     };
   }, []);
+
+  // Tick the lockout countdown while active.
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
+      setLockRemaining(remaining);
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setFailedAttempts(0);
+        setError('');
+      }
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [lockedUntil]);
 
   // STEP 1: Send reset email 
 
@@ -145,7 +170,7 @@ const ForgotPassword = () => {
 
 async function handleVerifyOTP() {
   if (lockedUntil && Date.now() < lockedUntil) {
-    setError('Too many attempts. Please wait a minute and try again.');
+    setError(`Too many attempts. Please wait ${lockRemaining}s and try again.`);
     return;
   }
   const token = digits.join('');
@@ -161,8 +186,8 @@ async function handleVerifyOTP() {
   if (err) {
     const attempts = failedAttempts + 1;
     setFailedAttempts(attempts);
-    if (attempts >= 5) {
-      setLockedUntil(Date.now() + 60_000); // 1 min lockout
+    if (attempts >= MAX_ATTEMPTS) {
+      setLockedUntil(Date.now() + LOCKOUT_MS); // 1 min lockout
       setError('Too many failed attempts. Please wait a minute and try again.');
     } else {
       setError('Invalid or expired code. Please try again.');
@@ -192,7 +217,7 @@ async function handleResend() {
   setResendMsg('');
   const { error: err } = await supabase.auth.resetPasswordForEmail(email);
   setResending(false);
-  setResendCooldown(30); // 30s before they can resend again
+  setResendCooldown(RESEND_COOLDOWN); // 30s before they can resend again
   setResendMsg(err ? 'Could not resend. Please try again.' : 'A new code has been sent to your email.');
 }
 
@@ -329,6 +354,12 @@ async function handleResend() {
             </Text>
 
             {!!error && <Text style={styles.err}>{error}</Text>}
+
+            {/* LOCKOUT COUNTDOWN */}
+            {isLocked && (
+              <Text style={styles.lockMsg}>Try again in {lockRemaining}s</Text>
+            )}
+
             {!!resendMsg && (
               <Text style={[styles.resendMsg, { color: resendMsg.includes('sent') ? '#10B981' : '#EF4444' }]}>
                 {resendMsg}
@@ -354,13 +385,14 @@ async function handleResend() {
                   textAlign="center"
                   autoFocus={i === 0}
                   selectTextOnFocus
+                  editable={!isLocked}
                 />
               ))}
             </View>
 
             <TouchableOpacity
-              style={[styles.btn, (loading || digits.join('').length < OTP_BOXES) && styles.btnDisabled]}
-              disabled={loading || digits.join('').length < OTP_BOXES}
+              style={[styles.btn, (loading || isLocked || digits.join('').length < OTP_BOXES) && styles.btnDisabled]}
+              disabled={loading || isLocked || digits.join('').length < OTP_BOXES}
               onPress={handleVerifyOTP}
               activeOpacity={0.85}
             >
@@ -370,12 +402,17 @@ async function handleResend() {
               }
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending}>
+            <TouchableOpacity style={styles.resendBtn} onPress={handleResend} disabled={resending || resendCooldown > 0}>
               {resending
                 ? <ActivityIndicator size="small" color={COLORS.primary} />
-                : <Text style={styles.resendText}>
-                    Didn't get a code? <Text style={styles.resendLink}>Resend</Text>
+                : (
+                  <Text style={styles.resendText}>
+                    Didn't get a code?{' '}
+                    <Text style={[styles.resendLink, resendCooldown > 0 && { opacity: 0.5 }]}>
+                      {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend'}
+                    </Text>
                   </Text>
+                )
               }
             </TouchableOpacity>
           </>
@@ -530,6 +567,7 @@ const styles = StyleSheet.create({
   resendText: { fontSize: 14, color: '#6B7280' },
   resendLink: { color: COLORS.primary, fontWeight: '600' },
   resendMsg:  { fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  lockMsg:    { fontSize: 13, textAlign: 'center', marginBottom: 8, color: '#EF4444', fontWeight: '600' },
 
   // Password strength
   barRow:        { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
