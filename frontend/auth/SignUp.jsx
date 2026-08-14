@@ -14,6 +14,14 @@
 // Chime reference layout (logo + wordmark, connected step icons with
 // labels, generous spacing), and fix keyboard-covering-input on
 // Android/iOS via KeyboardAwareScrollView.
+//
+// Email-enumeration note: step 1 does NOT pre-check whether an email is
+// already registered. That was tried via signInWithOtp({shouldCreateUser:
+// false}) but rejected — it's a textbook enumeration oracle and
+// contradicts ForgotPassword.js's deliberate "never reveal if an email
+// exists" design. Duplicate accounts are now caught at the final
+// register() call (step 3) and the user is routed back to step 1 with a
+// clear message + Sign In link instead.
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -70,6 +78,17 @@ const getTypePillStyle = (type) => {
   return map[type] ?? { backgroundColor: COLORS.surfaceAlt, color: COLORS.textSecondary };
 };
 
+// Loose match on Supabase/GoTrue's duplicate-account error phrasing.
+// Different supabase-js/GoTrue versions phrase this slightly differently
+// ("User already registered", "already exists", etc.) — matching on the
+// substring rather than an exact string keeps this from silently breaking
+// on a version bump.
+function isDuplicateAccountError(message) {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return m.includes('already registered') || m.includes('already exists');
+}
+
 const STEPS = ['start', 'hospital', 'password'];
 
 const SignUp = () => {
@@ -86,7 +105,6 @@ const SignUp = () => {
   // Step 2: hospital picker state (unchanged logic)
   const [hospitalQuery, setHospitalQuery] = useState('');
   const [hospitalSelected, setHospitalSelected] = useState('');
-  const [hospitalList, setHospitalList] = useState([]);
   const [filteredList, setFilteredList] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -105,53 +123,44 @@ const SignUp = () => {
 
   const strength = getStrength(password);
 
-
-
+  // Server-side hospital search — queries Postgres directly instead of
+  // pulling the whole ghana_hospitals table into memory. Debounced 150ms
+  // so we're not firing a query per keystroke.
   useEffect(() => {
-  const timeout = setTimeout(async () => {
-    const q = hospitalQuery.trim();
-    if (!q) {
-      const { data } = await supabase
-        .from('ghana_hospitals')
-        .select('name, city, type')
-        .order('name')
-        .limit(20);
-      setFilteredList(data ?? []);
-      return;
-    }
-    const { data } = await supabase
-      .from('ghana_hospitals')
-      .select('name, city, type')
-      .or(`name.ilike.%${q}%,city.ilike.%${q}%,type.ilike.%${q}%`)
-      .order('name')
-      .limit(30);
-    setFilteredList(data ?? []);
-  }, 150);
+    let alive = true;
+    setHospitalsLoading(true);
 
-  return () => clearTimeout(timeout);
-}, [hospitalQuery]);
+    const timeout = setTimeout(async () => {
+      const q = hospitalQuery.trim();
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const q = hospitalQuery.trim().toLowerCase();
-      if (!q) {
-        setFilteredList(hospitalList.slice(0, 20));
-        return;
-      }
-      const results = hospitalList.filter((item) =>
-        item.name?.toLowerCase().includes(q) ||
-        item.city?.toLowerCase().includes(q) ||
-        item.type?.toLowerCase().includes(q)
-      );
-      setFilteredList(results.slice(0, 30));
+      const query = q
+        ? supabase
+            .from('ghana_hospitals')
+            .select('name, city, type')
+            .or(`name.ilike.%${q}%,city.ilike.%${q}%,type.ilike.%${q}%`)
+            .order('name')
+            .limit(30)
+        : supabase
+            .from('ghana_hospitals')
+            .select('name, city, type')
+            .order('name')
+            .limit(20);
+
+      const { data, error } = await query;
+
+      if (!alive) return;
+      setFilteredList(error ? [] : (data ?? []));
+      setHospitalsLoading(false);
     }, 150);
 
-    return () => clearTimeout(timeout);
-  }, [hospitalQuery, hospitalList]);
+    return () => {
+      alive = false;
+      clearTimeout(timeout);
+    };
+  }, [hospitalQuery]);
 
   const openModal = () => {
     Keyboard.dismiss();
-    setFilteredList(hospitalList.slice(0, 20));
     setShowCustomInput(false);
     setCustomHospital('');
     setModalVisible(true);
@@ -235,20 +244,10 @@ const SignUp = () => {
 
   const handleNext = async () => {
     if (step === 'start') {
-          if (!validateStart()) return;
-
-    setLoading(true);
-    const available = await checkEmailAvailable(email.trim().toLowerCase());
-    setLoading(false);
-
-    if (!available) {
-      setErrors({ email: 'An account with this email already exists. Try signing in instead.' });
+      if (!validateStart()) return;
+      setStepIndex(1);
       return;
     }
-
-    setStepIndex(1);
-    return;
-  }
     if (step === 'hospital') {
       if (!validateHospital()) return;
       setStepIndex(2);
@@ -265,8 +264,16 @@ const SignUp = () => {
           password,
           hospitalLab: hospitalSelected,
         });
+
         if (!result.success) {
-          setErrors((prev) => ({ ...prev, password: result.error }));
+          if (isDuplicateAccountError(result.error)) {
+            // Send them back to step 1 — the email field is where this
+            // actually needs fixing, not the password step.
+            setErrors({ email: 'An account with this email already exists. Try signing in instead.' });
+            setStepIndex(0);
+          } else {
+            setErrors((prev) => ({ ...prev, password: result.error }));
+          }
           return;
         }
         if (result.needsVerification) {
@@ -282,22 +289,6 @@ const SignUp = () => {
     step === 'start' ? canProceedStart :
     step === 'hospital' ? canProceedHospital :
     canProceedPassword;
-
-
-
-  async function checkEmailAvailable(email) {
-  // Supabase doesn't expose a direct "does this email exist" lookup on
-  // the client for security reasons, so we use signInWithOtp with
-  // shouldCreateUser: false — it succeeds silently if the email exists
-  // (without sending anything unexpected) and errors if it doesn't.
-  // This just tells us existence, nothing more.
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: false },
-  });
-  // No error means an account with this email already exists.
-  return !!error; // true = available, false = already registered
-}
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -410,7 +401,16 @@ const SignUp = () => {
                   style={styles.input}
                 />
               </View>
-              {errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
+              {errors.email && (
+                <Text style={styles.fieldError}>
+                  {errors.email}
+                  {errors.email.includes('already exists') && (
+                    <Text style={styles.privacyLink} onPress={() => navigation.navigate('SignIn')}>
+                      {'  '}Sign In
+                    </Text>
+                  )}
+                </Text>
+              )}
             </>
           )}
 
@@ -436,7 +436,7 @@ const SignUp = () => {
                   style={[styles.hospitalInputText, !hospitalSelected && styles.hospitalInputPlaceholder]}
                   numberOfLines={1}
                 >
-                  {hospitalsLoading ? 'Loading hospitals…' : hospitalSelected || 'Search hospital or lab'}
+                  {hospitalSelected || 'Search hospital or lab'}
                 </Text>
                 {hospitalSelected ? (
                   <MaterialCommunityIcons name="check-circle" size={18} color={COLORS.success} />
