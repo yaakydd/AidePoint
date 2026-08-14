@@ -42,6 +42,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
   if (!report) return null;
 
   const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
+  const showProbabilityConfidence = report.condition === 'anemic' || report.condition === 'healthy';
   const confidencePct = typeof report.confidence === 'number'
     ? Math.round(report.confidence * 100) + '%'
     : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
