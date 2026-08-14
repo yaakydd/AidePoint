@@ -324,6 +324,7 @@ async function handleResend() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 style={styles.input}
+                maxLength={254}
               />
             </View>
 
@@ -442,6 +443,7 @@ async function handleResend() {
                 onChangeText={t => { setNewPassword(t); setError(''); }}
                 secureTextEntry={!showNew}
                 style={styles.input}
+                maxLength={128}
               />
               <TouchableOpacity onPress={() => setShowNew(p => !p)}>
                 <Feather name={showNew ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
@@ -484,6 +486,7 @@ async function handleResend() {
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirm}
                 style={styles.input}
+                maxLength={128}
               />
               <TouchableOpacity onPress={() => setShowConfirm(p => !p)}>
                 <Feather name={showConfirm ? 'eye-off' : 'eye'} size={19} color="#9CA3AF" />
