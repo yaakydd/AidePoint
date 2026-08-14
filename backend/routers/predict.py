@@ -43,6 +43,15 @@ async def predict(
       - All errors return structured JSON, never raw Python tracebacks
       - Every completed prediction is persisted to prediction_records for
         audit purposes, independent of the response returned to the app
+
+    Unknown-condition contract:
+      - When result["is_unreliable"] is True, the response's
+        "condition" field is "unknown" and both "anemia_probability" and
+        "prediction_confidence" are forced to None before the response
+        is built. This is enforced here, at the API boundary, rather
+        than left to the frontend to remember not to render those
+        fields — a null value can't accidentally be displayed the way a
+        real number sitting unused in a JSON payload can.
     """
     _model = request.app.state.model
     _cbc_mean_absolute_errors = request.app.state.cbc_mean_absolute_errors
@@ -58,6 +67,11 @@ async def predict(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="patient_sample_id is required and cannot be blank.",
+        )
+    if len(patient_sample_id) > 255:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="patient_sample_id is too long (max 255 characters).",
         )
 
     # Validate file type 
@@ -98,17 +112,23 @@ async def predict(
     # even usable" (blur, brightness, cell count), a separate, earlier
     # question from the reliability gate further down, which asks "does
     # this usable photo look like our training data."
+    #
+    # shape_result is computed exactly once, here, and passed into
+    # _model.predict() below instead of letting it recompute internally.
+    # It used to run twice per request (once here, once again inside
+    # AidePointONNX.predict()) — same image, same cost, paid twice on
+    # every single call.
     shape_result: ShapeScreeningResult = run_shape_screening(preprocessed.raw_resized_image)
     quality_result = assess_image_quality(
         preprocessed.raw_resized_image, shape_result.cells_detected
     )
 
     if should_block_inference(quality_result):
-            log.info(
-                "predict blocked for user=%s: no usable cells detected (%s)",
-                user.get("id"), quality_result.failure_reasons,
-            )
-            raise HTTPException(
+        log.info(
+            "predict blocked for user=%s: no usable cells detected (%s)",
+            user.get("id"), quality_result.failure_reasons,
+        )
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "error": "image_unusable",
@@ -116,12 +136,14 @@ async def predict(
                 "image_quality": quality_result.__dict__,
             },
         )
-    
+
     #  Inference 
     t0 = time.perf_counter()
     try:
         result = _model.predict(
-            preprocessed.model_input, preprocessed.raw_resized_image
+            preprocessed.model_input,
+            preprocessed.raw_resized_image,
+            shape_screening_result=shape_result,
         )
     except Exception as exc:
         log.error("Inference error for user %s: %s", user.get("id"), exc)
@@ -188,6 +210,13 @@ async def predict(
     # succeeds but before the response is returned -- a prediction that
     # was shown to a technician and not logged is worse than one that
     # failed outright, since it leaves no trace to investigate later.
+    #
+    # Note: the FULL result (including the real anemia_probability) is
+    # always persisted here, even for unreliable/unknown results — the
+    # null-out below only affects what's shown to the technician in the
+    # response, never what's kept in the audit trail. The record needs
+    # the real numbers for later review even when the UI shouldn't
+    # display them as a confident finding.
     prediction_id: str | None = None
     if _supabase_client is not None:
         try:
@@ -232,28 +261,19 @@ async def predict(
             "sample=%s was not persisted.", user.get("id"), patient_sample_id,
         )
 
+    # ── Unknown-condition enforcement ──────────────────────────────
+    # This is the one authoritative place the three-way condition is
+    # decided. The frontend should branch on "condition" alone rather
+    # than reconstructing it from is_anemic/is_unreliable itself — and
+    # even if it doesn't, anemia_probability/prediction_confidence are
+    # physically null for an unknown result, not just conventionally
+    # unused.
     condition_is_unknown = result["is_unreliable"]
+    condition = "unknown" if condition_is_unknown else ("anemic" if result["is_anemic"] else "healthy")
 
-response_payload = {
-    **result,
-    "cbc_pattern_summary": cbc_pattern_summary,
-    "morphology_findings": morphology_findings,
-    "explanation": explanation_dict,
-    "prediction_confidence": prediction_confidence,
-    "prediction_id": prediction_id,
-    "inference_ms": elapsed_ms,
-    "was_cropped": preprocessed.was_cropped,
-    "original_preview_base64": preprocessed.original_preview_base64,
-    "cropped_preview_base64": preprocessed.cropped_preview_base64,
-    "image_quality": quality_result.__dict__,
-}
-
-if condition_is_unknown:
-    response_payload["anemia_probability"] = None
-    response_payload["prediction_confidence"] = None
-
-    return JSONResponse(content={
+    response_payload = {
         **result,
+        "condition": condition,
         "cbc_pattern_summary": cbc_pattern_summary,
         "morphology_findings": morphology_findings,
         "explanation": explanation_dict,
@@ -264,4 +284,10 @@ if condition_is_unknown:
         "original_preview_base64": preprocessed.original_preview_base64,
         "cropped_preview_base64": preprocessed.cropped_preview_base64,
         "image_quality": quality_result.__dict__,
-    })
+    }
+
+    if condition_is_unknown:
+        response_payload["anemia_probability"] = None
+        response_payload["prediction_confidence"] = None
+
+    return JSONResponse(content=response_payload)
