@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   ActivityIndicator, StyleSheet, StatusBar,
@@ -10,6 +10,12 @@ import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../assets/theme';
 
 const BOXES = 6;   //  Supabase sends 6-digit OTPs by default
+
+// Throttling constants — kept identical to ForgotPassword.js so the two
+// OTP-entry screens behave the same way from a user's perspective.
+const MAX_ATTEMPTS    = 5;
+const LOCKOUT_MS       = 60_000;   // 1 minute
+const RESEND_COOLDOWN  = 30;       // seconds
 
 export default function VerifyEmail() {
   const navigation   = useNavigation();
@@ -24,7 +30,39 @@ export default function VerifyEmail() {
   const [resendMsg, setResendMsg] = useState('');
   const [error, setError]         = useState('');
 
+  // ─── THROTTLING STATE (mirrors ForgotPassword.js) ────────
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil]       = useState(null);
+  const [lockRemaining, setLockRemaining]   = useState(0); // seconds, for display
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   const refs = useRef([]);        // one ref per input box
+
+  // Tick the lockout countdown while active.
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
+      setLockRemaining(remaining);
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setFailedAttempts(0);
+        setError('');
+      }
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [lockedUntil]);
+
+  // Tick the resend cooldown.
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
+  const isLocked = !!lockedUntil && Date.now() < lockedUntil;
 
   // ─── INPUT HANDLING ──────────────────────────────────────
   function handleChange(text, index) {
@@ -57,6 +95,11 @@ export default function VerifyEmail() {
 
   // ─── VERIFY ──────────────────────────────────────────────
   async function handleVerify() {
+    if (isLocked) {
+      setError(`Too many attempts. Please wait ${lockRemaining}s and try again.`);
+      return;
+    }
+
     const token = digits.join('');
     if (token.length < BOXES) {
       setError('Please enter all 6 digits.');
@@ -71,22 +114,37 @@ export default function VerifyEmail() {
     setLoading(false);
 
     if (!result.success) {
-      setError(result.error ?? 'Invalid code. Please try again.');
+      const attempts = failedAttempts + 1;
+      setFailedAttempts(attempts);
+
+      if (attempts >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCKOUT_MS);
+        setError('Too many failed attempts. Please wait a minute and try again.');
+      } else {
+        setError(result.error ?? 'Invalid code. Please try again.');
+      }
+
       setDigits(Array(BOXES).fill(''));   // clear boxes on failure
       refs.current[0]?.focus();
+      return;
     }
+
+    setFailedAttempts(0);
     // On success: AuthContext moves authState → 'CONSENT' or 'APP'
     // The root navigator handles the screen swap automatically.
   }
 
   // ─── RESEND ──────────────────────────────────────────────
   async function handleResend() {
+    if (resendCooldown > 0) return;
+
     setResend(true);
     setResendMsg('');
 
     const result = await resendVerification(email);
 
     setResend(false);
+    setResendCooldown(RESEND_COOLDOWN);
     setResendMsg(
       result.success
         ? 'A new code has been sent to your email.'
@@ -95,7 +153,7 @@ export default function VerifyEmail() {
   }
 
   const token = digits.join('');
-  const ready = token.length === BOXES && !loading;
+  const ready = token.length === BOXES && !loading && !isLocked;
 
   // ─── UI ──────────────────────────────────────────────────
   return (
@@ -138,6 +196,7 @@ export default function VerifyEmail() {
               textAlign="center"
               autoFocus={i === 0}
               selectTextOnFocus
+              editable={!isLocked}
             />
           ))}
         </View>
@@ -145,6 +204,11 @@ export default function VerifyEmail() {
         {/* ERROR */}
         {(!!error || !!authError) && (
           <Text style={styles.err}>{error || authError}</Text>
+        )}
+
+        {/* LOCKOUT COUNTDOWN */}
+        {isLocked && (
+          <Text style={styles.lockMsg}>Try again in {lockRemaining}s</Text>
         )}
 
         {/* RESEND MESSAGE */}
@@ -173,11 +237,18 @@ export default function VerifyEmail() {
         <TouchableOpacity
           style={styles.resendBtn}
           onPress={handleResend}
-          disabled={resending}
+          disabled={resending || resendCooldown > 0}
         >
           {resending
             ? <ActivityIndicator size="small" color={COLORS.primary} />
-            : <Text style={styles.resendText}>Didn't get a code? <Text style={styles.resendLink}>Resend</Text></Text>
+            : (
+              <Text style={styles.resendText}>
+                Didn't get a code?{' '}
+                <Text style={[styles.resendLink, resendCooldown > 0 && { opacity: 0.5 }]}>
+                  {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend'}
+                </Text>
+              </Text>
+            )
           }
         </TouchableOpacity>
 
@@ -220,6 +291,7 @@ const styles = StyleSheet.create({
   boxError:   { borderColor: '#EF4444' },
 
   err:        { color: '#EF4444', fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  lockMsg:    { color: '#EF4444', fontSize: 13, marginBottom: 12, textAlign: 'center', fontWeight: '600' },
   resendMsg:  { fontSize: 13, marginBottom: 12, textAlign: 'center' },
 
   btn: {
