@@ -140,16 +140,18 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
             </View>
 
             <Text style={styles.sectionHeading}>AI Analysis</Text>
-            <View style={styles.detailRow}>
+            {showProbabilityConfidence ? (
+               <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Confidence</Text>
-              <Text style={styles.detailValue}>{confidencePct}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Urgency</Text>
-              <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
-                {cfg.urgency}
-              </Text>
-            </View>
+    <Text style={styles.detailValue}>{confidencePct}</Text>
+  </View>
+) : null}
+<View style={styles.detailRow}>
+  <Text style={styles.detailLabel}>Urgency</Text>
+  <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
+    {cfg.urgency}
+  </Text>
+</View>
 
             {morphologyEntries.length > 0 ? (
               <View>
