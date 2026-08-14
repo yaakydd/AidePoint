@@ -57,6 +57,8 @@ export const CONDITION_CONFIG = {
   },
 };
 
+const showsProbabilityScore = resolvedCondition === 'anemic' || resolvedCondition === 'healthy';
+
 export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
   if (isAnemic) return 'anemic';
 
@@ -106,6 +108,7 @@ export const buildReport = ({
     condition:      resolvedCondition,
     conditionLabel: cfg.label,
     confidence,
+    showsProbabilityScore,
     severity:       cfg.severity,
     morphology:     cfg.morphology,
     urgency:        cfg.urgency,
