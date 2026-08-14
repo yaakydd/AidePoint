@@ -26,6 +26,17 @@ function getRecommendation(conditionKey, isUnreliable) {
   return 'No anemia pattern detected in this sample. No immediate action needed based on this screening alone; continue routine care and re-screen if the patient becomes symptomatic.';
 }
 
+// The anemia-probability model only scores two outcomes: anemic vs
+// healthy. 'unknown' is a derived bucket (flagged morphology or an
+// unreliable-result warning), not a third class the model assigns a
+// probability to -- so there is no meaningful percentage or confidence
+// value to show alongside it. Centralized here as one check rather than
+// scattered inline conditionals so every render site in this file reads
+// the same rule the same way.
+function shouldShowProbabilityAndConfidence(conditionKey) {
+  return conditionKey === 'anemic' || conditionKey === 'healthy';
+}
+
 export default function DetailModal({ report, visible, onClose, onNotesSaved, userId }) {
   const [exporting, setExporting] = useState(false);
   const [notesDraft, setNotesDraft] = useState(report?.labTechNotes ?? '');
@@ -42,7 +53,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
   if (!report) return null;
 
   const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
-  const showProbabilityConfidence = report.condition === 'anemic' || report.condition === 'healthy';
+  const showProbabilityConfidence = shouldShowProbabilityAndConfidence(report.condition);
   const confidencePct = typeof report.confidence === 'number'
     ? Math.round(report.confidence * 100) + '%'
     : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
@@ -141,17 +152,17 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
 
             <Text style={styles.sectionHeading}>AI Analysis</Text>
             {showProbabilityConfidence ? (
-               <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Confidence</Text>
-    <Text style={styles.detailValue}>{confidencePct}</Text>
-  </View>
-) : null}
-<View style={styles.detailRow}>
-  <Text style={styles.detailLabel}>Urgency</Text>
-  <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
-    {cfg.urgency}
-  </Text>
-</View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Confidence</Text>
+                <Text style={styles.detailValue}>{confidencePct}</Text>
+              </View>
+            ) : null}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Urgency</Text>
+              <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
+                {cfg.urgency}
+              </Text>
+            </View>
 
             {morphologyEntries.length > 0 ? (
               <View>
@@ -295,4 +306,4 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
       </View>
     </Modal>
   );
-}
+    }
