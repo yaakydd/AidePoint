@@ -12,8 +12,6 @@ import { ReportStyles } from '../styles/ReportStyles';
 import { COLORS, FONTS, SPACING, RADIUS, scale } from '../assets/theme';
 
 
-const [selectedSeverityBand, setSelectedSeverityBand] = useState(null); 
-
 const SEVERITY_COLORS = {
   red:    { bg: '#FEE2E2', text: '#B91C1C', icon: 'alert-circle' },
   yellow: { bg: '#FEF3C7', text: '#92400E', icon: 'alert' },
@@ -124,11 +122,6 @@ const severityToColor = (severityScore) => {
   return `#${toHex(redValue)}${toHex(greenValue)}${toHex(blueValue)}`;
 };
 
-// Number of thin slices making up the fake-gradient bar. 40 is dense
-// enough to read as continuous on a ~300px-wide bar with no visible
-// banding, without generating an excessive number of Views.
-const GRADIENT_BAR_SLICES = 40;
-
 function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop, selectedSeverityBand }) {
   const { width: screenWidth } = useWindowDimensions();
   const displaySize = screenWidth - SPACING['2xl'] * 2;
@@ -166,6 +159,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const [showBeforeCrop, setShowBeforeCrop] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [notes, setNotes] = useState(report?.labTechNotes ?? '');
+  const [selectedSeverityBand, setSelectedSeverityBand] = useState(null);
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
 
@@ -294,9 +288,13 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               <View style={styles.imageControls}>
                 {prediction.was_cropped && (
                   <TouchableOpacity
-                    style={styles.toggleChip}
-                    onPress={() => setShowBeforeCrop(v => !v)}
-                  >
+                  style={styles.toggleChip}
+                  onPress={() => {
+                    setShowOverlay(v => !v);
+                    setSelectedSeverityBand(null);
+                  }}
+                  disabled={showBeforeCrop}
+                >
                     <MaterialIcons name="compare" size={16} color={COLORS.primary} />
                     <Text style={styles.toggleChipText}>
                       {showBeforeCrop ? 'Show analyzed crop' : 'Show original photo'}
@@ -329,15 +327,27 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                     normal round cell. Breakdown for this sample:
                   </Text>
 
-                  {computeSeverityBreakdown(prediction.cell_overlay.cells).map((bucket) => (
-                    <View key={bucket.key} style={styles.breakdownRow}>
+                  {computeSeverityBreakdown(prediction.cell_overlay.cells).map((bucket) => {
+                    const isSelected = selectedSeverityBand === bucket.key;
+                    return (
+                      <TouchableOpacity
+                        key={bucket.key}
+                        style={[styles.breakdownRow, isSelected && styles.breakdownRowSelected]}
+                        onPress={() =>
+                          setSelectedSeverityBand(isSelected ? null : bucket.key)
+                        }
+                        disabled={bucket.count === 0}
+                      >
                         <View style={[styles.breakdownSwatch, { backgroundColor: bucket.color }]} />
-                        <Text style={styles.breakdownLabel}>{bucket.label}</Text>
+                        <Text style={[styles.breakdownLabel, bucket.count === 0 && styles.breakdownLabelEmpty]}>
+                          {bucket.label}
+                        </Text>
                         <Text style={styles.breakdownCount}>
                           {bucket.count} cell{bucket.count !== 1 ? 's' : ''} ({bucket.percent}%)
                         </Text>
-                    </View>
-                  ))}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
           
@@ -642,4 +652,47 @@ breakdownCount: {
   fontWeight: FONTS.semibold,
   color: COLORS.textSecondary,
 },
+breakdownCount: {
+  fontSize: FONTS.sm,
+  fontWeight: FONTS.semibold,
+  color: COLORS.textSecondary,
+},
+breakdownRowSelected: {
+  backgroundColor: COLORS.surfaceAlt,
+  borderRadius: RADIUS.sm,
+},
+breakdownLabelEmpty: {
+  color: COLORS.textMuted,
+},
+gradientBar: {
+    flexDirection: 'row',
+    width: '100%',
+    height: scale(14),
+    borderRadius: RADIUS.xs,
+    overflow: 'hidden',
+    marginTop: SPACING.xs,
+  },
+  gradientTickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 4,
+  },
+  gradientTickText: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+  },
+  gradientLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 2,
+    marginBottom: SPACING.xs,
+  },
+  gradientBandLabel: {
+    flex: 1,
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    fontWeight: FONTS.medium,
+  },
 });

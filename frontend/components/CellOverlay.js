@@ -29,9 +29,12 @@ const CellOverlay = ({
     return null;
   }
 
+
   const cellsToRender = showAllCells
     ? cellOverlay.cells
-    : cellOverlay.cells.filter(cell => cell.severity >= minimumSeverityToDraw);
+    : cellOverlay.cells.filter(
+        cell => cell.severity >= minimumSeverityToDraw && cell.severity < maximumSeverityToDraw
+      );
 
   return (
     <View
@@ -63,29 +66,6 @@ const CellOverlay = ({
           );
         })}
       </Svg>
-
-      {computeSeverityBreakdown(prediction.cell_overlay.cells).map((bucket) => {
-  const isSelected = selectedSeverityBand === bucket.key;
-  return (
-    <TouchableOpacity
-      key={bucket.key}
-      style={[styles.breakdownRow, isSelected && styles.breakdownRowSelected]}
-      onPress={() => {
-  setShowOverlay(v => !v);
-  setSelectedSeverityBand(null);
-}}
-      disabled={bucket.count === 0}
-    >
-      <View style={[styles.breakdownSwatch, { backgroundColor: bucket.color }]} />
-      <Text style={[styles.breakdownLabel, bucket.count === 0 && styles.breakdownLabelEmpty]}>
-        {bucket.label}
-      </Text>
-      <Text style={styles.breakdownCount}>
-        {bucket.count} cell{bucket.count !== 1 ? 's' : ''} ({bucket.percent}%)
-      </Text>
-    </TouchableOpacity>
-  );
-})}
     </View>
   );
 }
@@ -97,11 +77,4 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
-  breakdownRowSelected: {
-  backgroundColor: COLORS.surfaceAlt,
-  borderRadius: RADIUS.sm,
-},
-breakdownLabelEmpty: {
-  color: COLORS.textMuted,
-},
 });
