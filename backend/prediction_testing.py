@@ -2,7 +2,7 @@ import os
 import requests
 import json
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "https://aidepoint.onrender.com"
 
 # Reads the token from an environment variable instead of hardcoding it in
 # the file -- keeps a real credential out of any code you paste, commit,
