@@ -204,23 +204,3 @@ export const updateReportNotes = async (reportId, notes, userId) => {
     throw error;
   }
 };
-
-export const updateReportNotes = async (reportId, notes, userId) => {
-  await updatePredictionNotes(reportId, notes);
-
-  try {
-    const key = getStorageKey(userId);
-    const raw = await AsyncStorage.getItem(key);
-    const existing = raw ? JSON.parse(raw) : [];
-    const updated = existing.map((report) =>
-      String(report.id) === String(reportId)
-        ? { ...report, labTechNotes: notes }
-        : report
-    );
-    await AsyncStorage.setItem(key, JSON.stringify(updated));
-    return updated;
-  } catch (error) {
-    console.error('[ReportUtils] updateReportNotes local cache update failed:', error);
-    throw error;
-  }
-};

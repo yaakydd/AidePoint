@@ -147,7 +147,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   forgotText: {
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     color: COLORS.primary,
     fontWeight: FONTS.semibold,
   },

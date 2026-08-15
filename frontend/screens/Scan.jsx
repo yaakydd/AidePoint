@@ -221,13 +221,13 @@ const Scan = ({ navigation, route }) => {
   async function handleStartAnalysis() {
   if (!isFormValid || isAnalysing) return;
 
-  console.log('>>> ABOUT TO CALL getRemainingScans');
+  console.log('ABOUT TO CALL getRemainingScans');
   let rem;
   try {
     rem = await getRemainingScans(user.id, plan);
-    console.log('>>> getRemainingScans returned:', rem);
+    console.log('getRemainingScans returned:', rem);
   } catch (err) {
-    console.error('>>> getRemainingScans THREW:', err);
+    console.error('getRemainingScans THREW:', err);
     Alert.alert('Error', 'Could not check scan limit: ' + err.message);
     return;
   }
@@ -260,9 +260,9 @@ const Scan = ({ navigation, route }) => {
       console.log('STEP 3: patient insert', { patientRow, patientErr });
       if (patientErr) throw patientErr;
       const prediction = await analyzeBloodSmear(compressedUri, patientRow.id, temperature.trim(), bloodPressure.trim());
-console.log('STEP 4: prediction ', prediction);
-    const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
-console.log('STEP 4.5: image storage path ', storedImagePath);
+      console.log('STEP 4: prediction ', prediction);
+      const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
+      console.log('STEP 4.5: image storage path ', storedImagePath);
 
 const conditionKey = resolveConditionKey(
   prediction.is_anemic,

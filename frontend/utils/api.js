@@ -37,9 +37,6 @@ async function getAuthToken() {
 }
 
 export async function analyzeBloodSmear(imageUri, patientSampleId, temperature, bloodPressure) {
-  formData.append('patient_sample_id', String(patientSampleId));
-  if (temperature) formData.append('temperature', temperature);
-  if (bloodPressure) formData.append('blood_pressure', bloodPressure);
   if (!patientSampleId) {
     throw new Error('Missing patient reference — cannot analyze without a linked patient record.');
   }
@@ -59,6 +56,8 @@ export async function analyzeBloodSmear(imageUri, patientSampleId, temperature, 
     type: mimeType,
   });
   formData.append('patient_sample_id', String(patientSampleId));
+  if (temperature) formData.append('temperature', temperature);
+  if (bloodPressure) formData.append('blood_pressure', bloodPressure);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);

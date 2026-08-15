@@ -24,7 +24,7 @@ export const ReportStyles = StyleSheet.create({
   paddingHorizontal: HEADER.paddingHorizontal,
   paddingTop: HEADER.paddingVertical,
   paddingBottom: HEADER.paddingVertical,
-  marginBottom: SPACING.sm,
+  marginBottom: SPACING.xs,
   ...SHADOWS.sm,
 },
 

@@ -119,7 +119,7 @@ export const scanStyles = StyleSheet.create({
   paddingHorizontal: SPACING.md,
   paddingVertical: SPACING.xs + 2,
   borderRadius: RADIUS.md,
-  zIndex: 20,
+  zIndex: 100,
   alignItems: 'center',
   justifyContent: 'center',
   ...SHADOWS.md,
