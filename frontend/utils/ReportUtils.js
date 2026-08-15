@@ -1,8 +1,5 @@
-// Single source of truth for all condition data and report persistence.
-// Every screen that needs condition labels, colours, or storage reads from here.
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { updatePredictionNotes } from './api';
 // The backend performs a binary anemia screen (anemic vs not anemic) --
 // it does not identify a specific disease type. An earlier version of
 // this app had a second-stage classifier that predicted a specific
@@ -204,6 +201,26 @@ export const updateReportNotes = async (reportId, notes, userId) => {
     return updated;
   } catch (error) {
     console.error('[ReportUtils] updateReportNotes failed:', error);
+    throw error;
+  }
+};
+
+export const updateReportNotes = async (reportId, notes, userId) => {
+  await updatePredictionNotes(reportId, notes);
+
+  try {
+    const key = getStorageKey(userId);
+    const raw = await AsyncStorage.getItem(key);
+    const existing = raw ? JSON.parse(raw) : [];
+    const updated = existing.map((report) =>
+      String(report.id) === String(reportId)
+        ? { ...report, labTechNotes: notes }
+        : report
+    );
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
+    return updated;
+  } catch (error) {
+    console.error('[ReportUtils] updateReportNotes local cache update failed:', error);
     throw error;
   }
 };

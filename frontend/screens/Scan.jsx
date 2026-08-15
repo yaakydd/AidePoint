@@ -259,7 +259,7 @@ const Scan = ({ navigation, route }) => {
         .single();
       console.log('STEP 3: patient insert', { patientRow, patientErr });
       if (patientErr) throw patientErr;
-      const prediction = await analyzeBloodSmear(compressedUri, patientRow.id);
+      const prediction = await analyzeBloodSmear(compressedUri, patientRow.id, temperature.trim(), bloodPressure.trim());
 console.log('STEP 4: prediction ', prediction);
     const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
 console.log('STEP 4.5: image storage path ', storedImagePath);
@@ -291,10 +291,12 @@ const report = buildReport({
       const { data: scanRow, error: scanErr } = await supabase
         .from('scans')
         .insert({
-          patient_id: patientRow.id,
-          created_by: user.id,
-          image_url:  compressedUri,
-          status:     'done',
+              patient_id: patientRow.id,
+              created_by: user.id,
+              image_url: storedImagePath,
+              status: 'done',
+              prediction_id: prediction.prediction_id,
+              condition: conditionKey,
           results: {
             is_anemic:           prediction.is_anemic,
             condition:           conditionKey,

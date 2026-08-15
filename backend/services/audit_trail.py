@@ -34,6 +34,9 @@ class PredictionRecord:
     morphology_findings: dict[str, Any]
     cbc_pattern_summary: dict[str, Any]
     explanation: dict[str, Any]
+    temperature: str | None = None
+    blood_pressure: str | None = None
+    lab_tech_notes: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -54,6 +57,8 @@ def build_prediction_record(
     image_quality_result: dict[str, Any],
     prediction_result: dict[str, Any],
     explanation: dict[str, Any],
+    temperature: str | None = None,
+    blood_pressure: str | None = None,
 ) -> PredictionRecord:
     """
     Assembles a PredictionRecord from the pieces that already exist in
@@ -84,6 +89,8 @@ def build_prediction_record(
         morphology_findings=prediction_result["morphology_findings"],
         cbc_pattern_summary=prediction_result["cbc_pattern_summary"],
         explanation=explanation,
+        temperature=temperature,
+        blood_pressure=blood_pressure,
     )
 
 
@@ -111,6 +118,9 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
         "morphology_findings": record.morphology_findings,
         "cbc_pattern_summary": record.cbc_pattern_summary,
         "explanation": record.explanation,
+        "temperature": record.temperature,
+        "blood_pressure": record.blood_pressure,
+        "lab_tech_notes": record.lab_tech_notes,
         "created_at": record.created_at.isoformat(),
     }
 

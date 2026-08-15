@@ -4,6 +4,7 @@ import logging
 from dataclasses import asdict
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from auth import verify_supabase_token
 from services.image_quality import assess_image_quality, should_block_inference
@@ -21,12 +22,16 @@ MODEL_VERSION: str = os.getenv("MODEL_VERSION", "unversioned")
 MAX_IMAGE_BYTES: int = 10 * 1024 * 1024   # 10 MB hard limit
 ALLOWED_MIME_TYPES: set[str] = {"image/jpeg", "image/png", "image/jpg"}
 
+class NotesUpdate(BaseModel):
+    notes: str
 
 @router.post("/predict")
 async def predict(
     request: Request,
     file: UploadFile = File(...),
     patient_sample_id: str = Form(...),
+    temperature: str | None = Form(None),
+    blood_pressure: str | None = Form(None),
     user: dict = Depends(verify_supabase_token),
 ) -> JSONResponse:
     """
@@ -114,22 +119,6 @@ async def predict(
             detail="Could not read image. Ensure it is a valid JPEG or PNG.",
         )
 
-    # Image quality check: runs before the model. Answers "is this photo
-    # even usable" (blur, brightness, cell count), a separate, earlier
-    # question from the reliability gate further down, which asks "does
-    # this usable photo look like our training data."
-    #
-    # CHANGED: contours are now computed exactly once, here, via
-    # detect_cell_contours(), and threaded through both
-    # run_shape_screening() and _model.predict() below (which forwards
-    # them into get_cell_overlay() internally). Previously this same
-    # watershed segmentation ran up to three times per request , once
-    # implicitly inside run_shape_screening() here, once again inside
-    # model.py's old internal run_shape_screening() call, and a third
-    # time inside get_cell_overlay(). Watershed + distance-transform +
-    # per-contour ellipse fitting is the most expensive step in this
-    # endpoint outside ONNX inference itself, so this was real,
-    # avoidable cost on every single request.
     contours = detect_cell_contours(preprocessed.raw_resized_image)
     shape_result: ShapeScreeningResult = run_shape_screening(
         preprocessed.raw_resized_image, contours=contours
@@ -245,8 +234,6 @@ async def predict(
                 original_image_bytes=image_bytes,
                 analyzed_image_bytes=preprocessed.raw_resized_image.tobytes(),
                 was_cropped=preprocessed.was_cropped,
-                model_name="AidePointONNX",
-                model_version=MODEL_VERSION,
                 decision_threshold=result["decision_threshold"],
                 image_quality_result={
                     "quality_score": quality_score,
@@ -262,6 +249,8 @@ async def predict(
                     "cbc_pattern_summary": cbc_pattern_summary,
                 },
                 explanation=explanation_dict,
+                temperature=temperature,
+                blood_pressure=blood_pressure,
             )
             prediction_id = persist_prediction_record(_supabase_client, record)
         except Exception as exc:
@@ -318,3 +307,37 @@ async def predict(
         response_payload["explanation"]["confidence"] = None
 
     return JSONResponse(content=response_payload)
+
+@router.patch("/predict/{prediction_id}/notes")
+async def update_prediction_notes(
+    prediction_id: str,
+    body: NotesUpdate,
+    request: Request,
+    user: dict = Depends(verify_supabase_token),
+) -> JSONResponse:
+    """
+    The only technician-authored field on a prediction record. Scoped to
+    technician_id so a tech can only ever edit notes on their own scans
+    -- .eq("technician_id", ...) below is doing real access control here,
+    not just a convenience filter, since the service-role client bypasses
+    RLS and would otherwise let any authenticated caller edit any row.
+    """
+    supabase_client = request.app.state.supabase_client
+    if supabase_client is None:
+        raise HTTPException(status_code=503, detail="Supabase client not configured on the server.")
+
+    response = (
+        supabase_client.table("prediction_records")
+        .update({"lab_tech_notes": body.notes})
+        .eq("prediction_id", prediction_id)
+        .eq("technician_id", user["id"])
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction record not found, or does not belong to this technician.",
+        )
+
+    return JSONResponse(content={"prediction_id": prediction_id, "lab_tech_notes": body.notes})

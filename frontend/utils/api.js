@@ -36,7 +36,10 @@ async function getAuthToken() {
   return session.access_token;
 }
 
-export async function analyzeBloodSmear(imageUri, patientSampleId) {
+export async function analyzeBloodSmear(imageUri, patientSampleId, temperature, bloodPressure) {
+  formData.append('patient_sample_id', String(patientSampleId));
+  if (temperature) formData.append('temperature', temperature);
+  if (bloodPressure) formData.append('blood_pressure', bloodPressure);
   if (!patientSampleId) {
     throw new Error('Missing patient reference — cannot analyze without a linked patient record.');
   }
@@ -166,4 +169,28 @@ export async function checkBackendHealth() {
   } catch {
     return false;
   }
+}
+
+
+export async function updatePredictionNotes(predictionId, notes) {
+  if (!API_BASE_URL) {
+    throw new Error('Backend URL is not configured. Check EXPO_PUBLIC_API_URL in .env.');
+  }
+  const token = await getAuthToken();
+
+  const response = await fetch(`${API_BASE_URL}/predict/${predictionId}/notes`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ notes }),
+  });
+
+  if (!response.ok) {
+    const json = await response.json().catch(() => null);
+    throw new Error(json?.detail ?? `Failed to save notes (server error ${response.status}).`);
+  }
+
+  return response.json();
 }

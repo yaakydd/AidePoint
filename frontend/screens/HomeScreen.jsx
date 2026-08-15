@@ -12,7 +12,6 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import { supabase } from '../utils/supabase';
-import { resolveConditionKey } from '../utils/ReportUtils';
 import { homeStyles as styles } from '../styles/HomeStyles';
 import { COLORS } from '../assets/theme';
 
@@ -178,14 +177,14 @@ const HomeScreen = () => {
 
         supabase
           .from('scans')
-          .select('created_at, status, results')
+          .select('created_at, status')
           .eq('created_by', user.id)
           .gte('created_at', sevenDaysAgo)
           .order('created_at', { ascending: false }),
 
         supabase
           .from('scans')
-          .select('id, status, created_at, results, patients(name)')
+          .select('id, status, created_at, condition, patients(name)')
           .eq('created_by', user.id)
           .order('created_at', { ascending: false })
           .limit(4),
@@ -225,31 +224,25 @@ const HomeScreen = () => {
         thisWeek:   weekScans.length,
         weeklyData,
       });
+
       setRecentScans(recentRaw.map(s => {
-  const patientName = s.patients?.name ?? 'Unknown Patient';
+        const patientName = s.patients?.name ?? 'Unknown Patient';
 
-  // Prefer the stored `condition` (present on any scan saved after the
-  // Scan.jsx conditionKey fix). Fall back to deriving it from the raw
-  // fields for older rows saved before that fix, which have `is_anemic`
-  // etc. but no `condition` key -- without this fallback those scans
-  // are stuck showing "Not Analyzed" forever even though they were.
-  const rawCondition = s.results?.condition
-    ?? (s.results?.is_anemic !== undefined
-      ? resolveConditionKey(
-          s.results.is_anemic,
-          s.results.morphology_findings,
-          s.results.is_unreliable
-        )
-      : null);
+        // `condition` is set directly on the scan row (see Scan.jsx).
+        // Older rows saved before the results->condition migration have
+        // no recoverable condition data (the `results` blob they used
+        // has been dropped from the schema), so they'll show as
+        // "Not Analyzed".
+        const rawCondition = s.condition ?? null;
 
-  return {
-    id:          s.id,
-    shortId:     s.id.slice(-6).toUpperCase(),
-    patientName,
-    rawCondition,
-    time:        getRelativeTime(s.created_at),
-  };
-}));
+        return {
+          id:          s.id,
+          shortId:     s.id.slice(-6).toUpperCase(),
+          patientName,
+          rawCondition,
+          time:        getRelativeTime(s.created_at),
+        };
+      }));
 
     } catch (err) {
       console.error('HomeScreen fetchDashboardData:', err.message);

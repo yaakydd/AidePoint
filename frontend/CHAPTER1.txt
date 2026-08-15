@@ -1,0 +1,152 @@
+# AidePoint Documentation
+
+## Chapter 1: Overview
+
+### 1.1 Purpose
+
+AidePoint is an AI-assisted blood smear screening application built for lab
+technicians. A technician photographs a blood smear under a microscope, and
+the app returns an anemia-risk screening result — a condition classification,
+a confidence level, estimated CBC (complete blood count) values, flagged red
+cell morphology findings, and a visual overlay on the image itself showing
+which cells contributed to the result.
+
+AidePoint is a screening aid, not a diagnostic tool. It does not replace
+laboratory blood testing, and it does not diagnose any specific disease. Its
+scope is deliberately narrow: hemoglobin-related patterns visible in red
+blood cells, nothing more.
+
+### 1.2 Problem Statement
+
+Manual microscopic review of blood smears is slow, requires a trained eye,
+and is subject to fatigue and inter-observer variability, particularly in
+settings with a high patient volume relative to available trained
+technicians. AidePoint gives a technician a fast, consistent first pass at a
+sample, with the model's reasoning made visible rather than hidden behind a
+single opaque verdict — so the technician can see *why* the model reached
+its conclusion and judge for themselves whether it holds up.
+
+### 1.3 What AidePoint Is — and Is Not
+
+**AidePoint is:**
+- A binary anemia-risk screen (anemic vs. not anemic), derived from
+  hemoglobin-related patterns in red blood cell morphology.
+- A transparency tool. Every result comes with the visual evidence
+  (cell-by-cell overlay), estimated CBC values with confidence tiers, and
+  specific morphology flags — not just a single number.
+- A workflow tool for a single trained user (the lab technician) to record
+  a screening result, add their own free-text note, and produce a report.
+
+**AidePoint is not:**
+- A diagnostic device. It does not identify a specific disease (e.g.
+  sickle cell disease, malaria, thalassemia, leukemia). An earlier version
+  of the model attempted specific-condition classification; this was
+  removed after the training labels for that task were found to be
+  threshold-derived rather than independently diagnosed, and because one
+  of the classes ("Leukemia") was not actually an anemia subtype.
+- A white-cell or platelet analysis tool. The model reasons only over red
+  blood cells; it has no visual signal for white cells or platelets, so
+  those are excluded rather than guessed at.
+- A human-review or verification workflow. There is no second-reviewer
+  role, no doctor sign-off step, and no "pending review" state anywhere
+  in the product. The review and recommendation text shown to the
+  technician are generated directly from the model's findings. The only
+  thing a technician contributes as a person is a free-text note.
+
+### 1.4 Intended Users
+
+AidePoint is built for **lab technicians** operating in clinical or
+field-lab settings — the person taking the photo, running the analysis,
+reading the result, and recording a note is the same person throughout.
+There is no multi-role workflow (e.g. technician submits, doctor approves)
+built into the product.
+
+### 1.5 The Screening Workflow
+
+1. The technician enters patient details (name, age, gender) and any vitals
+   collected at the time of sampling (temperature, blood pressure).
+2. The technician photographs the blood smear.
+3. The technician presses **Start Analysis**.
+4. The backend preprocesses the image, runs image-quality checks, and runs
+   the ONNX model.
+5. The result is returned and shown as a report:
+   - **Condition**: `anemic`, `healthy`, or `unknown`
+   - **Confidence**: how much weight to put on the result
+   - **CBC pattern summary**: estimated hematological values, each tagged
+     with a reliability tier rather than presented as a precise lab value
+   - **Morphology findings**: specific red-cell shape abnormalities the
+     model detected above its reliability threshold
+   - **Cell overlay**: every detected cell drawn directly on the photo,
+     colored from green (normal) through yellow to red (unusual shape),
+     so the technician sees exactly which cells drove the result
+   - **Review and recommendation**: auto-generated text explaining what
+     the result means and what follow-up is suggested, derived directly
+     from the findings above
+6. The technician may add a free-text note. This is the only
+   technician-authored content in the report.
+7. The full result is persisted as a permanent, auditable record.
+
+### 1.6 The Three-Way Condition Model
+
+AidePoint's model only scores two outcomes directly: anemic and healthy.
+A third bucket, **unknown**, is derived — not predicted — and covers two
+distinct situations that both mean "not confidently anemic, but not a clean
+result either":
+
+- The sample triggered the **reliability gate** (the image or the
+  segmented cells didn't resemble the model's training distribution
+  closely enough to trust a confident label), or
+- **Morphology findings** were flagged even though the anemia screen
+  itself came back negative (e.g. a malaria-positive sample that is
+  correctly "not anemic" but should not be shown as a clean "healthy"
+  result).
+
+This distinction exists because collapsing both cases into "healthy" would
+imply a clean bill of health the system never actually confirmed. When a
+result is `unknown`, the model's probability and confidence numbers are
+never shown — a screening bucket derived from *not* having a confident
+number has no number to display, so the interface withholds it rather than
+risk displaying a misleadingly precise figure.
+
+### 1.7 System Architecture, at a Glance
+
+| Layer | Technology | Responsibility |
+|---|---|---|
+| Mobile app | React Native / Expo | Capture, patient intake, report display, notes |
+| Backend API | FastAPI | Image preprocessing, inference orchestration, business rules |
+| Model | ONNX (via onnxruntime) | Anemia probability, CBC estimates, morphology probabilities, image embedding |
+| Shape screening | OpenCV / scipy (watershed segmentation) | Reliability gate, per-cell shape data for the overlay |
+| Data & auth | Supabase (Postgres, Auth, Storage) | User accounts, patients, scans, prediction records, image storage |
+| Conversational assistant | AideBot (Gemini, via backend proxy) | Natural-language Q&A about a specific scan's findings |
+
+Full architectural detail, data flow, and the database schema are covered in
+later chapters.
+
+### 1.8 A Note on "Multimodal"
+
+AidePoint is sometimes described loosely as multimodal, which is worth
+being precise about. The core diagnostic model is **not** multimodal — it
+is a single-image classifier that takes one blood smear photo and produces
+structured numeric outputs. It does not take text as input and does not
+jointly reason over image and language.
+
+The broader product does combine modalities: image-derived structured
+findings feed into AideBot, a separate text-based chat layer that can
+answer natural-language questions about a given scan's results. This is
+two purpose-built systems exchanging structured data, not a single model
+processing image and text together. Documentation and product copy should
+describe the diagnostic model as image-based and unimodal, and reserve
+"multimodal" (if used at all) for the product's combination of the
+screening pipeline and the chat assistant.
+
+### 1.9 Document Conventions
+
+- **Condition** always refers to one of the three values described in
+  §1.6: `anemic`, `healthy`, `unknown`.
+- **Reliability** and **confidence** are distinct concepts throughout this
+  documentation: reliability describes whether the *image itself* was
+  usable and in-distribution; confidence describes how strongly the model
+  backs its specific probability on a usable image.
+- Code identifiers (table names, field names, function names) are given in
+  `monospace` and reflect the actual names in the codebase at the time of
+  writing, not aspirational or planned names.
