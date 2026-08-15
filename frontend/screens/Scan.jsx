@@ -273,7 +273,7 @@ const conditionKey = resolveConditionKey(
 const report = buildReport({
     patientName:   patientName.trim(),
     patientId:     patientRow.id,
-    condition:     conditionKey,   // was: prediction.is_anemic ? 'anemic' : 'healthy'
+    condition:     conditionKey, 
     confidence:    prediction.explanation?.confidence ?? 'moderate',
     labTechName,
     image_url:  storedImagePath,
