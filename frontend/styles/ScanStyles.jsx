@@ -606,51 +606,6 @@ resetTooltipCaret: {
     fontSize: FONTS.sm,
   },
 
-  doctorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-
-  doctorRowSelected: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
-  },
-
-  doctorAvatar: {
-    width: scale(48),
-    height: scale(48),
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.infoBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.md,
-  },
-
-  doctorAvatarSelected: {
-    backgroundColor: COLORS.primary,
-  },
-
-  doctorName: {
-    fontSize: FONTS.md,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
-
-  doctorSpecialty: {
-    marginTop: scale(2),
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-  },
-
-  // ─────────────────────────────────────────────
-  // ANALYSIS OVERLAY
-  // ─────────────────────────────────────────────
-
   analysisOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,

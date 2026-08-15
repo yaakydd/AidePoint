@@ -71,10 +71,20 @@ export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) 
 
 // buildReport
 // Shapes raw scan data into the structured report object used everywhere.
+//
+// There is no doctor/human-review role in this product. The "review"
+// and "recommendation" the technician sees are both generated directly
+// from the model's findings (see TransparencyTrail.jsx's
+// getRecommendation()) -- the only thing a person writes here is
+// labTechNotes, a free-text note the technician adds after reading the
+// report. This function used to also carry doctorId/doctorName/
+// doctorVerified/doctorNotes/doctorSignature fields for a verification
+// workflow that was never actually part of the product; removed rather
+// than left unused, since a report screen rendering a permanently-false
+// "verified" indicator is worse than not showing one at all.
 export const buildReport = ({
   patientName, patientId, condition, confidence,
   labTechName, imageUri, temperature, bloodPressure,
-  doctorId, doctorName,
   morphologyFindings, cbcPatternSummary,
   isUnreliable, unreliableReasons, imageQuality,
   scanId,   // human-facing ID generated on the Scan screen (see Scan.jsx's
@@ -83,34 +93,19 @@ export const buildReport = ({
 }) => {
   const now = new Date();
 
-  // FIXED: previously this always re-derived the condition bucket via
-  // resolveConditionKey(condition === 'anemic', ...), completely
-  // ignoring whatever `condition` value was actually passed in. That
-  // meant there were two independent implementations of the same
-  // three-way anemic/healthy/unknown decision -- predict.py's inline
-  // logic (the backend's own "one authoritative place" for this, per
-  // its docstring) and resolveConditionKey() here -- kept in sync only
-  // by both being hand-written to match. If the backend's rule ever
-  // changes (a new unreliable-reason category, a threshold change) and
-  // only predict.py gets updated, this function would silently
-  // continue producing the old bucket for the same data.
-  //
-  // Now: if the caller already passed a resolved `condition` (i.e. the
+  // If the caller already passed a resolved `condition` (i.e. the
   // backend's response_payload.condition, forwarded through from
   // /predict), that value is trusted directly -- no re-derivation.
   // resolveConditionKey() is only used as a fallback, for callers that
   // don't have a backend-resolved condition available (e.g. older
   // cached report shapes, or any call site not yet updated to pass
-  // `condition` through). This keeps resolveConditionKey() around
-  // as a legitimate fallback/reference implementation rather than
-  // deleting it, while making it a fallback instead of the default
-  // path.
+  // `condition` through).
   const resolvedCondition = condition ?? resolveConditionKey(
     false, // this fallback path has no reliable is_anemic signal without
            // `condition` already being resolved upstream; treating it as
            // non-anemic here is the same conservative assumption
            // resolveConditionKey's callers already relied on when
-           // `condition` is genuinely unavailable -- see note below.
+           // `condition` is genuinely unavailable.
     morphologyFindings,
     isUnreliable
   );
@@ -118,7 +113,7 @@ export const buildReport = ({
   const cfg = CONDITION_CONFIG[resolvedCondition] ?? CONDITION_CONFIG.healthy;
 
   return {
-    //  Identity
+    // ── Identity
     id:           patientId,   // placeholder until Scan.jsx overwrites this with scanRow.id post-insert; never displayed
     scanId:       scanId ?? null,   // short, human-facing scan identifier -- shown in DetailModal/TransparencyTrail headers
     createdAt:    now.toISOString(),
@@ -142,12 +137,8 @@ export const buildReport = ({
     imageQuality:       imageQuality ?? null,
 
     labTechName, imageUri,
-    doctorId, doctorName,
 
-    labTechNotes:    '',
-    doctorVerified:  false,
-    doctorNotes:     '',
-    doctorSignature: null,
+    labTechNotes: '',
   };
 };
 
@@ -160,7 +151,7 @@ const REPORTS_STORAGE_PREFIX = 'aidepoint_reports_v1';
 
 const getStorageKey = (userId) => `${REPORTS_STORAGE_PREFIX}:${userId}`;
 
-//  saveReport 
+// ── saveReport ──
 export const saveReport = async (report, userId) => {
   try {
     const key = getStorageKey(userId);
@@ -175,7 +166,7 @@ export const saveReport = async (report, userId) => {
   }
 };
 
-//  loadReports 
+// ── loadReports ──
 // Used by ReportScreen on mount instead of duplicating AsyncStorage logic.
 export const loadReports = async (userId) => {
   try {
@@ -194,10 +185,10 @@ export const clearReports = async (userId) => {
 
 // updateReportNotes
 // Finds a saved report by id and persists a new labTechNotes value onto
-// it. This is the actual mechanism behind "add notes instead of verify"
-// -- without it, DetailModal's notes field would have nowhere to save
-// to and would silently lose whatever the technician typed the moment
-// the modal closed. Returns the updated reports array so the caller
+// it. This is the only technician-authored input a report has -- without
+// it, TransparencyTrail's notes field would have nowhere to save to and
+// would silently lose whatever the technician typed the moment the
+// modal closed. Returns the updated reports array so the caller
 // (ReportScreen) can refresh its in-memory list without a full re-fetch.
 export const updateReportNotes = async (reportId, notes, userId) => {
   try {

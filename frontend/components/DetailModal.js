@@ -257,7 +257,6 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
             </View>
             <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
               <Text style={styles.detailLabel}>Reviewing Doctor</Text>
-              <Text style={styles.detailValue}>{report.doctorName ?? 'Not yet assigned'}</Text>
             </View>
 
             <View style={styles.exportRow}>

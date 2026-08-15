@@ -9,11 +9,9 @@ moment of prediction so that question stays answerable.
 """
 
 import hashlib
-import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID
 
 from supabase import Client
 
@@ -25,8 +23,6 @@ class PredictionRecord:
     original_image_hash: str
     analyzed_image_hash: str
     was_cropped: bool
-    model_name: str
-    model_version: str
     decision_threshold: float
     image_quality_score: str
     image_quality_breakdown: dict[str, Any]
@@ -38,8 +34,6 @@ class PredictionRecord:
     morphology_findings: dict[str, Any]
     cbc_pattern_summary: dict[str, Any]
     explanation: dict[str, Any]
-    required_human_review: bool
-    human_review_status: str = "not_required"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -50,44 +44,12 @@ def hash_image_bytes(image_bytes: bytes) -> str:
     return hashlib.sha256(image_bytes).hexdigest()
 
 
-def determine_review_requirement(
-    is_unreliable: bool,
-    anemia_probability: float,
-    decision_threshold: float,
-    prediction_confidence: str,
-) -> bool:
-    """
-    Decides whether a prediction needs mandatory human review before it
-    can appear on a patient-facing report.
-
-    Three triggers, each independently sufficient:
-    - the reliability gate already rejected the image
-    - low model confidence on this specific prediction
-    - the probability landed close enough to the decision threshold that
-      a small amount of model noise could flip the classification
-    """
-    if is_unreliable:
-        return True
-
-    if prediction_confidence == "low":
-        return True
-
-    borderline_margin = 0.08
-    distance_from_threshold = abs(anemia_probability - decision_threshold)
-    if distance_from_threshold < borderline_margin:
-        return True
-
-    return False
-
-
 def build_prediction_record(
     patient_sample_id: str,
     technician_id: str,
     original_image_bytes: bytes,
     analyzed_image_bytes: bytes,
     was_cropped: bool,
-    model_name: str,
-    model_version: str,
     decision_threshold: float,
     image_quality_result: dict[str, Any],
     prediction_result: dict[str, Any],
@@ -97,22 +59,20 @@ def build_prediction_record(
     Assembles a PredictionRecord from the pieces that already exist in
     your current /predict pipeline. This does not run any new inference --
     it packages outputs you are already computing.
-    """
-    required_human_review = determine_review_requirement(
-        is_unreliable=prediction_result["is_unreliable"],
-        anemia_probability=prediction_result["anemia_probability"],
-        decision_threshold=decision_threshold,
-        prediction_confidence=prediction_result["prediction_confidence"],
-    )
 
+    There is no human/doctor review step in this product: the report's
+    "review" and "recommendation" text are generated directly from the
+    model's findings (see TransparencyTrail.jsx's getRecommendation()),
+    and the only technician-authored input is a free-text note. This
+    record intentionally has no review-status or reviewer fields to
+    match that.
+    """
     return PredictionRecord(
         patient_sample_id=patient_sample_id,
         technician_id=technician_id,
         original_image_hash=hash_image_bytes(original_image_bytes),
         analyzed_image_hash=hash_image_bytes(analyzed_image_bytes),
         was_cropped=was_cropped,
-        model_name=model_name,
-        model_version=model_version,
         decision_threshold=decision_threshold,
         image_quality_score=image_quality_result["quality_score"],
         image_quality_breakdown=image_quality_result["breakdown"],
@@ -124,8 +84,6 @@ def build_prediction_record(
         morphology_findings=prediction_result["morphology_findings"],
         cbc_pattern_summary=prediction_result["cbc_pattern_summary"],
         explanation=explanation,
-        required_human_review=required_human_review,
-        human_review_status="pending" if required_human_review else "not_required",
     )
 
 
@@ -142,8 +100,6 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
         "original_image_hash": record.original_image_hash,
         "analyzed_image_hash": record.analyzed_image_hash,
         "was_cropped": record.was_cropped,
-        "model_name": record.model_name,
-        "model_version": record.model_version,
         "decision_threshold": record.decision_threshold,
         "image_quality_score": record.image_quality_score,
         "image_quality_breakdown": record.image_quality_breakdown,
@@ -155,8 +111,6 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
         "morphology_findings": record.morphology_findings,
         "cbc_pattern_summary": record.cbc_pattern_summary,
         "explanation": record.explanation,
-        "required_human_review": record.required_human_review,
-        "human_review_status": record.human_review_status,
         "created_at": record.created_at.isoformat(),
     }
 

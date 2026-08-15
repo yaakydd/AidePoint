@@ -207,6 +207,43 @@ def measure_contour_shape(contour: np.ndarray) -> ShapeMeasurement | None:
     )
 
 
+def compute_severity_color(eccentricity: float, circularity: float) -> SeverityInfo:
+    """
+    Turns a cell's raw shape metrics into a single 0-1 severity score and
+    a hex color on a green -> yellow -> red gradient, mirrored exactly in
+    TransparencyTrail.jsx's severityToColor() so the legend/breakdown
+    list the app renders is always a true reflection of the colors drawn
+    on the actual cell overlay, not a separately hand-tuned gradient that
+    could drift out of sync with this math.
+
+    Severity blends both metrics against the same thresholds
+    run_shape_screening() uses to flag a cell (ECCENTRICITY_LIMIT,
+    CIRCULARITY_FLOOR), so a cell that would count as "flagged" there
+    lands solidly in the yellow/red range here rather than the two
+    signals disagreeing with each other.
+    """
+    eccentricity_component = np.clip(eccentricity / ECCENTRICITY_LIMIT, 0.0, 1.0)
+    circularity_component = np.clip(
+        (CIRCULARITY_FLOOR - circularity) / CIRCULARITY_FLOOR, 0.0, 1.0
+    )
+    severity = float(np.clip(max(eccentricity_component, circularity_component), 0.0, 1.0))
+
+    if severity < 0.5:
+        blend_ratio = severity / 0.5
+        red_value = round(0x16 + (0xEA - 0x16) * blend_ratio)
+        green_value = round(0xA3 + (0xB3 - 0xA3) * blend_ratio)
+        blue_value = round(0x4A + (0x08 - 0x4A) * blend_ratio)
+    else:
+        blend_ratio = (severity - 0.5) / 0.5
+        red_value = round(0xEA + (0xDC - 0xEA) * blend_ratio)
+        green_value = round(0xB3 + (0x26 - 0xB3) * blend_ratio)
+        blue_value = round(0x08 + (0x26 - 0x08) * blend_ratio)
+
+    color = f"#{red_value:02X}{green_value:02X}{blue_value:02X}"
+
+    return SeverityInfo(severity=round(severity, 3), color=color)
+
+
 def run_shape_screening(
     image_bgr: np.ndarray,
     contours: list[np.ndarray] | None = None,

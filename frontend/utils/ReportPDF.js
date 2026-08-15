@@ -14,7 +14,6 @@ const shouldShowProbabilityAndConfidence = (conditionKey) =>
   conditionKey === 'anemic' || conditionKey === 'healthy';
 
 // SECURITY: patientName, patientId, labTechName, labTechNotes,
-// doctorName, temperature, and bloodPressure all originate from
 // technician-entered form fields or free-text notes -- none of it is
 // backend-controlled or validated against a fixed set of values.
 // Interpolating any of it directly into this HTML template without

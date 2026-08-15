@@ -104,7 +104,6 @@ const ReportCard = React.memo(({ report, onPress }) => {
           <Text style={styles.cardTime}>{getRelativeTime(report.createdAt)}</Text>
           <View style={styles.verifyRow}>
             <View style={[styles.verifyDot, { backgroundColor: report.labTechVerified ? '#10B981' : '#D1D5DB' }]} />
-            <View style={[styles.verifyDot, { backgroundColor: report.doctorVerified ? '#10B981' : '#D1D5DB' }]} />
           </View>
         </View>
       </Animated.View>

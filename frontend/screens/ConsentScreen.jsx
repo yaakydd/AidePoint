@@ -26,7 +26,7 @@ const INFO_ITEMS = [
     color: '#10B981',
     bg: '#ECFDF5',
     title: 'If you allow storage',
-    body: 'Blood smear images are uploaded to secure cloud storage and linked to the scan report, so doctors can review them alongside the results.',
+    body: 'Blood smear images are uploaded to secure cloud storage.',
   },
   {
     icon: 'eye-off-outline',
