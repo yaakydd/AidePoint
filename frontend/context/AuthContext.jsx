@@ -4,9 +4,7 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../utils/supabase';
-// Single source of truth for PIN storage — also used by PinSetup.js and
-// the Reports-screen PIN re-entry flow. Do not add a second PIN storage
-// mechanism here; resolvePostConsentState below only ever checks this one.
+
 import { isPinCreated } from '../utils/reportPin';
 
 export const AuthContext = createContext(null);
@@ -16,35 +14,27 @@ const USER_CACHE_KEY = 'aidepoint_user_cache';
 
 export function AuthProvider({ children }) {
 
-  // ─── STATE ───────────────────────────────────────────────
+  //  STATE 
   //
   // authState drives the whole navigation tree:
-  //   'BOOTING'    → app just opened, show splash screen
-  //   'AUTH'       → no logged-in user, show SignIn / SignUp
-  //   'CONSENT'    → user logged in but hasn't set preferences yet
-  //   'PIN_SETUP'  → consent done but no device PIN set yet
-  //   'APP'        → fully logged in and set up, show main screens
+  //   'BOOTING'    : app just opened, show splash screen
+  //   'AUTH'       : no logged-in user, show SignIn / SignUp
+  //   'CONSENT'    : user logged in but hasn't set preferences yet
+  //   'PIN_SETUP'  : consent done but no device PIN set yet
+  //   'APP'        : fully logged in and set up, show main screens
   //
   const [authState, setAuthState] = useState('BOOTING');
   const [user, setUser]           = useState(null);
   const [authError, setAuthError] = useState(null);
   const [isOnline, setIsOnline]   = useState(true);
 
-  // This ref prevents the Supabase auth listener from running before
-  // the initial session check finishes (avoids double-running hydrate)
+
   const initialized = useRef(false);
 
-  // While true, onAuthStateChange ignores every event it receives.
-  // Set by ForgotPassword.js the moment verifyOtp({ type: 'recovery' })
-  // succeeds, and cleared once it signs that recovery session back out.
-  // Needed because Supabase doesn't reliably fire only PASSWORD_RECOVERY —
-  // some supabase-js versions also fire SIGNED_IN/TOKEN_REFRESHED once the
-  // recovery session exists, and filtering by event name alone let those
-  // slip through and briefly flash the Home screen before signOut() kicked
-  // the user back to AUTH.
+
   const suppressHydration = useRef(false);
 
-  // ─── STARTUP ─────────────────────────────────────────────
+  //  STARTUP 
   useEffect(() => {
     let alive = true; // prevents state updates if component unmounts mid-way
 
@@ -124,8 +114,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─── HYDRATE ─────────────────────────────────────────────
-  // Takes a Supabase session → fetches profile → updates state.
+  //  HYDRATE 
+  // Takes a Supabase session : fetches profile : updates state.
   // If we're offline, falls back to the locally cached profile.
   async function hydrateUser(session, alive) {
     const uid = session.user.id;
@@ -191,13 +181,6 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─── DB ERROR SANITIZATION ───────────────────────────────
-  // completeConsent/updateProfile hit the profiles table directly, so a
-  // failure there can carry a raw Postgres/PostgREST message — column
-  // names, constraint names, or RLS policy detail if something's
-  // misconfigured. That's fine to log for debugging but not to show a
-  // user. This maps known error codes to a generic, safe message and logs
-  // the real one behind __DEV__ only.
   function sanitizeDbError(error) {
     if (__DEV__) console.log('DB error:', error?.code, error?.message);
 
@@ -215,7 +198,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─── CACHE HELPERS ───────────────────────────────────────
+  //  CACHE HELPERS 
   async function cacheUser(data) {
     try {
       await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(data));
@@ -237,12 +220,12 @@ export function AuthProvider({ children }) {
     } catch { /* ignore */ }
   }
 
-  // ─── REGISTER ────────────────────────────────────────────
+  //  REGISTER 
   async function register({ name, email, password, hospitalLab }) {
     setAuthError(null);
 
     try {
-      // ── Offline check (from second version)
+      //  Offline check (from second version)
       if (!isOnline) {
         const msg =
           'No internet connection. You need internet to create an account.';
@@ -250,25 +233,25 @@ export function AuthProvider({ children }) {
         return { success: false, error: msg };
       }
 
-      // ── Supabase signup (merged both versions)
+      //  Supabase signup (merged both versions)
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
           data: {
             name: name.trim(),
-            hospital_lab: hospitalLab, // stored in auth metadata → used by trigger
+            hospital_lab: hospitalLab, // stored in auth metadata : used by trigger
           },
         },
       });
 
-      // ── Handle signup error
+      //  Handle signup error
       if (error) {
         setAuthError(error.message);
         return { success: false, error: error.message };
       }
 
-      // ── Email verification logic (cleaned + unified)
+      //  Email verification logic (cleaned + unified)
       const needsVerification = data.session === null;
 
       return {
@@ -284,9 +267,9 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─── VERIFY EMAIL OTP ────────────────────────────────────
+  //  VERIFY EMAIL OTP 
   // Called from the VerifyEmail screen with the 6-digit code the user types.
-  // On success Supabase fires onAuthStateChange → hydrateUser runs →
+  // On success Supabase fires onAuthStateChange - hydrateUser runs -
   // authState moves to 'CONSENT', 'PIN_SETUP', or 'APP' automatically.
   async function verifyEmail(email, token) {
     setAuthError(null);
@@ -305,7 +288,7 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
-  // ─── RESEND VERIFICATION EMAIL ────────────────────────────
+  //  RESEND VERIFICATION EMAIL 
   async function resendVerification(email) {
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -316,7 +299,7 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
-  // ─── LOGIN ───────────────────────────────────────────────
+  //  LOGIN 
   async function login(email, password) {
     setAuthError(null);
 
@@ -336,12 +319,12 @@ export function AuthProvider({ children }) {
       return { success: false, error: error.message };
     }
 
-    // On success: onAuthStateChange listener fires → hydrateUser runs →
+    // On success: onAuthStateChange listener fires : hydrateUser runs :
     // authState changes to 'CONSENT', 'PIN_SETUP', or 'APP'. No navigate() needed here.
     return { success: true };
   }
 
-  // ─── CONSENT ─────────────────────────────────────────────
+  //  CONSENT 
   async function completeConsent(storeImages) {
     if (!user) return { success: false, error: 'Not logged in' };
 
@@ -367,17 +350,17 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
-  // ─── PIN SETUP ───────────────────────────────────────────
+  //  PIN SETUP 
   // Called by PinSetup.js after it has already saved the PIN itself via
   // savePin() in utils/reportPin.js. This function only advances the
-  // navigation state — it does not touch PIN storage, since that's owned
+  // navigation state, it does not touch PIN storage, since that's owned
   // entirely by reportPin.js (single source of truth for both this screen
   // and the Reports-screen PIN re-entry flow).
   function completePinSetup() {
     setAuthState('APP');
   }
 
-  // ─── UPDATE PROFILE ──────────────────────────────────────
+  //  UPDATE PROFILE 
   async function updateProfile(changes) {
     if (!user) return { success: false, error: 'Not logged in' };
 
@@ -416,7 +399,7 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
-  // ─── LOGOUT ──────────────────────────────────────────────
+  //  LOGOUT 
   async function logout() {
     await supabase.auth.signOut();
     await clearUserCache();
@@ -425,12 +408,12 @@ export function AuthProvider({ children }) {
     setAuthError(null);
   }
 
-  // ─── CLEAR ERROR ─────────────────────────────────────────
+  //  CLEAR ERROR 
   function clearError() {
     setAuthError(null);
   }
 
-  // ─── PASSWORD RECOVERY GUARDS ────────────────────────────
+  //  PASSWORD RECOVERY GUARDS 
   // ForgotPassword.js calls beginPasswordRecovery() the moment
   // verifyOtp({ type: 'recovery' }) succeeds, and endPasswordRecovery()
   // right after it signs that recovery session back out. Between those
@@ -448,7 +431,7 @@ export function AuthProvider({ children }) {
   // PROVIDE 
   return (
     <AuthContext.Provider value={{
-      authState,          // 'BOOTING' | 'AUTH' | 'CONSENT' | 'PIN_SETUP' | 'APP'
+      authState,          // 'BOOTING' : 'AUTH' : 'CONSENT' : 'PIN_SETUP' : 'APP'
       user,               // { id, email, name, role, storeImages, consentDone }
       authError,          // string or null
       isOnline,           // boolean

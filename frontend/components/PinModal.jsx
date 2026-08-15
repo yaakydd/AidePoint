@@ -1,5 +1,3 @@
-// components/PinModal.js
-//
 // PIN entry / creation modal for the Reports screen.
 // Handles both "create PIN" (first time) and "enter PIN" (subsequent visits).
 // Supports biometric fallback where available.
@@ -7,12 +5,12 @@
 // RESTYLED: now matches PinSetup.js's full-bleed brand-colour visual
 // design (white plain-text digit keys, no button chips/shadows, centered
 // dot progress) instead of the old white-background card with circular
-// shadowed keys. Functionality is unchanged -- mode prop, biometric
+// shadowed keys. Functionality is unchanged , mode prop, biometric
 // fallback, failCount, and the Modal wrapper (needed here since, unlike
 // PinSetup.js, this renders on top of ReportScreen.js rather than as its
 // own full screen in the nav stack) all still work exactly as before.
 //
-// Usage in ReportScreen.js -- see that file for the full wiring, including
+// Usage in ReportScreen.js , see that file for the full wiring, including
 // the useFocusEffect that decides when to show this modal at all.
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -68,12 +66,12 @@ export default function PinModal({ mode, userId, onSuccess }) {
   const handleSubmit = async () => {
     if (isCreate) {
       if (step === 'enter') {
-        // First entry -- move to confirm step
+        // First entry , move to confirm step
         setStep('confirm');
         setError('');
         return;
       }
-      // Confirm step -- check they match
+      // Confirm step , check they match
       if (confirmPin !== pin) {
         shakeAndError("PINs don't match. Try again.");
         setConfirmPin('');
@@ -204,7 +202,7 @@ export default function PinModal({ mode, userId, onSuccess }) {
 }
 
 // Styles mirror PinSetup.js's scale()-based, full-bleed brand-colour
-// design 1:1 -- same iconWrap/dot/key sizing and spacing tokens -- so
+// design 1:1 , same iconWrap/dot/key sizing and spacing tokens , so
 // PIN creation (onboarding) and PIN verification/re-creation (Reports)
 // now look like the same product surface instead of two different ones.
 const styles = StyleSheet.create({

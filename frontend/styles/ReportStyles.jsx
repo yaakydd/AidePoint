@@ -1,15 +1,11 @@
 import { StyleSheet, Platform } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale, HEADER } from '../assets/theme';
 
-// Shared, theme-derived bottom clearance for the report list, so it
-// scales with the actual tab bar height on this device rather than a
-// hardcoded guess -- exported so ReportScreen.js can use the same value
-// instead of keeping its own separate hardcoded constant.
 export const REPORT_LIST_BOTTOM_CLEARANCE = layout.tabBarHeight + SPACING.lg;
 
 export const ReportStyles = StyleSheet.create({
 
-  // ─── SCREEN
+
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -110,26 +106,11 @@ header: {
     fontWeight: FONTS.semibold,
   },
 
-  // ─── LIST
-  // FIXED: paddingHorizontal removed. This container wraps everything
-  // inside the FlatList -- header, search bar, filters, AND every card
-  // -- so its own horizontal padding was adding an extra inset on top
-  // of whatever the header's own paddingHorizontal already applied,
-  // which is why the header's white background could never actually
-  // reach the true left/right screen edges no matter what the header
-  // style itself said. Horizontal spacing now lives only on the things
-  // that should actually be inset (card, below) -- the header and
-  // search bar each control their own spacing directly and are no
-  // longer nested inside a second padded box.
+
   listContent: {
     paddingTop: SPACING.xs,
   },
 
-  // ─── CARD
-  // FIXED: marginHorizontal added -- previously this inset came for
-  // free from listContent's paddingHorizontal (now removed, see above),
-  // so cards need to carry their own spacing now that the shared
-  // container is edge-to-edge.
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,11 +164,7 @@ cardRight: {
     gap: 4,
   },
 
-  // FIXED: wrapped in scale() -- these were the last hardcoded raw
-  // pixel dimensions left in this file (everything else already used
-  // SPACING/FONTS/RADIUS, which are themselves scale()-derived), so
-  // small UI elements like this dot were the one thing not actually
-  // scaling with screen size across different devices.
+
   verifyDot: {
     width: scale(7),
     height: scale(7),
@@ -217,9 +194,7 @@ cardRight: {
     fontWeight: FONTS.semibold,
   },
 
-  // ─── EMPTY STATE
-  // FIXED: paddingHorizontal added for the same reason as card above --
-  // this text is no longer automatically inset by listContent.
+
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: SPACING['4xl'],
@@ -267,7 +242,6 @@ cardRight: {
     marginBottom: SPACING.md,
   },
 
-  // ── Report letterhead (AidePoint-branded clinical report look)
   reportHeaderCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -426,7 +400,7 @@ cardRight: {
     fontWeight: FONTS.semibold,
   },
 
-  // ── Export / download row
+
   exportRow: {
     flexDirection: 'row',
     gap: SPACING.md,

@@ -1,11 +1,6 @@
-// styles/CameraStyles.js
-
 import { StyleSheet, Platform } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, SCREEN } from '../assets/theme';
 
-// Circular guide — mirrors the round vignette you see through a microscope
-// eyepiece, so the on-screen guide matches what a good capture should
-// actually look like.
 export const GUIDE_SIZE = Math.min(SCREEN.WIDTH * 0.78, 320);
 
 export const CameraStyles = StyleSheet.create({
@@ -27,7 +22,7 @@ export const CameraStyles = StyleSheet.create({
     zIndex: 10,
   },
 
-  // ── Top bar ──────────────────────────────────────────────────────────────
+  //  Top bar 
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -54,7 +49,7 @@ export const CameraStyles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ── Circular guide frame ────────────────────────────────────────────────
+  //  Circular guide frame 
   guideCentreWrapper: {
     alignItems: 'center',
   },
@@ -87,7 +82,7 @@ export const CameraStyles = StyleSheet.create({
     paddingHorizontal: SPACING['2xl'],
   },
 
-  // ── Capture tips panel ──────────────────────────────────────────────────
+  //  Capture tips panel 
   tipsPanel: {
     position: 'absolute',
     top: Platform.OS === 'android' ? 80 : 64,
@@ -143,7 +138,7 @@ export const CameraStyles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // ── Bottom controls ──────────────────────────────────────────────────────
+  //  Bottom controls 
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -187,7 +182,7 @@ export const CameraStyles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
 
-  // ── Permission screen ────────────────────────────────────────────────────
+  //  Permission screen 
   permissionScreen: {
     flex: 1,
     justifyContent: 'center',

@@ -4,7 +4,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 
 // Copies a picker/camera URI into app-controlled cache storage immediately,
 // before the OS has a chance to evict the original temp file. Must be
-// called as soon as an image is captured or picked -- NOT deferred until
+// called as soon as an image is captured or picked , NOT deferred until
 // analysis time, since expo-image-picker's returned URI is not guaranteed
 // to stay valid while the user fills out the rest of the form.
 export async function stabilizeImage(uri) {

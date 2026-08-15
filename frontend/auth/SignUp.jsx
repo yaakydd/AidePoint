@@ -1,28 +1,3 @@
-// 3-step flow, matching the reference screenshots' pattern (X/back at
-// top, progress dots, one focused question per screen, disabled Next
-// until the step is valid):
-//   Step 1 "Let's get started"  -> name + email
-//   Step 2 "Hospital / Lab"     -> existing search modal, unchanged logic
-//   Step 3 "Create a password"  -> single strength bar + hint text,
-//                                   styled after the Chime reference
-//                                   image rather than the old 4-bar/
-//                                   checklist-only layout.
-//
-// All hospital-picker and password-strength logic is carried over
-// unchanged from the previous single-screen version -- only the JSX
-// structure and styling changed to split it into steps, match the
-// Chime reference layout (logo + wordmark, connected step icons with
-// labels, generous spacing), and fix keyboard-covering-input on
-// Android/iOS via KeyboardAwareScrollView.
-//
-// Email-enumeration note: step 1 does NOT pre-check whether an email is
-// already registered. That was tried via signInWithOtp({shouldCreateUser:
-// false}) but rejected — it's a textbook enumeration oracle and
-// contradicts ForgotPassword.js's deliberate "never reveal if an email
-// exists" design. Duplicate accounts are now caught at the final
-// register() call (step 3) and the user is routed back to step 1 with a
-// clear message + Sign In link instead.
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -222,7 +197,7 @@ const SignUp = () => {
     clearError?.();
   };
 
-  // ── Per-step validation, gates the Next button ──
+  //  Per-step validation, gates the Next button 
   const validateStart = () => {
     const e = {};
     if (!name.trim()) e.name = 'Name is required';
@@ -350,7 +325,7 @@ const SignUp = () => {
         extraScrollHeight={20}
         keyboardOpeningTime={0}
       >
-        {/* ── Top bar: close/back + "Log in" (mirrors reference's X + Log in) ── */}
+        {/*  Top bar: close/back + "Log in" (mirrors reference's X + Log in)  */}
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={handleBack}
@@ -372,7 +347,7 @@ const SignUp = () => {
           )}
         </View>
 
-        {/* ── Logo + wordmark ── */}
+        {/*  Logo + wordmark  */}
         <View style={styles.brandRow}>
           <View style={styles.logoCircle}>
             <MaterialCommunityIcons name="microscope" size={22} color={COLORS.primary} />
@@ -380,7 +355,7 @@ const SignUp = () => {
           <Text style={styles.brandText}>AidePoint</Text>
         </View>
 
-        {/* ── Step icons with connecting line + labels ── */}
+        {/*  Step icons with connecting line + labels  */}
         <View style={styles.progressRow}>
           {STEPS.map((s, i) => (
             <React.Fragment key={s}>
@@ -416,9 +391,9 @@ const SignUp = () => {
           </View>
         )}
 
-        {/* ── Step content ── */}
+        {/*  Step content  */}
         <View style={styles.stepBody}>
-          {/* ── Step 1: Let's get started ── */}
+          {/*  Step 1: Let's get started  */}
           {step === 'start' && (
             <>
               <Text style={styles.stepTitle}>Let's get started</Text>
@@ -483,7 +458,7 @@ const SignUp = () => {
             </>
           )}
 
-          {/* ── Step 2: Hospital / Lab ── */}
+          {/*  Step 2: Hospital / Lab  */}
           {step === 'hospital' && (
             <>
               <Text style={styles.stepTitle}>Where do you work?</Text>
@@ -656,7 +631,7 @@ const SignUp = () => {
             </>
           )}
 
-          {/* ── Step 3: Create password ── */}
+          {/*  Step 3: Create password  */}
           {step === 'password' && (
             <>
               <Text style={styles.stepTitle}>Create a password</Text>
@@ -782,7 +757,7 @@ const SignUp = () => {
             </>
           )}
 
-          {/* ── Next / Create Account button ── */}
+          {/*  Next / Create Account button  */}
           <TouchableOpacity
             style={[styles.nextBtn, !nextEnabled && styles.nextBtnDisabled]}
             disabled={!nextEnabled || loading}

@@ -1,16 +1,3 @@
-// One-time PIN creation screen, shown between Consent and the main app
-// (see authState === 'PIN_SETUP' in AuthContext.js / RootNavigator.js).
-// Visually modelled on the reference flow: full-bleed brand-colour
-// background, plain white digits with no button chips, centered dot
-// progress indicator -- distinct from PinModal.js's card-style keypad
-// (white circular keys on a light background), which is a different,
-// more "utility" visual context (re-entering an existing PIN to unlock
-// Reports) versus this one-time, celebratory-feeling setup moment.
-//
-// Reuses the same storage layer as the Reports-screen PIN
-// (utils/reportPin.js's savePin/isPinCreated) -- this is now the
-// single app-wide PIN, just created earlier in the flow than before.
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, Animated,
@@ -63,7 +50,7 @@ const PinSetup = () => {
       return;
     }
 
-    // Confirm step -- check the retype matches
+    // Confirm step , check the retype matches
     if (confirmPin !== pin) {
       shakeAndError("PINs don't match. Try again.");
       setConfirmPin('');
@@ -196,35 +183,88 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
-  header: { alignItems: 'center', marginBottom: SPACING['2xl'] },
+  header: { 
+    alignItems: 'center', 
+    marginBottom: SPACING['2xl'] 
+  },
   iconWrap: {
-    width: scale(64), height: scale(64), borderRadius: scale(32),
+    width: scale(64), 
+    height: scale(64), 
+    borderRadius: scale(32),
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: SPACING.md,
   },
-  title: { fontSize: FONTS['2xl'], fontWeight: FONTS.bold, color: COLORS.white, marginBottom: 6 },
-  subtitle: { fontSize: FONTS.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center', paddingHorizontal: SPACING['2xl'] },
+  title: { 
+    fontSize: FONTS['2xl'], 
+    fontWeight: FONTS.bold, 
+    color: COLORS.white, 
+    marginBottom: 6 },
+  subtitle: { 
+    fontSize: FONTS.sm, 
+    color: 'rgba(255,255,255,0.85)', 
+    textAlign: 'center', 
+    paddingHorizontal: SPACING['2xl'] 
+  },
 
-  dotsRow: { flexDirection: 'row', gap: SPACING.lg, marginBottom: SPACING.sm },
+  dotsRow: { 
+    flexDirection: 'row', 
+    gap: SPACING.lg, 
+    marginBottom: SPACING.sm 
+  },
   dot: {
-    width: scale(14), height: scale(14), borderRadius: scale(7),
-    borderWidth: 2, borderColor: COLORS.white, backgroundColor: 'transparent',
+    width: scale(14), 
+    height: scale(14), 
+    borderRadius: scale(7),
+    borderWidth: 2, 
+    borderColor: COLORS.white, 
+    backgroundColor: 'transparent',
   },
-  dotFilled: { backgroundColor: COLORS.white },
+  dotFilled: { 
+    backgroundColor: COLORS.white 
+  },
 
-  errorSlot: { height: vScale(28), justifyContent: 'center' },
-  error: { color: COLORS.white, fontSize: FONTS.sm, fontWeight: FONTS.semibold },
+  errorSlot: { 
+    height: vScale(28), 
+    justifyContent: 'center' 
+  },
+  error: { 
+    color: COLORS.white, 
+    fontSize: FONTS.sm, 
+    fontWeight: FONTS.semibold 
+  },
 
-  keypad: { marginTop: SPACING.lg, gap: SPACING.md },
-  keyRow: { flexDirection: 'row', gap: SPACING.xl, justifyContent: 'center' },
+  keypad: { 
+    marginTop: SPACING.lg, 
+    gap: SPACING.md 
+  },
+  keyRow: { 
+    flexDirection: 'row', 
+    gap: SPACING.xl, justifyContent: 'center' },
   key: {
-    width: scale(72), height: scale(72),
-    alignItems: 'center', justifyContent: 'center',
+    width: scale(72), 
+    height: scale(72),
+    alignItems: 'center', 
+    justifyContent: 'center',
   },
-  keyText: { fontSize: FONTS.xl, fontWeight: FONTS.semibold, color: COLORS.white },
+  keyText: { 
+    fontSize: FONTS.xl, 
+    fontWeight: FONTS.semibold, 
+    color: COLORS.white 
+  },
 
-  stepRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING['2xl'] },
-  stepDot: { width: scale(8), height: scale(8), borderRadius: scale(4), backgroundColor: 'rgba(255,255,255,0.35)' },
-  stepDotActive: { backgroundColor: COLORS.white },
+  stepRow: { 
+    flexDirection: 'row', 
+    gap: SPACING.sm, 
+    marginTop: SPACING['2xl'] 
+  },
+  stepDot: { 
+    width: scale(8), 
+    height: scale(8), 
+    borderRadius: scale(4), 
+    backgroundColor: 'rgba(255,255,255,0.35)' 
+  },
+  stepDotActive: { 
+    backgroundColor: COLORS.white 
+  },
 });

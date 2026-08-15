@@ -1,26 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updatePredictionNotes } from './api';
-// The backend performs a binary anemia screen (anemic vs not anemic) --
-// it does not identify a specific disease type. An earlier version of
-// this app had a second-stage classifier that predicted a specific
-// condition (sickle cell, malaria, thalassemia, etc.), but that
-// classifier was removed after its training data turned out to be
-// threshold-derived rather than independently diagnosed, and because
-// "Leukemia" had been included in that dataset as an anemia type, which
-// it is not.
-//
-// Three buckets now, not two -- 'healthy' and 'other_condition' both
-// mean "not anemic," but they're not the same result to hand a
-// technician:
-//   - healthy: not anemic, and nothing else was flagged either. A clean
-//     result.
-//   - other_condition: not anemic, but the scan surfaced something else
-//     worth a second look -- a flagged morphology finding, or an
-//     unreliable-result warning. Confirmed necessary from a real test:
-//     a malaria-positive sample came back "not anemic," which is true,
-//     but grouping it under "Healthy" implied a clean bill of health
-//     the app never actually confirmed. See resolveConditionKey() below
-//     for exactly how a result lands in one bucket versus the other.
 export const CONDITION_CONFIG = {
 
   anemic: {
@@ -66,19 +45,7 @@ export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) 
   return 'healthy';
 };
 
-// buildReport
-// Shapes raw scan data into the structured report object used everywhere.
-//
-// There is no doctor/human-review role in this product. The "review"
-// and "recommendation" the technician sees are both generated directly
-// from the model's findings (see TransparencyTrail.jsx's
-// getRecommendation()) -- the only thing a person writes here is
-// labTechNotes, a free-text note the technician adds after reading the
-// report. This function used to also carry doctorId/doctorName/
-// doctorVerified/doctorNotes/doctorSignature fields for a verification
-// workflow that was never actually part of the product; removed rather
-// than left unused, since a report screen rendering a permanently-false
-// "verified" indicator is worse than not showing one at all.
+
 export const buildReport = ({
   patientName, patientId, condition, confidence,
   labTechName, imageUri, temperature, bloodPressure,
@@ -89,20 +56,8 @@ export const buildReport = ({
             // `id` below stays as the internal/Supabase linkage key.
 }) => {
   const now = new Date();
-
-  // If the caller already passed a resolved `condition` (i.e. the
-  // backend's response_payload.condition, forwarded through from
-  // /predict), that value is trusted directly -- no re-derivation.
-  // resolveConditionKey() is only used as a fallback, for callers that
-  // don't have a backend-resolved condition available (e.g. older
-  // cached report shapes, or any call site not yet updated to pass
-  // `condition` through).
   const resolvedCondition = condition ?? resolveConditionKey(
-    false, // this fallback path has no reliable is_anemic signal without
-           // `condition` already being resolved upstream; treating it as
-           // non-anemic here is the same conservative assumption
-           // resolveConditionKey's callers already relied on when
-           // `condition` is genuinely unavailable.
+    false, 
     morphologyFindings,
     isUnreliable
   );
@@ -139,16 +94,10 @@ export const buildReport = ({
   };
 };
 
-// ── Report storage: scoped per-user ──
-// Each technician gets their own storage bucket, keyed by their user id,
-// so reports don't leak between accounts on a shared device (e.g. Tech
-// A logs out, Tech B logs in on the same phone -- Tech B should only
-// ever see their own reports, never Tech A's).
 const REPORTS_STORAGE_PREFIX = 'aidepoint_reports_v1';
 
 const getStorageKey = (userId) => `${REPORTS_STORAGE_PREFIX}:${userId}`;
 
-// ── saveReport ──
 export const saveReport = async (report, userId) => {
   try {
     const key = getStorageKey(userId);
@@ -180,13 +129,7 @@ export const clearReports = async (userId) => {
   await AsyncStorage.removeItem(getStorageKey(userId));
 };
 
-// updateReportNotes
-// Finds a saved report by id and persists a new labTechNotes value onto
-// it. This is the only technician-authored input a report has -- without
-// it, TransparencyTrail's notes field would have nowhere to save to and
-// would silently lose whatever the technician typed the moment the
-// modal closed. Returns the updated reports array so the caller
-// (ReportScreen) can refresh its in-memory list without a full re-fetch.
+
 export const updateReportNotes = async (reportId, notes, userId) => {
   try {
     const key = getStorageKey(userId);

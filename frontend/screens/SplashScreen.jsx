@@ -1,5 +1,3 @@
-// screens/SplashScreen.js
-
 import React from "react";
 import {
   View,

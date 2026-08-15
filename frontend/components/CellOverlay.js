@@ -1,12 +1,3 @@
-// Draws the backend's cell_overlay data directly on top of the smear
-// photo , one colored ellipse per detected cell, green through yellow to
-// red depending on how far the cell's shape is from a normal round RBC.
-// Coordinates from the backend are normalized 0-1 (fraction of image
-// width/height), so this component just needs to know the rendered
-// width/height of the photo on screen to place things correctly ,
-// it doesn't need to know anything about the backend's internal
-// 260x260 processing size.
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Ellipse } from 'react-native-svg';

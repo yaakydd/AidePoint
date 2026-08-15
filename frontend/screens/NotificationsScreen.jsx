@@ -1,9 +1,3 @@
-// Reads from the same `notifications` table ForgotPassword.js already
-// writes to (user_id, title, body). Assumes it also has `created_at`
-// (default now()) and a `read` boolean — if `read` doesn't exist yet,
-// add it:
-//   ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read boolean DEFAULT false;
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList,
@@ -17,8 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/NotificationStyles';
 
-// crude icon-by-keyword since there's no `type` column on the table yet —
-// good enough for now, swap for a real `type` field if this grows
+
 function iconFor(title = '') {
   const t = title.toLowerCase();
   if (t.includes('password'))  return { name: 'lock-outline', color: '#0EA5E9', bg: '#F0F9FF' };

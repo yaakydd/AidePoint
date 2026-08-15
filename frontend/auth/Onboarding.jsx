@@ -1,11 +1,3 @@
-// auth/Onboarding.js
-//
-// PLACEHOLDER: images are commented out until real photos exist in
-// assets/onboarding/. Each slide currently renders a tinted View
-// (using the slide's accent color) instead of an Image. Once the
-// photos are added, uncomment the `image:` lines and swap the
-// placeholder View back for <Image .../> in renderItem below.
-
 import React, { useState, useRef } from "react";
 import {
   View,

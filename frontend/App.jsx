@@ -36,7 +36,7 @@ export default function App() {
   }, [onLayoutRootView]);
 
   // Render nothing (splash stays up) until fonts resolve one way or the
-  // other -- fontError still lets the app proceed with system fonts
+  // other, fontError still lets the app proceed with system fonts
   // rather than getting stuck forever if the font fails to load.
   if (!fontsLoaded && !fontError) {
     return null;

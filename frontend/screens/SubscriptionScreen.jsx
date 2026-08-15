@@ -1,21 +1,3 @@
-// Plan comparison + upgrade screen. Note: there's no payment provider wired
-// up yet (mobile money is the obvious choice for Ghana but that's its own
-// project) — tapping "Upgrade" for now just shows a placeholder alert
-// instead of pretending to process a payment. Swap handleUpgrade() out
-// once that's actually built.
-//
-// Assumes constants/subscriptionPlans.js exports something shaped like:
-//   export const SUBSCRIPTION_PLANS = [
-//     { id: 'basic', name: 'Basic', price: 0, priceLabel: 'Free',
-//       scans: { dailyLimit: 5, bonusPerFive: 2 },
-//       aideBot: { dailyLimit: 15 }, features: [...] },
-//     { id: 'max', ... },
-//     { id: 'pro', ... },
-//   ];
-//   export function getPlan(tierId) { ... }
-// If your actual file uses different field names, adjust the plan.* reads
-// below rather than the whole layout — everything else should still work.
-
 import React from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Alert, StatusBar,

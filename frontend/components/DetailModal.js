@@ -1,5 +1,3 @@
-// components/DetailModal.js
-
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,10 +7,6 @@ import { CONDITION_CONFIG, updateReportNotes } from '../utils/ReportUtils';
 import { exportReportAsPdf } from '../utils/ReportPDF';
 import { COLORS, SPACING, FONTS, RADIUS } from '../assets/theme';
 
-// Same recommendation copy as components/TransparencyTrail.js -- kept in
-// sync manually for now. Worth moving into ReportUtils.js as a shared
-// export if it needs to change again, so the in-app modal and the
-// exported PDF/report sheet can never drift apart.
 function getRecommendation(conditionKey, isUnreliable) {
   if (conditionKey === 'unknown' && isUnreliable) {
     return "This sample falls outside the pattern the model was trained to recognize. It should not be read as a negative result. Recommend manual microscopic review by a hematologist before ruling anemia in or out, and correlate with the patient's clinical presentation.";
@@ -26,13 +20,7 @@ function getRecommendation(conditionKey, isUnreliable) {
   return 'No anemia pattern detected in this sample. No immediate action needed based on this screening alone; continue routine care and re-screen if the patient becomes symptomatic.';
 }
 
-// The anemia-probability model only scores two outcomes: anemic vs
-// healthy. 'unknown' is a derived bucket (flagged morphology or an
-// unreliable-result warning), not a third class the model assigns a
-// probability to -- so there is no meaningful percentage or confidence
-// value to show alongside it. Centralized here as one check rather than
-// scattered inline conditionals so every render site in this file reads
-// the same rule the same way.
+
 function shouldShowProbabilityAndConfidence(conditionKey) {
   return conditionKey === 'anemic' || conditionKey === 'healthy';
 }

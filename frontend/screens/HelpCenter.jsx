@@ -1,17 +1,3 @@
-// screens/HelpCenter.js
-//
-// Bug reporting here follows the same pattern as Chatbot.js's bug report
-// modal: a description field, sent via mailto: to support. Chatbot's
-// version also attaches the chat transcript as context -- there's no
-// equivalent transcript here, so this instead attaches basic account
-// context (name, email, role) so support isn't starting from nothing.
-//
-// FIXED: Resources section (Privacy Policy row) removed -- Privacy
-// Policy already lives in ProfileScreen.js's SUPPORT section, so having
-// it here too was two paths to the same destination for no reason.
-// This screen is now just GET HELP + FAQ, which is what it was really
-// for in the first place.
-
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,

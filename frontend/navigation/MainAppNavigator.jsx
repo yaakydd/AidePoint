@@ -15,9 +15,6 @@ import ReportScreen from "../screens/ReportScreen";
 import Chatbot from "../screens/Chatbot";
 import ProfileScreen from "../screens/ProfileScreen";
 
-// createBottomTabNavigator() gives us two things:
-//   Tab.Navigator  = the container with the tab bar
-//   Tab.Screen  = each individual tab/screen pair
 const Tab = createBottomTabNavigator();
 
 // We get the physical screen width once here at module level.
@@ -148,7 +145,7 @@ function MainAppNavigator() {
       </Tab.Navigator>
 
       {/*
-        THE ANIMATED UNDERLINE — how it works:
+        THE ANIMATED UNDERLINE: how it works:
 
         This <View> sits OUTSIDE the Tab.Navigator but INSIDE the same
         parent View, so it can be positioned absolutely over the tab bar.

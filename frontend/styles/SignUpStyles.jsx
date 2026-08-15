@@ -1,13 +1,3 @@
-// styles/SignUpStyles.js
-//
-// Restyled after the Chime reference: top bar with close + "Log in",
-// logo + wordmark row, step icons connected by a line with labels
-// underneath, and a `stepBody` wrapper with `flexGrow: 1` +
-// `justifyContent: 'space-between'` so the form content and the Next
-// button spread out to fill the screen instead of clustering at the
-// top on taller devices. Every style here is referenced by SignUp.js;
-// values pull from theme.js per project convention.
-
 import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../assets/theme';
 
@@ -23,7 +13,7 @@ export const signupStyle = StyleSheet.create({
     paddingBottom: SPACING['3xl'],
   },
 
-  // ── Top bar: close/back + Log in ──
+
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -38,8 +28,6 @@ export const signupStyle = StyleSheet.create({
     color: COLORS.primary,
   },
 
-  // ── Logo + wordmark ──
-  // ── Logo + wordmark ──
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -62,8 +50,7 @@ export const signupStyle = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // ── Step icons connected by a line, with labels underneath ──
-// ── Step icons connected by a line, with labels underneath ──
+
   progressRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -121,19 +108,13 @@ export const signupStyle = StyleSheet.create({
     backgroundColor: COLORS.success,
   },
 
-  // ── Step body wrapper: spreads form + button to fill remaining
-  // screen height on taller devices instead of everything clustering
-  // near the top. scrollContent's flexGrow:1 makes this effective. ──
-// ── Step body wrapper ──
+
   stepBody: {
     flexGrow: 1,
-    // removed justifyContent: 'space-between' — that was the main
-    // culprit, forcing the button all the way to the bottom and
-    // stretching everything to fill leftover height on taller screens
     marginTop: SPACING.lg,        // was 2xl
   },
 
-  // ── Privacy policy checkbox (step 3) ──
+
   privacyRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -169,8 +150,8 @@ export const signupStyle = StyleSheet.create({
     fontWeight: FONTS.semibold,
   },
 
-  // ── Step title/subtitle ──
-// ── Step title/subtitle ──
+  //  Step title/subtitle 
+//  Step title/subtitle 
   stepTitle: {
     fontSize: FONTS['2xl'],
     fontWeight: FONTS.bold,
@@ -185,8 +166,8 @@ export const signupStyle = StyleSheet.create({
     lineHeight: FONTS.sm * FONTS.normal,
   },
 
-  // ── Form ──
-// ── Form ──
+
+//  Form 
   label: {
     fontSize: FONTS.sm,
     fontWeight: FONTS.semibold,
@@ -226,7 +207,7 @@ export const signupStyle = StyleSheet.create({
     marginTop: SPACING.xs,
   },
 
-  // ── Hospital field (tappable, opens modal) ──
+  //  Hospital field (tappable, opens modal) 
   hospitalInputText: {
     flex: 1,
     fontSize: FONTS.md,
@@ -237,7 +218,7 @@ export const signupStyle = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
-  // ── Password strength (single bar + hint, matches reference image) ──
+  //  Password strength (single bar + hint, matches reference image) 
   strengthBarTrack: {
     height: scale(5),
     borderRadius: RADIUS.full,
@@ -280,8 +261,8 @@ export const signupStyle = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
-  // ── Next / submit button ──
-// ── Next / submit button ──
+  //  Next / submit button 
+//  Next / submit button 
   nextBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -310,7 +291,7 @@ export const signupStyle = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
-  // ── Sign in link (final step only) ──
+  //  Sign in link (final step only) 
   signinRow: {
     marginTop: SPACING.xl,
     alignItems: 'center',
@@ -326,7 +307,7 @@ export const signupStyle = StyleSheet.create({
     fontWeight: FONTS.bold,
   },
 
-  // ── Auth error banner ──
+  //  Auth error banner 
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -343,7 +324,7 @@ export const signupStyle = StyleSheet.create({
     flex: 1,
   },
 
-  // ── Hospital picker modal ──
+  //  Hospital picker modal 
   modalOverlay: {
     flex: 1,
     backgroundColor: COLORS.overlay,

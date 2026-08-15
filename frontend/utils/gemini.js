@@ -1,50 +1,9 @@
-// utils/gemini.js
-/**
- * Thin wrapper around AideBot's chat endpoint.
- *
- * IMPORTANT: this no longer calls the Gemini API directly from the app.
- * Doing so required EXPO_PUBLIC_GEMINI_API_KEY, and any EXPO_PUBLIC_
- * env var is inlined into the JS bundle at build time -- meaning the
- * key would ship inside the compiled app binary, extractable by anyone
- * with the APK/IPA. For a clinical tool with real API billing behind
- * it, that's not an acceptable place to keep a secret.
- *
- * Instead, this calls a /aidebot/chat endpoint on the existing FastAPI
- * backend (the same service already running the ONNX model). The
- * backend holds GEMINI_API_KEY as a server-side secret, forwards the
- * conversation to Gemini, and returns just the reply text. This also
- * gives you one place to add auth checks (only logged-in lab techs can
- * use AideBot), rate limiting, and logging later, none of which is
- * possible when the client calls Gemini directly.
- *
- * AUTH: aidebot_chat is protected by verify_supabase_token on the
- * backend, same as /predict -- so every request here must carry the
- * current user's Supabase access token as a Bearer header, exactly
- * like analyzeBloodSmear does in utils/api.js. Without it, the backend
- * returns 401 Missing or malformed Authorization header.
- *
- * Requires EXPO_PUBLIC_API_BASE_URL to point at your FastAPI backend,
- * e.g. in a .env file at the project root:
- *
- *   EXPO_PUBLIC_API_BASE_URL=https://api.aidepoint.example.com
- *
- * See backend/routers/aidebot.py (or wherever you add it) for the
- * matching server-side endpoint -- it should own SYSTEM_INSTRUCTION,
- * the Gemini model name, and the actual generateContent call.
- */
-
 import { supabase } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const AIDEBOT_ENDPOINT = `${API_BASE_URL}/aidebot/chat`;
 
-// Hard cap on how much conversation history gets sent per request.
-// Without this, a long AideBot session sends the ENTIRE history every
-// single turn -- token usage (and therefore latency and backend cost)
-// grows unbounded the longer someone chats, even though only recent
-// context actually matters for a follow-up question. 20 messages is
-// generous for a lab-bench Q&A session while keeping each request small.
-const MAX_HISTORY_MESSAGES = 20;
+const MAX_HISTORY_MESSAGES = 10;
 
 // How long to wait before giving up on a hung request. Without this, a
 // dropped connection or a stalled backend just spins the "..." loading

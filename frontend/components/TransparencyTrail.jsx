@@ -49,18 +49,6 @@ function computeSeverityBreakdown(cells) {
   });
 }
 
-// The anemia-probability model only scores two outcomes: anemic vs
-// healthy. 'unknown' is a derived bucket (flagged morphology or an
-// unreliable-result warning), not a third class the model assigns a
-// probability/confidence to. Gated here rather than trusting the
-// backend payload alone to already be null -- the backend nulls
-// prediction.anemia_probability and prediction.explanation.confidence
-// for unknown results, but this component reads that same
-// explanation.confidence field, so this check is the belt to that
-// backend's suspenders. It also protects against
-// prediction.anemia_probability arriving as `null`, which would
-// otherwise render as "0% probability" (null * 100 === 0 in JS) rather
-// than simply not rendering.
 const shouldShowProbabilityAndConfidence = (conditionKey) =>
   conditionKey === 'anemic' || conditionKey === 'healthy';
 
@@ -101,10 +89,6 @@ const getQualityCaveat = (imageQualityWarning) =>
     ? 'Image quality issues were detected during analysis (see warning above). If this result is borderline or unexpected, consider re-scanning with better lighting and focus before acting on it.'
     : null;
 
-// Mirrors backend/shape_screening.py's compute_severity_color() exactly,
-// so this legend bar is a true reflection of the colors actually drawn
-// on the cell overlay -- not a separate hand-picked gradient that could
-// drift out of sync with the backend's real math.
 const severityToColor = (severityScore) => {
   let redValue, greenValue, blueValue;
   if (severityScore < 0.5) {
@@ -191,9 +175,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const recommendation = getRecommendation(conditionKey, isUnreliable, imageQualityWarning);
   const qualityCaveat = getQualityCaveat(imageQualityWarning);
 
-  // Matches the "date - time" pairing DetailModal.js uses for the same
-  // report object (report.dateDisplay / report.timeDisplay), so both
-  // screens read the same fields the same way.
   const dateTimeDisplay = [report?.dateDisplay, report?.timeDisplay]
     .filter(Boolean)
     .join('  \u2022  ');
@@ -218,14 +199,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
           <View style={styles.handle} />
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
-
-            {/* Branded header -- matches DetailModal.js's letterhead so
-                the post-scan result screen and the saved-report screen
-                read as the same product. Reuses ReportStyles directly
-                rather than duplicating styling, so both stay in sync if
-                the letterhead design changes. Shows scanId (the short,
-                human-facing ID generated on the Scan screen), never
-                report.id (the internal Supabase key). */}
             <View style={ReportStyles.reportHeaderCard}>
               <View style={ReportStyles.reportBrandRow}>
                 <View style={ReportStyles.reportBrandLogo}>
@@ -242,9 +215,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               </View>
             </View>
 
-            {/* Patient name left, date/time right -- mirrors
-                DetailModal.js's sheetHeader row so both modals present
-                the same report identity info the same way. */}
             <View style={styles.patientMetaRow}>
               <Text style={styles.patientName} numberOfLines={1} ellipsizeMode="tail">
                 {report?.patientName ?? 'Unnamed Patient'}

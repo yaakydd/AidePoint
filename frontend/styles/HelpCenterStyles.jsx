@@ -1,4 +1,3 @@
-// styles/HelpCenterStyles.js
 import { StyleSheet, Platform } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../assets/theme';
 

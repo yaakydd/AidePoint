@@ -1,4 +1,3 @@
-// styles/PrivacyPolicyStyles.js
 import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout } from '../assets/theme';
 

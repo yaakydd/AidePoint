@@ -1,5 +1,3 @@
-// screens/HomeScreen.js
-
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -46,7 +44,7 @@ function formatDetailDate(iso) {
   return new Date(iso).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
-// ── Weekly Bar Chart (tap a bar to reveal its detail) ──────────────────────────
+//  Weekly Bar Chart (tap a bar to reveal its detail) 
 
 const WeeklyBarChart = ({ data, selectedIndex, onSelect }) => {
   const maxCount   = Math.max(...data.map(d => d.count), 1);
@@ -92,20 +90,6 @@ const WeeklyBarChart = ({ data, selectedIndex, onSelect }) => {
   );
 };
 
-// ── Scan Card ────────────────────────────────────────────────────────────
-// Display-only — no press action. Tapping a scan card does nothing; there
-// is intentionally no navigation or handler wired to it.
-//
-// Icon/badge come from the shared Conditions component for any scan that
-// has a result: anemic (red), healthy (green), unknown (blue — not
-// anemic, but something else was flagged: abnormal morphology or an
-// unreliable-result warning. A real result, not a pending state).
-//
-// A scan with NO result yet (rawCondition is null — not analyzed at all)
-// is a different state from CONDITION_CONFIG's 'unknown' bucket and is
-// shown locally as "Not Analyzed" rather than routed through
-// ConditionBadge — reusing the word "Unknown" here would make it
-// indistinguishable from the model's real 'unknown' result in the UI.
 const ScanCard = ({ scan }) => (
   <View style={styles.patientCard}>
     <View style={styles.patientInfo}>
@@ -197,7 +181,7 @@ const HomeScreen = () => {
       const weekScans = weekRes.data  ?? [];
       const recentRaw = recentRes.data ?? [];
 
-      // Build weekly chart data (Sun=0 … Sat=6), each day tagged with its
+      // Build weekly chart data (Sun=0,..., Sat=6), each day tagged with its
       // actual calendar date within the current week so the tap-detail can
       // show "Tuesday, 24 Jun" rather than just "Tue".
       const countByDay = {};
@@ -227,12 +211,6 @@ const HomeScreen = () => {
 
       setRecentScans(recentRaw.map(s => {
         const patientName = s.patients?.name ?? 'Unknown Patient';
-
-        // `condition` is set directly on the scan row (see Scan.jsx).
-        // Older rows saved before the results->condition migration have
-        // no recoverable condition data (the `results` blob they used
-        // has been dropped from the schema), so they'll show as
-        // "Not Analyzed".
         const rawCondition = s.condition ?? null;
 
         return {
@@ -278,7 +256,7 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
 
-      {/* ── Header ── */}
+      {/*  Header  */}
       <View style={styles.header}>
         <View style={styles.profileRow}>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
@@ -307,7 +285,7 @@ const HomeScreen = () => {
         </View>
       </View>
 
-      {/* ── Scrollable Content ── */}
+      {/*  Scrollable Content  */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -323,14 +301,14 @@ const HomeScreen = () => {
           />
         }
       >
-        {/* ── Error banner ── */}
+        {/*  Error banner  */}
         {fetchError ? (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{fetchError}</Text>
           </View>
         ) : null}
 
-        {/* ── Stat Cards ── */}
+        {/*  Stat Cards  */}
         <Text style={styles.sectionTitle}>Today's Overview</Text>
         <View style={styles.statsRow}>
 
@@ -341,7 +319,7 @@ const HomeScreen = () => {
             />
             <Text style={styles.statLabel}>TODAY</Text>
             <Text style={styles.statValue}>
-              {loading ? '—' : stats?.todayCount ?? 0}
+              {loading ? ',' : stats?.todayCount ?? 0}
             </Text>
             <Text style={styles.statSub}>scans done</Text>
           </View>
@@ -353,19 +331,19 @@ const HomeScreen = () => {
             />
             <Text style={styles.statLabel}>THIS WEEK</Text>
             <Text style={styles.statValue}>
-              {loading ? '—' : stats?.thisWeek ?? 0}
+              {loading ? ',' : stats?.thisWeek ?? 0}
             </Text>
             <Text style={styles.statSub}>total scans</Text>
           </View>
         </View>
 
-        {/* ── Weekly Chart ── */}
+        {/*  Weekly Chart  */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeaderRow}>
             <View>
               <Text style={styles.chartTitle}>Scans This Week</Text>
               <Text style={styles.chartSub}>
-                avg. {loading ? '—' : avgPerDay} scans / day
+                avg. {loading ? ',' : avgPerDay} scans / day
               </Text>
             </View>
             <View style={styles.chartLegend}>
@@ -396,7 +374,7 @@ const HomeScreen = () => {
           ) : null}
         </View>
 
-        {/* ── Quick Action ── */}
+        {/*  Quick Action  */}
         <TouchableOpacity
           style={styles.quickActionBtn}
           onPress={() => navigation.navigate('Scan')}
@@ -411,7 +389,7 @@ const HomeScreen = () => {
           <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
         </TouchableOpacity>
 
-        {/* ── Recent Scans ── */}
+        {/*  Recent Scans  */}
         <View style={styles.listHeader}>
           <Text style={styles.sectionTitle}>Recent Scans</Text>
           {recentScans.length > 0 && (

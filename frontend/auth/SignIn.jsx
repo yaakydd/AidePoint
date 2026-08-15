@@ -1,12 +1,3 @@
-// screens/SignIn.js
-//
-// Layout follows the reference design: colored curved header holding
-// the logo, white card overlapping it with rounded top corners, "Hello"
-// greeting, icon-prefixed input fields, and a pill-shaped submit button
-// with a trailing arrow. Colors pulled from theme.js (COLORS.primary)
-// rather than the reference image's pink, so it matches AidePoint's
-// actual brand.
-
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,

@@ -11,8 +11,6 @@ export const signInStyles = StyleSheet.create({
 
   container: {
     flexGrow: 1,
-    // Safety net: if the header/card math is ever off again, this fails
-    // white instead of leaking the blue `safe` background through.
     backgroundColor: COLORS.surface,
   },
 
@@ -48,11 +46,6 @@ export const signInStyles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // 60% of screen height for the sign-in card. The card is pulled up
-  // by SPACING['2xl'] (negative marginTop) to overlap the header for
-  // the rounded-corner effect, so minHeight must add that same amount
-  // back — otherwise the bottom of the screen is left uncovered and
-  // the blue `safe`/`headerSection` color shows through underneath.
   card: {
     minHeight: SCREEN_HEIGHT * 0.6 + SPACING['2xl'],
     backgroundColor: COLORS.surface,

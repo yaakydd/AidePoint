@@ -13,23 +13,19 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../assets/theme';
 import { CameraStyles as styles, GUIDE_SIZE } from '../styles/CameraStyles';
 
-// Short, glanceable — read in passing while lining up the shot, not as a manual.
-// Framing responsibility is split deliberately: focus is the technician's job
-// (no reliable cross-device tap-to-focus API exists in expo-camera), the app's
-// job is resolution, exposure, and framing.
 const CAPTURE_TIPS = [
   'Focus through the eyepiece until sharp, then tap',
   'Fill the circle with the eyepiece view',
-  'Flash off — use scope light only',
+  'Flash off , use scope light only',
   'Hold steady, both hands (or adapter)',
 ];
 
 // Below this, a shot is flagged as too dark to be reliably usable.
-// This is a fast, cheap pre-filter only — it catches the obvious failure
+// This is a fast, cheap pre-filter only , it catches the obvious failure
 // (flash off + scope light not aligned) before spending an upload on it.
 // It is NOT a sharpness/blur check. Real blur detection (variance-of-Laplacian
 // or similar) needs a proper image-processing library and is done server-side,
-// in the same pipeline that scores anemia confidence — see ScanHome / backend.
+// in the same pipeline that scores anemia confidence , see ScanHome / backend.
 const MIN_BRIGHTNESS = 40;
 
 const CameraScreen = ({ navigation }) => {
@@ -46,7 +42,7 @@ const CameraScreen = ({ navigation }) => {
 
   // Request the highest resolution the device's camera actually supports.
   // getAvailablePictureSizesAsync is a standard CameraView method, stable
-  // across devices — not tied to a specific SDK quirk.
+  // across devices , not tied to a specific SDK quirk.
   useEffect(() => {
     if (!permission?.granted) return;
     (async () => {
@@ -62,7 +58,7 @@ const CameraScreen = ({ navigation }) => {
     })();
   }, [permission?.granted]);
 
-  // ── Permission: still loading ──────────────────────────────────────────
+  //  Permission: still loading 
   if (!permission) {
     return (
       <View style={styles.centred}>
@@ -71,7 +67,7 @@ const CameraScreen = ({ navigation }) => {
     );
   }
 
-  // ── Permission: denied ──────────────────────────────────────────────────
+  //  Permission: denied 
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.permissionScreen}>
@@ -90,10 +86,10 @@ const CameraScreen = ({ navigation }) => {
     );
   }
 
-  // ── Cheap client-side exposure pre-filter ───────────────────────────────
+  //  Cheap client-side exposure pre-filter 
   // Downsamples the photo and estimates average brightness. Deliberately
   // simple: this only needs to catch "clearly unusable," not grade quality.
-  // Real quality scoring (sharpness) happens server-side — see header note.
+  // Real quality scoring (sharpness) happens server-side , see header note.
   async function isTooDark(uri) {
     try {
       const result = await ImageManipulator.manipulateAsync(
@@ -114,11 +110,11 @@ const CameraScreen = ({ navigation }) => {
       return avgBrightness < MIN_BRIGHTNESS;
     } catch (err) {
       console.error('CameraScreen isTooDark:', err.message);
-      return false; // fail open — never block a capture on a broken check
+      return false; // fail open , never block a capture on a broken check
     }
   }
 
-  // ── Capture ──────────────────────────────────────────────────────────────
+  //  Capture 
   async function takePicture() {
     if (!cameraRef.current || isCapturing) return;
     setIsCapturing(true);
@@ -134,7 +130,7 @@ const CameraScreen = ({ navigation }) => {
       if (tooDark) {
         Alert.alert(
           'Image Looks Too Dark',
-          'This capture may be too dark to analyze reliably. Check the scope light and retake, or continue anyway — final quality is also verified before analysis.',
+          'This capture may be too dark to analyze reliably. Check the scope light and retake, or continue anyway , final quality is also verified before analysis.',
           [
             { text: 'Retake', style: 'cancel' },
             {
@@ -161,7 +157,7 @@ const CameraScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
 
-      {/* Camera feed — no children inside this component */}
+      {/* Camera feed , no children inside this component */}
       <CameraView
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         ref={cameraRef}
@@ -208,7 +204,7 @@ const CameraScreen = ({ navigation }) => {
           </View>
         </SafeAreaView>
 
-        {/* Capture tips — collapsed to one short line by default */}
+        {/* Capture tips , collapsed to one short line by default */}
         {tipsVisible && (
           <View style={styles.tipsPanel}>
             <TouchableOpacity
@@ -245,7 +241,7 @@ const CameraScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Circular guide — mirrors the round microscope eyepiece view.
+        {/* Circular guide , mirrors the round microscope eyepiece view.
             No tap-to-focus: expo-camera exposes no reliable cross-device API
             for it, so the guide's job is framing only. Sharp focus through
             the eyepiece is the technician's responsibility, per the checklist. */}

@@ -1,21 +1,9 @@
-// utils/scanStorage.js
 import { supabase } from './supabase'; // adjust path to wherever your client lives
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BUCKET = 'scan-images';
 
-// checks whether this user has opted in to having their smear images stored
-// (set on ConsentScreen.js at signup, editable later in ProfileScreen.js)
-//
-// FIXED (round 2): the actual Supabase column is `store_images` -- not
-// `consent_reqired`/`images_consent`, either of which was previously
-// selected/read here. Confirmed by grepping ConsentScreen.js and
-// ProfileScreen.js: both only ever read/write `storeImages`
-// (-> store_images), and neither references consent_required anywhere.
-// consent_required is a dead column at the application layer -- nothing
-// writes to it, nothing reads it -- so it's ignored here rather than
-// factored into this check.
 export async function hasImageConsent(userId) {
   const { data, error } = await supabase
     .from('profiles')
@@ -32,13 +20,10 @@ export async function hasImageConsent(userId) {
   return !!data?.store_images;
 }
 
-// uploads a scan image if (and only if) the user has consented.
-// returns the storage path on success, null if skipped/failed.
-// imageUri is whatever local uri comes out of the camera/picker.
+
 export async function uploadScanImage(userId, imageUri, scanId) {
   const consented = await hasImageConsent(userId);
   if (!consented) {
-    // not an error - just respecting the user's choice, nothing to upload
     return null;
   }
 
@@ -101,31 +86,6 @@ function decode(base64) {
   return bytes.buffer;
 }
 
-// ─────────────────────────────────────────────────────────────────
-// DAILY SCAN LIMITS + BONUS TRACKING
-//
-// Source of truth for "how many scans today" is the Supabase `scans`
-// table itself (created_by + created_at), not a local counter — this
-// keeps counts correct across devices/reinstalls.
-//
-// The one thing Supabase can't tell us on its own is "has today's
-// bonus already been granted" (since bonus is a UI/allowance concept,
-// not a row in `scans`), so that one flag lives in AsyncStorage,
-// keyed per user per day.
-//
-// FIXED: the bonus was being granted purely for reaching `saveGoal`
-// scans, with no relationship at all to image-save consent -- despite
-// the bonus being framed everywhere ("save 5 images") as a reward for
-// opting in to having images stored. A user who never consented to
-// image storage was still getting the bonus just by running 5 scans,
-// because recordScan() never called hasImageConsent(). Both
-// getRemainingScans() and recordScan() now require hasImageConsent()
-// to be true before the bonus can be granted or counted as active --
-// so a non-consenting user who hits 5 scans gets no bonus, and if they
-// later toggle consent ON, the bonus becomes available going forward
-// (not retroactively re-granted for scans already done without consent).
-// ─────────────────────────────────────────────────────────────────
-
 function todayKeyForUser(userId) {
   const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, local device date
   return `aidepoint:bonus_granted:${userId}:${day}`;
@@ -169,19 +129,12 @@ async function setBonusGrantedToday(userId) {
   }
 }
 
-// Returns remaining scans for today (Infinity for unlimited plans).
-// Safe to call before a scan happens — read-only, no side effects.
 export async function getRemainingScans(userId, plan) {
   const baseLimit = plan?.scans?.dailyLimit ?? 0;
   if (baseLimit === Infinity) return Infinity;
 
   const count = await getTodayScanCount(userId);
   const bonusGranted = await isBonusGrantedToday(userId);
-  // A bonus can only count as "active" if the user has actually
-  // consented to image saving -- see FIXED note above. Without this,
-  // a non-consenting user whose AsyncStorage flag was somehow set
-  // (e.g. consent was toggled off AFTER the bonus was granted earlier
-  // that day) would still see the extra scans as available.
   const consented = await hasImageConsent(userId);
   const bonusScans = (bonusGranted && consented) ? (plan?.scans?.bonusScans ?? 0) : 0;
 
@@ -189,18 +142,10 @@ export async function getRemainingScans(userId, plan) {
   return Math.max(effectiveLimit - count, 0);
 }
 
-// Called right after a scan row has already been inserted into Supabase.
-// Recomputes remaining allowance and grants the bonus the first time the
-// day's saveGoal is reached -- but only for users who've consented to
-// having their scan images saved, since the bonus is explicitly framed
-// (in-app copy, plan config) as a reward for that opt-in, not just for
-// running a certain number of scans.
 export async function recordScan(userId, plan) {
   const baseLimit = plan?.scans?.dailyLimit ?? 0;
 
   if (baseLimit === Infinity) {
-    // Pro tier: unlimited scans, no daily bonus concept — saved-image
-    // count toward renewal discount is handled server-side.
     return { remaining: Infinity, bonusJustGranted: false, bonusRemaining: 0 };
   }
 
@@ -217,11 +162,6 @@ export async function recordScan(userId, plan) {
     bonusJustGranted = true;
   }
 
-  // Bonus only counts as active this run if it was granted (just now or
-  // earlier today) AND the user is currently consented -- so toggling
-  // consent off mid-day immediately stops the bonus from applying to
-  // the remaining-scans math, even if the AsyncStorage flag from
-  // earlier is still set to true.
   const bonusActive = (alreadyGranted || bonusJustGranted) && consented;
   const effectiveLimit = baseLimit + (bonusActive ? bonusScans : 0);
   const remaining = Math.max(effectiveLimit - count, 0);

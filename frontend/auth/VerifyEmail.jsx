@@ -9,10 +9,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../assets/theme';
 
-const BOXES = 6;   //  Supabase sends 6-digit OTPs by default
+const BOXES = 6; 
 
-// Throttling constants — kept identical to ForgotPassword.js so the two
-// OTP-entry screens behave the same way from a user's perspective.
 const MAX_ATTEMPTS    = 5;
 const LOCKOUT_MS       = 60_000;   // 1 minute
 const RESEND_COOLDOWN  = 30;       // seconds

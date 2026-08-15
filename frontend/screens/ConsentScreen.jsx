@@ -1,13 +1,3 @@
-// auth/ConsentScreen.js
-//
-// Reviewed against your current AuthContext: this screen only needs to
-// capture the IMAGE STORAGE preference — completeConsent(storeImages) is
-// the only thing AuthContext expects, and there's no separate "clinical
-// notes consent" field anywhere in AuthContext, so that concept from the
-// old scope doc has effectively been folded into this single toggle.
-// Nothing needed to be added; the only change here is pulling styles
-// into styles/ConsentStyles.js and tightening a couple of copy lines.
-
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Switch,

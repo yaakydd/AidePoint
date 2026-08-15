@@ -1,31 +1,11 @@
-// utils/reportPdf.js
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { CONDITION_CONFIG } from './ReportUtils';
 
-// The anemia-probability model only scores two outcomes: anemic vs
-// healthy. 'unknown' is a derived bucket (flagged morphology or an
-// unreliable-result warning), not a third class the model assigns a
-// confidence score to -- so the exported PDF should not show a
-// Confidence row for it, matching the in-app DetailModal/TransparencyTrail
-// gating.
 const shouldShowProbabilityAndConfidence = (conditionKey) =>
   conditionKey === 'anemic' || conditionKey === 'healthy';
 
-// SECURITY: patientName, patientId, labTechName, labTechNotes,
-// technician-entered form fields or free-text notes -- none of it is
-// backend-controlled or validated against a fixed set of values.
-// Interpolating any of it directly into this HTML template without
-// escaping means a stray '<', '>', or '"' (accidental, or a technician
-// pasting text copied from elsewhere) can corrupt the rendered PDF's
-// layout or, worst case, inject markup that changes how the report
-// displays -- a real data-integrity problem for a clinical document,
-// even though expo-print's WebView sandbox means this isn't a
-// code-execution risk. Every user-supplied field must go through this
-// before being placed in the template. Fields sourced from
-// CONDITION_CONFIG (cfg.label, cfg.urgency, cfg.morphology) do NOT need
-// escaping -- they're fixed strings from our own config, not user input.
 const escapeHtml = (value) => {
   if (value === undefined || value === null) return value;
   return String(value)

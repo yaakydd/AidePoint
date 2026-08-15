@@ -14,10 +14,20 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
   },
-  headerTitle: { fontSize: FONTS.lg, fontWeight: FONTS.bold, color: COLORS.textPrimary },
-  markAllText: { fontSize: FONTS.xs, fontWeight: FONTS.semibold, color: COLORS.primaryDark },
+  headerTitle: { 
+    fontSize: FONTS.lg, 
+    fontWeight: FONTS.bold, 
+    color: COLORS.textPrimary 
+  },
+  markAllText: { 
+    fontSize: FONTS.xs, 
+    fontWeight: FONTS.semibold, 
+    color: COLORS.primaryDark 
+  },
 
-  listContent: { paddingVertical: SPACING.sm },
+  listContent: { 
+    paddingVertical: SPACING.sm 
+  },
 
   row: {
     flexDirection: 'row',
@@ -29,7 +39,9 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
   },
-  rowUnread: { backgroundColor: COLORS.primaryLight },
+  rowUnread: { 
+    backgroundColor: COLORS.primaryLight 
+  },
 
   iconBox: {
     width: 36,
@@ -39,16 +51,46 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  title: { fontSize: FONTS.sm, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
-  body:  { fontSize: FONTS.sm, color: COLORS.textSecondary, marginTop: 2 },
-  time:  { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
-
-  unreadDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: COLORS.primary, marginTop: 4,
+  title: { 
+    fontSize: FONTS.sm, 
+    fontWeight: FONTS.semibold, 
+    color: COLORS.textPrimary 
+  },
+  body:  { 
+    fontSize: FONTS.sm, 
+    color: COLORS.textSecondary, 
+    marginTop: 2 
+  },
+  time:  { 
+    fontSize: FONTS.xs, 
+    color: COLORS.textMuted, 
+    marginTop: SPACING.xs 
   },
 
-  centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING['2xl'] },
-  emptyText: { fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary, marginTop: SPACING.md },
-  emptySub:  { fontSize: FONTS.sm, color: COLORS.textMuted, marginTop: SPACING.xs, textAlign: 'center' },
+  unreadDot: {
+    width: 8, 
+    height: 8, 
+    borderRadius: 4,
+    backgroundColor: COLORS.primary, 
+    marginTop: 4,
+  },
+
+  centerFill: { 
+    flex: 1, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingHorizontal: SPACING['2xl'] 
+  },
+  emptyText: { 
+    fontSize: FONTS.md, 
+    fontWeight: FONTS.semibold, 
+    color: COLORS.textPrimary, 
+    marginTop: SPACING.md 
+  },
+  emptySub:  { 
+    fontSize: FONTS.sm, 
+    color: COLORS.textMuted, 
+    marginTop: SPACING.xs, 
+    textAlign: 'center' 
+  },
 });

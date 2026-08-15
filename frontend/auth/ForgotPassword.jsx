@@ -1,27 +1,3 @@
-// screens/auth/ForgotPassword.js
-//
-// 3-step password reset flow (used by both AuthNavigator and ProfileScreen):
-//
-//   Step 1 — Enter email → supabase.auth.resetPasswordForEmail()
-//   Step 2 — Enter 8-digit OTP → supabase.auth.verifyOtp({ type: 'recovery' })
-//   Step 3 — Enter new password + confirm → supabase.auth.updateUser()
-//            → insert notification into public.notifications
-//            → navigate back / to APP
-//
-// Navigation:
-//   From AuthNavigator:  navigation.goBack() → returns to SignIn
-//   From ProfileScreen:  navigation.goBack() → returns to Profile
-//
-// IMPORTANT — password recovery session handling:
-//   verifyOtp({ type: 'recovery' }) creates a live Supabase session as a
-//   side effect (that's how updateUser() below is able to work without
-//   re-entering credentials). AuthContext's onAuthStateChange listener
-//   would otherwise treat that session like a real login and swap the
-//   whole navigator to the Home stack. beginPasswordRecovery()/
-//   endPasswordRecovery() (from AuthContext) bracket that window so the
-//   listener ignores it, and signOut() below closes the session out once
-//   the new password is set — the user has to sign in again from scratch.
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -38,9 +14,6 @@ import { COLORS }    from '../assets/theme';
 import { useAuth }   from '../context/AuthContext';
 
 const OTP_BOXES = 6;
-
-// Throttling constants — kept identical to VerifyEmail.js so both
-// OTP-entry screens behave the same way from a user's perspective.
 const MAX_ATTEMPTS   = 5;
 const LOCKOUT_MS     = 60_000;   // 1 minute
 const RESEND_COOLDOWN = 30;      // seconds
@@ -128,14 +101,14 @@ const ForgotPassword = () => {
     setError('');
 
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      // redirectTo is NOT used for OTP — Supabase sends a 6-digit code
+      // redirectTo is NOT used for OTP, Supabase sends a 6-digit code
       // because you have email OTP enabled. No redirect URL needed.
     });
 
     setLoading(false);
 
     if (err) {
-      // Don't reveal if email exists — generic message for security
+      // Don't reveal if email exists rather sends a generic message for security
       setError('If that email is registered, a reset code has been sent.');
       // Still move to step 2 so user can try
     }
@@ -342,7 +315,7 @@ async function handleResend() {
           </>
         )}
 
-        {/* ─── STEP 2: OTP ─── */}
+        {/* STEP 2: OTP */}
         {step === 2 && (
           <>
             <View style={styles.iconWrap}>
@@ -419,7 +392,7 @@ async function handleResend() {
           </>
         )}
 
-        {/* ─── STEP 3: New password ─── */}
+        {/* STEP 3: New password */}
         {step === 3 && (
           <>
             <View style={styles.iconWrap}>

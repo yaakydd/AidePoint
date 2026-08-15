@@ -9,23 +9,23 @@ import { styles } from '../styles/PrivacyPolicyStyles';
 const PLACEHOLDER_SECTIONS = [
   {
     title: 'Data We Collect',
-    body: 'Placeholder -- describe what patient and account data AidePoint collects (e.g. smear images when Save Scan Images is enabled, CBC estimates, account details).',
+    body: 'Placeholder : describe what patient and account data AidePoint collects (e.g. smear images when Save Scan Images is enabled, CBC estimates, account details).',
   },
   {
     title: 'How We Use Your Data',
-    body: 'Placeholder -- describe how scan results, chat history, and account data are used to provide the service.',
+    body: 'Placeholder : describe how scan results, chat history, and account data are used to provide the service.',
   },
   {
     title: 'Data Storage & Security',
-    body: 'Placeholder -- describe where data is stored (e.g. Supabase), retention periods per plan tier, and security measures.',
+    body: 'Placeholder : describe where data is stored (e.g. Supabase), retention periods per plan tier, and security measures.',
   },
   {
     title: 'Your Rights',
-    body: 'Placeholder -- describe how a user can request deletion of their data, disable image storage, or export their reports.',
+    body: 'Placeholder : describe how a user can request deletion of their data, disable image storage, or export their reports.',
   },
   {
     title: 'Contact',
-    body: 'Placeholder -- support@aidebot.gmail.com for any privacy-related questions.',
+    body: 'Placeholder : support@aidebot.gmail.com for any privacy-related questions.',
   },
 ];
 

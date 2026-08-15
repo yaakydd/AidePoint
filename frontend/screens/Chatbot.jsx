@@ -459,7 +459,7 @@ const Chatbot = () => {
                 </View>
             </Modal>
 
-            {/* ── Bug Report Modal (now includes chat history as context) ──────── */}
+            {/*  Bug Report Modal (now includes chat history as context)  */}
             <Modal animationType="slide" transparent visible={isBugModalVisible} onRequestClose={() => setIsBugModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.bugModalContent}>

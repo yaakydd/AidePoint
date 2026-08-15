@@ -47,10 +47,6 @@ function getUpgradeMessage(plan) {
   return 'Daily scan limit reached.';
 }
 
-// Field-level validation. Only returns a message when the value is
-// present but implausible -- emptiness is handled separately by
-// getValidationHint / isFormValid so a technician isn't shown a red
-// error on a field they simply haven't reached yet.
 function validateField(field, value) {
   switch (field) {
     case 'patientName': {

@@ -12,7 +12,7 @@ function usageKey(userId) {
   return `${USAGE_KEY_PREFIX}${userId ?? 'guest'}:${today}`;
 }
 
-// ── Sessions ──────────────────────────────────────────────────────────────
+//  Sessions 
 
 export async function loadSessions(userId) {
   try {
@@ -48,7 +48,7 @@ export function deriveSessionTitle(messages) {
   return text.length > 32 ? `${text.slice(0, 32)}…` : text;
 }
 
-// ── Daily usage / subscription limits ───────────────────────────────────
+//  Daily usage / subscription limits 
 
 export async function getTodayUsageCount(userId) {
   try {

@@ -1,16 +1,3 @@
-// styles/ScanStyles.js
-//
-// AidePoint Scan Screen Styles
-//
-// Fully responsive external stylesheet using:
-// - COLORS
-// - FONTS
-// - SPACING
-// - RADIUS
-// - SHADOWS
-// - layout helpers
-// - scale helpers
-
 import { StyleSheet, Platform } from 'react-native';
 
 import {
@@ -27,9 +14,7 @@ import {
 
 export const scanStyles = StyleSheet.create({
 
-  // ─────────────────────────────────────────────
-  // ROOT
-  // ─────────────────────────────────────────────
+
 
   container: {
     flex: 1,
@@ -37,15 +22,10 @@ export const scanStyles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: SPACING.pagePad,
-    // paddingTop removed — SafeAreaView's inset + header's own
-    // paddingVertical already provide top spacing; this was stacking
-    // a third gap on top of both.
+
   },
 
-  // ─────────────────────────────────────────────
-  // HEADER — white background, centered title,
-  // reset reduced to an icon with a tap tooltip
-  // ─────────────────────────────────────────────
+
 
   header: {
     flexDirection: 'row',
@@ -132,8 +112,7 @@ export const scanStyles = StyleSheet.create({
     fontWeight: FONTS.medium,
   },
 
-  // Small triangle pointing up at the reset icon, so the tooltip reads
-  // as attached to the button instead of floating on its own.
+
   resetTooltipCaret: {
     position: 'absolute',
     top: -6,
@@ -167,10 +146,6 @@ export const scanStyles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // scanIdValue (the ID itself) and the remaining-scans pill sit side by
-  // side inside this card -- scanIdRight is the right-hand column that
-  // groups and right-aligns both, with a maxWidth so a long UUID-style
-  // scan ID can ellipsize instead of pushing the pill off-screen.
   scanIdRight: {
     alignItems: 'flex-end',
     flexShrink: 1,
@@ -241,9 +216,7 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.danger,
   },
 
-  // ─────────────────────────────────────────────
-  // SECTION HEADERS
-  // ─────────────────────────────────────────────
+
 
   sectionHeader: {
     flexDirection: 'row',
@@ -259,9 +232,7 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // ─────────────────────────────────────────────
-  // INPUTS
-  // ─────────────────────────────────────────────
+
 
   inputLabel: {
     fontSize: FONTS.md,
@@ -341,9 +312,7 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.white,
   },
 
-  // ─────────────────────────────────────────────
-  // TAKE PICTURE BUTTON
-  // ─────────────────────────────────────────────
+
 
   takePictureBtn: {
     height: vScale(58),
@@ -364,9 +333,6 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.primary,
   },
 
-  // ─────────────────────────────────────────────
-  // IMAGE PREVIEW
-  // ─────────────────────────────────────────────
 
   previewBox: {
     backgroundColor: COLORS.surface,
@@ -419,9 +385,6 @@ export const scanStyles = StyleSheet.create({
     fontWeight: FONTS.semibold,
   },
 
-  // ─────────────────────────────────────────────
-  // UPLOAD CARD
-  // ─────────────────────────────────────────────
 
   uploadCard: {
     borderWidth: 2,
@@ -475,9 +438,6 @@ export const scanStyles = StyleSheet.create({
     fontWeight: FONTS.bold,
   },
 
-  // ─────────────────────────────────────────────
-  // VALIDATION HINT — red text, aligned with icon
-  // ─────────────────────────────────────────────
 
   validationContainer: {
     flexDirection: 'row',
@@ -494,9 +454,7 @@ export const scanStyles = StyleSheet.create({
     lineHeight: mScale(20),
   },
 
-  // ─────────────────────────────────────────────
-  // START ANALYSIS BUTTON
-  // ─────────────────────────────────────────────
+
 
   button: {
     height: vScale(60),
@@ -520,9 +478,6 @@ export const scanStyles = StyleSheet.create({
     fontWeight: FONTS.bold,
   },
 
-  // ─────────────────────────────────────────────
-  // FOOTER TEXT
-  // ─────────────────────────────────────────────
 
   hipaaText: {
     textAlign: 'center',
@@ -571,9 +526,6 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 
-  // ─────────────────────────────────────────────
-  // SUCCESS MODAL (post-analysis)
-  // ─────────────────────────────────────────────
 
   successOverlay: {
     flex: 1,
