@@ -36,10 +36,10 @@ export const scanStyles = StyleSheet.create({
     backgroundColor: '#EEF2F5',
   },
   scroll: {
-  paddingHorizontal: SPACING.pagePad,
-  // paddingTop removed — SafeAreaView's inset + header's own
-  // paddingVertical already provide top spacing; this was stacking
-  // a third gap on top of both.
+    paddingHorizontal: SPACING.pagePad,
+    // paddingTop removed — SafeAreaView's inset + header's own
+    // paddingVertical already provide top spacing; this was stacking
+    // a third gap on top of both.
   },
 
   // ─────────────────────────────────────────────
@@ -54,8 +54,11 @@ export const scanStyles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.pagePad,
     paddingVertical: SPACING.md,
-    marginHorizontal: -SPACING.pagePad,   // bleed to screen edges
+    marginHorizontal: -SPACING.pagePad, // bleed to screen edges
     marginBottom: SPACING.lg,
+    overflow: 'visible',
+    zIndex: 20,
+    elevation: 20,
     ...SHADOWS.sm,
   },
 
@@ -84,13 +87,10 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // FIXED: Scan.jsx wraps the reset button + its tooltip in
-  // styles.resetWrapper and uses styles.resetIconBtn for the button
-  // itself -- neither existed before, only the unused resetButton below,
-  // so the reset icon and its "Tap again to reset" tooltip were
-  // rendering with zero positioning/sizing.
   resetWrapper: {
     position: 'relative',
+    zIndex: 21,
+    elevation: 21,
   },
 
   resetIconBtn: {
@@ -111,44 +111,45 @@ export const scanStyles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
 
- resetTooltip: {
-  position: 'absolute',
-  top: scale(44),
-  right: 0,
-  backgroundColor: COLORS.textPrimary,
-  paddingHorizontal: SPACING.md,
-  paddingVertical: SPACING.xs + 2,
-  borderRadius: RADIUS.md,
-  zIndex: 100,
-  alignItems: 'center',
-  justifyContent: 'center',
-  ...SHADOWS.md,
-},
+  resetTooltip: {
+    position: 'absolute',
+    top: scale(44),
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.textPrimary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.md,
+    zIndex: 100,
+    elevation: 30,
+    ...SHADOWS.md,
+  },
 
-resetTooltipText: {
-  color: COLORS.white,
-  fontSize: FONTS.xs,
-  fontWeight: FONTS.medium,
-  textAlign: 'center',
-},
+  resetTooltipText: {
+    color: COLORS.white,
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.medium,
+  },
 
-// Small triangle pointing up at the reset icon, so the tooltip reads
-// as attached to the button instead of floating on its own.
-resetTooltipCaret: {
-  position: 'absolute',
-  top: -6,
-  right: SPACING.md,
-  width: 0,
-  height: 0,
-  borderLeftWidth: 6,
-  borderRightWidth: 6,
-  borderBottomWidth: 6,
-  borderLeftColor: 'transparent',
-  borderRightColor: 'transparent',
-  borderBottomColor: COLORS.textPrimary,
-},
+  // Small triangle pointing up at the reset icon, so the tooltip reads
+  // as attached to the button instead of floating on its own.
+  resetTooltipCaret: {
+    position: 'absolute',
+    top: -6,
+    right: SPACING.md,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: COLORS.textPrimary,
+  },
+
   scanIdCard: {
-    backgroundColor: '#F4F6F8',
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -158,16 +159,23 @@ resetTooltipCaret: {
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: SPACING.md,
+    ...SHADOWS.sm,
   },
 
   scanIdLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+
+  // scanIdValue (the ID itself) and the remaining-scans pill sit side by
+  // side inside this card -- scanIdRight is the right-hand column that
+  // groups and right-aligns both, with a maxWidth so a long UUID-style
+  // scan ID can ellipsize instead of pushing the pill off-screen.
   scanIdRight: {
-  alignItems: 'flex-end',
-  flexShrink: 1,
-},
+    alignItems: 'flex-end',
+    flexShrink: 1,
+    maxWidth: '55%',
+  },
 
   scanIdLabel: {
     marginLeft: SPACING.sm,
@@ -177,26 +185,12 @@ resetTooltipCaret: {
     letterSpacing: 1,
   },
 
-  // FIXED: scanIdValue (the ID itself) and the remaining-scans pill sit
-  // side by side inside this card -- scanIdRight is the right-hand
-  // column that groups and right-aligns both, and needed a maxWidth so
-  // a long UUID-style scan ID can ellipsize instead of pushing the pill
-  // off-screen.
-  scanIdRight: {
-    alignItems: 'flex-end',
-    flexShrink: 1,
-    maxWidth: '55%',
-  },
-
   scanIdValue: {
     fontSize: FONTS.md,
     fontWeight: FONTS.bold,
     color: COLORS.primary,
   },
 
-  // FIXED: the little "N scans remaining today" badge next to the scan
-  // ID -- referenced in Scan.jsx but never defined. Danger variant kicks
-  // in at remaining === 0.
   remainingPill: {
     marginTop: 4,
     paddingHorizontal: SPACING.sm + 2,
@@ -218,16 +212,17 @@ resetTooltipCaret: {
   remainingTextDanger: {
     color: COLORS.danger,
   },
+
   usageBanner: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  backgroundColor: COLORS.primaryLight,
-  borderRadius: RADIUS.lg,
-  paddingHorizontal: SPACING.lg,
-  paddingVertical: SPACING.md,   // bumped from SPACING.sm for a bit more presence as a lead banner
-  marginBottom: SPACING.lg,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
 
   usageBannerLabel: {
     fontSize: FONTS.xs,
@@ -288,15 +283,23 @@ resetTooltipCaret: {
     ...SHADOWS.sm,
   },
 
+  inputError: {
+    borderColor: COLORS.danger,
+  },
+
+  fieldErrorText: {
+    color: COLORS.danger,
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.medium,
+    marginTop: -SPACING.md + 4,
+    marginBottom: SPACING.md,
+  },
+
   row: {
     flexDirection: 'row',
     gap: SPACING.md,
   },
 
-  // FIXED: Scan.jsx wraps each Age/Gender and Temperature/Blood-Pressure
-  // field in styles.rowItem (flex: 1) -- previously this layout was
-  // inlined as {{ flex: 1 }} directly in Scan.js, but the newer Scan.jsx
-  // references it as a named style that didn't exist here.
   rowItem: {
     flex: 1,
   },
@@ -305,10 +308,6 @@ resetTooltipCaret: {
     flex: 1,
   },
 
-  // FIXED: gender pill selector styles -- previously lived in a
-  // component-local StyleSheet inside Scan.js (genderStyles); Scan.jsx
-  // now references these directly off the shared scanStyles instead,
-  // so they need to live here to actually apply.
   genderPillRow: {
     flexDirection: 'row',
     gap: SPACING.sm,
@@ -324,7 +323,7 @@ resetTooltipCaret: {
     borderRadius: RADIUS.sm + 2,
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.surfaceAlt,
+    backgroundColor: COLORS.surface,
   },
 
   genderPillActive: {
@@ -340,30 +339,6 @@ resetTooltipCaret: {
 
   genderPillTextActive: {
     color: COLORS.white,
-  },
-
-  // ─────────────────────────────────────────────
-  // DOCTOR SELECTOR
-  // ─────────────────────────────────────────────
-
-  selectorButton: {
-    height: vScale(54),
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: '#CBEAF0',
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-
-  selectorText: {
-    flex: 1,
-    marginLeft: SPACING.md,
-    fontSize: FONTS.md,
-    color: COLORS.textPrimary,
-    fontWeight: FONTS.medium,
   },
 
   // ─────────────────────────────────────────────
@@ -410,9 +385,6 @@ resetTooltipCaret: {
     height: vScale(220),
   },
 
-  // FIXED: the "Tap to enlarge" pill overlaid on the image preview --
-  // referenced in Scan.jsx but never defined, so it was rendering
-  // unstyled and unpositioned directly on top of the photo.
   previewZoomHint: {
     position: 'absolute',
     bottom: SPACING.sm,
@@ -432,9 +404,6 @@ resetTooltipCaret: {
     fontWeight: FONTS.medium,
   },
 
-  // FIXED: wraps the "Retake Photo" icon + text as a single pressable
-  // row -- previously only retakeText (just the label) existed, so the
-  // icon and text had no shared layout/press target sizing.
   retakeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -564,51 +533,12 @@ resetTooltipCaret: {
     color: COLORS.textSecondary,
   },
 
-  // ─────────────────────────────────────────────
-  // MODAL (doctor sheet — unchanged)
-  // ─────────────────────────────────────────────
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: COLORS.overlay,
-    justifyContent: 'flex-end',
-  },
-
-  modalSheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS['2xl'],
-    borderTopRightRadius: RADIUS['2xl'],
-    paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
-    paddingBottom: layout.bottomInset + SPACING['3xl'],
-    maxHeight: '75%',
-  },
-
-  modalHandle: {
-    width: scale(50),
-    height: scale(5),
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.border,
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
-
-  modalTitle: {
-    fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
-  },
-
-  modalSubtitle: {
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.xl,
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sm,
-  },
-
   analysisOverlay: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',

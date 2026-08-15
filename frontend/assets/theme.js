@@ -195,17 +195,9 @@ export const layout = {
 // Condition Badge Config
 // Centralised — used in HomeScreen, ReportsScreen, ScanScreen
 export const CONDITION_STYLES = {
-  sickle_cell: { label: 'SICKLE CELL DETECTED', color: COLORS.danger, bg: COLORS.dangerBg  },
-  iron_deficiency:{ label: 'IRON DEFICIENCY', color: COLORS.warning, bg: COLORS.warningBg },
-  malaria: { label: 'MALARIA DETECTED', color: COLORS.warning, bg: COLORS.warningBg },
-  thalassemia: { label: 'THALASSEMIA', color: COLORS.danger, bg: COLORS.dangerBg },
-  pernicious: { label: 'PERNICIOUS ANAEMIA', color: COLORS.info, bg: COLORS.infoBg },
-  megaloblastic: { label: 'MEGALOBLASTIC', color: COLORS.info, bg: COLORS.infoBg },
-  aplastic: { label: '! APLASTIC — CRITICAL', color: COLORS.danger, bg: COLORS.dangerBg },
-  hemolytic: { label: 'HAEMOLYTIC', color: COLORS.warning, bg: COLORS.warningBg },
-  normal: { label: 'NORMAL', color: COLORS.success, bg: COLORS.successBg },
+  anemic:  { label: 'ANEMIC',  color: COLORS.danger,        bg: COLORS.dangerBg },
+  healthy: { label: 'HEALTHY', color: COLORS.success,       bg: COLORS.successBg },
   unknown: { label: 'UNKNOWN', color: COLORS.textSecondary, bg: COLORS.surfaceAlt },
-
 };
 
 

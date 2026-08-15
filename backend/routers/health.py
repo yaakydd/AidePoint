@@ -6,6 +6,6 @@ router = APIRouter()
 @router.get("/health")
 async def health(request: Request):
     return {
-        "status": "ok",
+        "status": "OK",
         "model_loaded": request.app.state.model is not None,
     }

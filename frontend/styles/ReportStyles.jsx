@@ -15,43 +15,42 @@ export const ReportStyles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
 
-  // ─── HEADER — white background to match the rest of the app's screens
-  header: {
+header: {
   flexDirection: 'row',
   justifyContent: 'space-between',
   alignItems: 'center',
   backgroundColor: COLORS.surface,
-  paddingHorizontal: HEADER.paddingHorizontal,
-  paddingTop: HEADER.paddingVertical,
-  paddingBottom: HEADER.paddingVertical,
-  marginBottom: SPACING.xs,
-  ...SHADOWS.sm,
+  marginTop: SPACING.xs,
+  paddingHorizontal: SPACING.lg,
+  paddingVertical: SPACING.md,
+  marginBottom: SPACING.sm,
+  borderBottomWidth: 1,
+  borderBottomColor: COLORS.divider,
 },
 
   headerTitle: {
     fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
+    marginLeft: SPACING.xs,
   },
 
-  // Visible, branded total count instead of a near-invisible muted grey
   headerCount: {
     fontSize: FONTS.sm,
     color: COLORS.primaryDark,
     fontWeight: FONTS.bold,
     backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
     borderRadius: RADIUS.full,
     overflow: 'hidden',
   },
-
   // ─── SEARCH (by patient name or ID)
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginHorizontal: SPACING.pagePad,
@@ -135,7 +134,7 @@ export const ReportStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS['2xl'],
     padding: SPACING.md,
     marginHorizontal: SPACING.pagePad,
     marginBottom: SPACING.sm,
@@ -145,10 +144,17 @@ export const ReportStyles = StyleSheet.create({
     ...SHADOWS.sm,
   },
 
-  cardBody: {
-    flex: 1,
-    gap: 4,
-  },
+cardBody: {
+  flex: 1,
+  gap: 4,
+  justifyContent: 'center',   // was implicit; keeps left column vertically centered now that it's only 2 lines instead of 3
+},
+
+cardRight: {
+  alignItems: 'flex-end',
+  justifyContent: 'center',   // was implicit
+  gap: SPACING.xs,            // was gap: 6 — using the theme token instead of a raw number, now that this column holds badge + time rather than time + dot
+},
 
   cardName: {
     fontSize: FONTS.md,

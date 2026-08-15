@@ -1,7 +1,3 @@
-# Server-side counterpart to utils/gemini.js. Holds GEMINI_API_KEY and
-# SYSTEM_INSTRUCTION here, not in the client bundle but rather the app never
-# talks to Gemini directly, only to this endpoint.
-
 import os
 import json
 import logging
@@ -55,33 +51,14 @@ them on a phone at a lab bench, not a long clinical essay."""
 
 MAX_HISTORY_MESSAGES = 10
 
-# Rate limit is tiered by subscription_tier (the same field
-# services/subscription.py writes to profiles after a successful
-# Paystack payment). Free users get a modest daily allowance to try
-# AideBot; paying users get the higher limit. Falls back to the "free"
-# limit for any tier value not explicitly listed here (including a
-# missing/None subscription_tier), so an unrecognized or unset tier
-# fails closed to the more restrictive limit rather than silently
-# granting unlimited access.
 CHAT_MESSAGE_LIMITS: dict[str, int] = {
     "free": 5,
     "monthly": 25,
     "annual": 50,
 }
 DEFAULT_CHAT_LIMIT: int = CHAT_MESSAGE_LIMITS["free"]
-
-# Shared, module-level httpx client for calls to Gemini, reused across
-# every request instead of opening a fresh connection (and re-doing the
-# TLS handshake) on every single chat message. httpx.AsyncClient is
-# safe to share across concurrent requests within one process.
 _gemini_client: httpx.AsyncClient = httpx.AsyncClient(timeout=30.0)
 
-# Short-lived cache of subscription_tier per user, since it only changes
-# right after a payment (see services/subscription.py) but was otherwise
-# being re-fetched from profiles on every single chat message. A 5-minute
-# TTL means a tier upgrade takes up to 5 minutes to be reflected in the
-# chat rate limit is an acceptable staleness window for a daily message
-# cap, in exchange for skipping a Supabase round trip on most requests.
 _subscription_tier_cache: TTLCache = TTLCache(maxsize=10_000, ttl=300)
 
 
@@ -145,13 +122,6 @@ def _fetch_verified_report_context(
 
     if not lookup.data:
         raise HTTPException(status_code=404, detail="Prediction not found.")
-
-    # lookup.data is typed as list[JSON], and JSON is a broad union
-    # (str | int | float | bool | Sequence[JSON] | Mapping[str, JSON] |
-    # None). Supabase's Python client returns plain dict rows at
-    # runtime, but the type checker has no way to know that, so this
-    # cast narrows it explicitly rather than fighting the checker with
-    # a bare annotation (which doesn't narrow, only declares).
     record = cast(dict, lookup.data[0])
     if record["technician_id"] != requesting_user_id:
         raise HTTPException(

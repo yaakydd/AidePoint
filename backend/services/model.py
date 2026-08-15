@@ -1,18 +1,3 @@
-# model.py
-# Loads the ONNX model once at startup and exposes a single predict() call.
-# onnxruntime is used  it is the most stable ONNX inference runtime.
-#
-# The anemia-type classifier and rule engine that used to live here were
-# removed entirely  the CSV they were trained on turned out to have
-# near-perfect, threshold-derived labels (not independently diagnosed
-# ones) and included "Leukemia" as a class despite it not actually being
-# an anemia subtype, both of which made it a shakier feature than it
-# looked. In its place: predict() now also runs get_cell_overlay(),
-# returning per-cell shape data the app can draw directly on the photo 
-# a live, visible annotation of exactly which cells look normal and which
-# don't, rather than a single aggregate flag or an invented diagnosis
-# label.
-
 import os
 import json
 from dataclasses import asdict

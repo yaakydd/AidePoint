@@ -32,102 +32,108 @@ export const styles = StyleSheet.create({
     paddingBottom: SPACING['4xl'],
   },
 
-  // ── Identity block (Gmail-style, centered) ──
-  identityBlock: {
-    alignItems: 'center',
-    paddingTop: SPACING['3xl'],
-    paddingBottom: SPACING['2xl'],
-    paddingHorizontal: SPACING['2xl'],
-    backgroundColor: COLORS.surface,
-    marginBottom: SPACING.md,
-  },
-  avatarWrap: {
-    marginBottom: SPACING.lg,
-  },
-  avatarCircle: {
-    width: scale(92),
-    height: scale(92),
-    borderRadius: scale(46),
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  avatarInitials: {
-    fontSize: FONTS['2xl'],
-    fontWeight: FONTS.bold,
-    color: COLORS.white,
-    letterSpacing: 1,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: scale(46),
-  },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: -2,
-    width: scale(24),
-    height: scale(24),
-    borderRadius: scale(12),
-    backgroundColor: COLORS.primaryDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.surface,
-  },
-  userName: {
-    fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  userEmail: {
-    fontSize: FONTS.sm,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  userRole: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    fontWeight: FONTS.medium,
-    marginBottom: SPACING.lg,
-    textAlign: 'center',
-  },
-  tierPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    marginBottom: SPACING.lg,
-  },
-  tierPillText: {
-    fontSize: FONTS.xs,
-    fontWeight: FONTS.bold,
-  },
-  manageBtn: {
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.sm + 2,
-    borderRadius: RADIUS.full,
-    borderWidth: 1.3,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surfaceAlt,
-  },
-  manageBtnText: {
-    fontSize: FONTS.sm,
-    fontWeight: FONTS.semibold,
-    color: COLORS.textPrimary,
-  },
+// ── Identity block (avatar left, info right) ──
+identityBlock: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingTop: SPACING['2xl'],
+  paddingBottom: SPACING['2xl'],
+  paddingHorizontal: SPACING['2xl'],
+  backgroundColor: COLORS.background,   // was COLORS.surface
+  marginBottom: SPACING.md,
+},
+avatarWrap: {
+  marginRight: SPACING.lg,              // was marginBottom: SPACING.lg
+},
+avatarCircle: {
+  width: scale(80),                     // slightly smaller — sits better next to text at row height
+  height: scale(80),
+  borderRadius: scale(40),
+  backgroundColor: COLORS.primary,
+  justifyContent: 'center',
+  alignItems: 'center',
+  shadowColor: COLORS.primary,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.3,
+  shadowRadius: 10,
+  elevation: 6,
+},
+avatarInitials: {
+  fontSize: FONTS.xl,                   // was FONTS['2xl'] — scaled down with the circle
+  fontWeight: FONTS.bold,
+  color: COLORS.white,
+  letterSpacing: 1,
+},
+avatarImage: {
+  width: '100%',
+  height: '100%',
+  borderRadius: scale(40),
+},
+avatarBadge: {
+  position: 'absolute',
+  bottom: 0,
+  right: -2,
+  width: scale(22),
+  height: scale(22),
+  borderRadius: scale(11),
+  backgroundColor: COLORS.primaryDark,
+  justifyContent: 'center',
+  alignItems: 'center',
+  borderWidth: 2,
+  borderColor: COLORS.background,       // was COLORS.surface — matches new identityBlock bg so the ring reads clean
+},
+identityInfo: {
+  flex: 1,
+},
+userName: {
+  fontSize: FONTS.xl,
+  fontWeight: FONTS.bold,
+  color: COLORS.textPrimary,
+  marginBottom: 2,
+  textAlign: 'left',                    // was 'center'
+},
+userEmail: {
+  fontSize: FONTS.sm,
+  color: COLORS.textSecondary,
+  marginBottom: SPACING.xs,
+  textAlign: 'left',                    // was 'center'
+},
+userRole: {
+  fontSize: FONTS.xs,
+  color: COLORS.textMuted,
+  fontWeight: FONTS.medium,
+  marginBottom: SPACING.md,             // was SPACING.lg — tighter since the pill+button now wrap under it, not centered below everything
+  textAlign: 'left',                    // was 'center'
+},
+tierPill: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  alignSelf: 'flex-start',              // new — was implicitly centered by the old column parent
+  gap: SPACING.xs,
+  paddingHorizontal: SPACING.md,
+  paddingVertical: SPACING.xs,
+  borderRadius: RADIUS.full,
+  borderWidth: 1,
+  marginBottom: SPACING.md,             // was SPACING.lg
+},
+tierPillText: {
+  fontSize: FONTS.xs,
+  fontWeight: FONTS.bold,
+},
+manageBtn: {
+  alignSelf: 'flex-start',              // new — was implicitly centered
+  paddingHorizontal: SPACING.xl,
+  paddingVertical: SPACING.sm + 2,
+  borderRadius: RADIUS.full,
+  borderWidth: 1.3,
+  borderColor: COLORS.border,
+  backgroundColor: COLORS.surfaceAlt,
+},
+manageBtnText: {
+  fontSize: FONTS.sm,
+  fontWeight: FONTS.semibold,
+  color: COLORS.textPrimary,
+},
 
   // Cards / sections
   card: {

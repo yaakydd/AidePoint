@@ -15,11 +15,6 @@ router = APIRouter()
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_BASE_URL   = "https://api.paystack.co"
 
-# Prices live here, not in the client. The app sends a plan_id; the server
-# decides what that plan actually costs. Trusting a client-sent amount
-# would let anyone pay ₵1 for a subscription just by editing the request.
-# GHS here, converted to pesewas (x100) right before calling Paystack,
-# since Paystack's API always wants the smallest currency unit.
 PLAN_PRICES_GHS = {
     "monthly": 30.00,
     "annual":  300.00,
@@ -112,7 +107,7 @@ async def paystack_webhook(request: Request):
         hashlib.sha512,
     ).hexdigest()
 
-    # constant-time comparison — a naive `==` here would leak timing
+    # constant-time comparison is a naive `==` here would leak timing
     # information an attacker could use to forge a valid signature byte
     # by byte, which defeats the point of checking it at all
     if not hmac.compare_digest(expected_signature, signature):

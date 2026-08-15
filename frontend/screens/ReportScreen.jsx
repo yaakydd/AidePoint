@@ -97,14 +97,11 @@ const ReportCard = React.memo(({ report, onPress }) => {
         <View style={styles.cardBody}>
           <Text style={styles.cardName} numberOfLines={1}>{report.patientName}</Text>
           <Text style={styles.cardId} numberOfLines={1}>#{formatShortId(report.patientId)}</Text>
-          <ConditionBadge condition={report.condition} />
         </View>
 
         <View style={styles.cardRight}>
+          <ConditionBadge condition={report.condition} />
           <Text style={styles.cardTime}>{getRelativeTime(report.createdAt)}</Text>
-          <View style={styles.verifyRow}>
-            <View style={[styles.verifyDot, { backgroundColor: report.labTechVerified ? '#10B981' : '#D1D5DB' }]} />
-          </View>
         </View>
       </Animated.View>
     </TouchableOpacity>
@@ -158,14 +155,33 @@ const ReportScreen = ({ navigation, route }) => {
   useEffect(() => {
     runPinCheck();
   }, [user?.id]);
+
   useEffect(() => {
-  if (!user?.id) return;
-  (async () => {
-    const stored = await loadReports(user.id);
-    setReports(stored);
-    setLoading(false);
-  })();
-}, [user?.id]);
+    if (!user?.id) return;
+    (async () => {
+      const stored = await loadReports(user.id);
+      setReports(stored);
+      setLoading(false);
+    })();
+  }, [user?.id]);
+
+  // Reload the report list on every focus, not just on first mount --
+  // tab screens stay mounted once visited, so without this a report
+  // saved from the Scan flow would never appear here until the app
+  // was fully restarted, even though it was correctly saved to
+  // AsyncStorage. HomeScreen doesn't have this problem because it
+  // fetches fresh from Supabase's `scans` table on its own triggers;
+  // this screen reads a local AsyncStorage cache instead, which needs
+  // an explicit refresh trigger of its own.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+      (async () => {
+        const stored = await loadReports(user.id);
+        setReports(stored);
+      })();
+    }, [user?.id])
+  );
 
   useEffect(() => {
     const newScanId = route?.params?.newScanId;
@@ -253,23 +269,7 @@ const ReportScreen = ({ navigation, route }) => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {/* edges excludes 'top' deliberately -- SafeAreaView's automatic
-          top inset was stacking with header's own paddingTop below,
-          producing the visible gap between the status bar and "Medical
-          Reports" seen in testing. The header now owns its own top
-          spacing via layout.statusBarHeight instead, so the white
-          background sits flush against the status bar with just enough
-          clearance not to overlap the clock/battery icons. */}
-      {/* FIXED: 'top' restored. It was previously excluded on the
-          theory that the header's own paddingTop (layout.statusBarHeight)
-          handled the notch/status bar -- but layout.statusBarHeight is
-          hardcoded to 0 on iOS specifically because SafeAreaView was
-          supposed to own that inset. With 'top' excluded, nothing
-          accounted for the notch on iOS, so the header rendered
-          underneath the status bar/tray. SafeAreaView now owns the top
-          inset again, and the header's paddingTop is just a small fixed
-          gap (see ReportStyles.js) instead of double-counting it. */}
-      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.screen}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
         <FlatList
@@ -290,7 +290,7 @@ const ReportScreen = ({ navigation, route }) => {
           ListHeaderComponent={
             <View>
               <View style={styles.header}>
-                <Text style={styles.headerTitle}>Medical Reports</Text>
+                <Text style={styles.headerTitle}>Scan Reports</Text>
                 <Text style={styles.headerCount}>{reports?.length ?? 0} total</Text>
               </View>
 

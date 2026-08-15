@@ -234,49 +234,51 @@ async function handleToggle(newValue) {
         contentContainerStyle={styles.scrollContent}
       >
 
-        <View style={styles.identityBlock}>
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatarCircle}>
-              {user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarInitials}>{initials}</Text>
-              )}
-            </View>
+<View style={styles.identityBlock}>
+  <View style={styles.avatarWrap}>
+    <View style={styles.avatarCircle}>
+      {user?.avatarUrl ? (
+        <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+      ) : (
+        <Text style={styles.avatarInitials}>{initials}</Text>
+      )}
+    </View>
 
-            <TouchableOpacity
-              style={styles.avatarBadge}
-              onPress={handleChangeAvatar}
-              disabled={uploadingAvatar}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              {uploadingAvatar ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-          </View>
+    <TouchableOpacity
+      style={styles.avatarBadge}
+      onPress={handleChangeAvatar}
+      disabled={uploadingAvatar}
+      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+    >
+      {uploadingAvatar ? (
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      ) : (
+        <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
+      )}
+    </TouchableOpacity>
+  </View>
 
-          <Text style={styles.userName}>{user?.name || 'Unknown'}</Text>
-          <Text style={styles.userEmail}>{user?.email || '—'}</Text>
-          <Text style={styles.userRole}>
-            {roleLabel}{user?.hospitalLab ? ` · ${user.hospitalLab}` : ''}
-          </Text>
+  <View style={styles.identityInfo}>
+    <Text style={styles.userName}>{user?.name || 'Unknown'}</Text>
+    <Text style={styles.userEmail}>{user?.email || '—'}</Text>
+    <Text style={styles.userRole}>
+      {roleLabel}{user?.hospitalLab ? ` · ${user.hospitalLab}` : ''}
+    </Text>
 
-          <View style={[styles.tierPill, { backgroundColor: `${tierColor}18`, borderColor: tierColor }]}>
-            <MaterialCommunityIcons name="crown-outline" size={13} color={tierColor} />
-            <Text style={[styles.tierPillText, { color: tierColor }]}>{tierLabel}</Text>
-          </View>
+    <View style={[styles.tierPill, { backgroundColor: `${tierColor}18`, borderColor: tierColor }]}>
+      <MaterialCommunityIcons name="crown-outline" size={13} color={tierColor} />
+      <Text style={[styles.tierPillText, { color: tierColor }]}>{tierLabel}</Text>
+    </View>
 
-          <TouchableOpacity
-            style={styles.manageBtn}
-            onPress={() => navigation.navigate('Subscription')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.manageBtnText}>Manage Subscription</Text>
-          </TouchableOpacity>
-        </View>
+    <TouchableOpacity
+      style={styles.manageBtn}
+      onPress={() => navigation.navigate('Subscription')}
+      activeOpacity={0.85}
+    >
+      <Text style={styles.manageBtnText}>Manage Subscription</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
         <Section title="ACCOUNT">
           <Row

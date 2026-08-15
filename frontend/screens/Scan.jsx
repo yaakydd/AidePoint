@@ -1,35 +1,35 @@
-// screens/Scan.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  Image, Alert, Modal, ActivityIndicator, Platform,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Alert,
+  Modal,
+  ActivityIndicator,
+  Platform,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { useAuth }       from '../context/AuthContext';
-import { supabase }      from '../utils/supabase';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 import { buildReport, saveReport, resolveConditionKey } from '../utils/ReportUtils';
-import { scanStyles as styles }    from '../styles/ScanStyles';
-import { analyzeBloodSmear }       from '../utils/api';
+import { scanStyles as styles } from '../styles/ScanStyles';
+import { analyzeBloodSmear } from '../utils/api';
 import { prepareImage, stabilizeImage } from '../utils/imageUtils';
 import { getRemainingScans, recordScan, uploadScanImage } from '../utils/scanStorage';
-import { getPlan }       from '../constants/SubscriptionPlans';
+import { getPlan } from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
 import { COLORS, SPACING } from '../assets/theme';
-
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 const GENDERS = ['Male', 'Female'];
 
-// Combines a time-changing component (base36 tail of Date.now(), changes
-// every call) with a 3-digit random suffix, so two scans -- even from
-// different technicians at the same moment -- are effectively guaranteed
-// not to collide. Previous version was AP-${year}-${4-digit random}, only
-// 9,000 possible values per year with no time component, so collisions
-// became realistic at scale.
 function generateScanId() {
   const year = new Date().getFullYear();
   const timePart = Date.now().toString(36).toUpperCase().slice(-4);
@@ -47,24 +47,58 @@ function getUpgradeMessage(plan) {
   return 'Daily scan limit reached.';
 }
 
+// Field-level validation. Only returns a message when the value is
+// present but implausible -- emptiness is handled separately by
+// getValidationHint / isFormValid so a technician isn't shown a red
+// error on a field they simply haven't reached yet.
+function validateField(field, value) {
+  switch (field) {
+    case 'patientName': {
+      if (value && value.trim().length < 2) return 'Name looks too short';
+      return '';
+    }
+    case 'age': {
+      if (!value) return '';
+      const n = parseInt(value, 10);
+      if (isNaN(n) || n <= 0 || n > 120) return 'Enter a valid age (1–120)';
+      return '';
+    }
+    case 'temperature': {
+      if (!value) return '';
+      const n = parseFloat(value);
+      if (isNaN(n) || n < 30 || n > 43) return 'Enter a plausible temp (30–43°C)';
+      return '';
+    }
+    case 'bloodPressure': {
+      if (!value) return '';
+      if (!/^\d{2,3}\/\d{2,3}$/.test(value.trim()))
+        return 'Format as systolic/diastolic, e.g. 120/80';
+      return '';
+    }
+    default:
+      return '';
+  }
+}
+
 const Scan = ({ navigation, route }) => {
   const { user } = useAuth();
   const plan = getPlan(user?.subscriptionTier);
   const labTechName = user?.name ?? 'Lab Technician';
 
-  const [patientName,   setPatientName]   = useState('');
-  const [patientAge,    setPatientAge]    = useState('');
+  const [patientName, setPatientName] = useState('');
+  const [patientAge, setPatientAge] = useState('');
   const [patientGender, setPatientGender] = useState('');
-  const [temperature,   setTemperature]   = useState('');
+  const [temperature, setTemperature] = useState('');
   const [bloodPressure, setBloodPressure] = useState('');
-  const [image,           setImage]           = useState(null);
+  const [errors, setErrors] = useState({});
+  const [image, setImage] = useState(null);
   const [imageSourceType, setImageSourceType] = useState(null);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
-  const [scanId,       setScanId]       = useState('');
-  const [isAnalysing,  setIsAnalysing]  = useState(false);
-  const [remaining,    setRemaining]    = useState(null);
+  const [scanId, setScanId] = useState('');
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [remaining, setRemaining] = useState(null);
   const [showResetTip, setShowResetTip] = useState(false);
-  const [resultModal,  setResultModal]  = useState(null);
+  const [resultModal, setResultModal] = useState(null);
   const tipOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -77,38 +111,43 @@ const Scan = ({ navigation, route }) => {
     const r = await getRemainingScans(user.id, plan);
     setRemaining(r);
   }
+
   useEffect(() => {
-  const unsubscribe = navigation.addListener('focus', () => {
-    const photo = route.params?.capturedPhoto;
-    if (photo) {
-      (async () => {
-        try {
-          const safeUri = await stabilizeImage(photo);
-          setImage(safeUri);
-          setImageSourceType('camera');
-        } catch (err) {
-          console.error('Camera image stabilize failed:', err);
-          Alert.alert('Error', 'Could not process the captured photo. Please try again.');
-        }
-      })();
-      navigation.setParams({ capturedPhoto: undefined });
-    }
-  });
-  return unsubscribe;
-}, [navigation, route.params]);
+    const unsubscribe = navigation.addListener('focus', () => {
+      const photo = route.params?.capturedPhoto;
+      if (photo) {
+        (async () => {
+          try {
+            const safeUri = await stabilizeImage(photo);
+            setImage(safeUri);
+            setImageSourceType('camera');
+          } catch (err) {
+            console.error('Camera image stabilize failed:', err);
+            Alert.alert('Error', 'Could not process the captured photo. Please try again.');
+          }
+        })();
+        navigation.setParams({ capturedPhoto: undefined });
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params]);
+
+  function runValidation(field, value) {
+    const msg = validateField(field, value);
+    setErrors((prev) => ({ ...prev, [field]: msg }));
+  }
+
+  const hasFieldErrors = Object.values(errors).some(Boolean);
 
   const isFormValid =
     patientName.trim() !== '' &&
-    patientAge.trim()  !== '' &&
-    patientGender      !== '' &&
+    patientAge.trim() !== '' &&
+    patientGender !== '' &&
     temperature.trim() !== '' &&
-    bloodPressure.trim()!== '' &&
-    image !== null;
+    bloodPressure.trim() !== '' &&
+    image !== null &&
+    !hasFieldErrors;
 
-  // FIXED: every function below that mutates form state or navigates away
-  // now bails out while isAnalysing is true. Disabling the buttons in the
-  // JSX isn't enough on its own -- a fast double-tap can fire before React
-  // re-renders the disabled state, so the guard also lives here.
   function openCamera() {
     if (isAnalysing) return;
     navigation.navigate('Camera', {
@@ -116,6 +155,8 @@ const Scan = ({ navigation, route }) => {
     });
   }
 
+  // Retake: only valid when the current image came from the camera.
+  // Sends the technician back to the Camera screen.
   function retakePhoto() {
     if (isAnalysing) return;
     setImage(null);
@@ -125,70 +166,39 @@ const Scan = ({ navigation, route }) => {
     });
   }
 
-  async function handlePickFile() {
-
-  if (isAnalysing) return;
-
-  try {
-
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-
-    if (!permission.granted) {
-
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your gallery."
-      );
-
-      return;
-    }
-
-
-    const result =
-      await ImagePicker.launchImageLibraryAsync({
-
-        mediaTypes: ['images'],
-
-        quality: 1,
-
-        allowsEditing:false,
-
-      });
-
-
-
-    if(result.canceled) return;
-
-
-
-    const pickedUri =
-      result.assets[0].uri;
-
-    const safeUri = await stabilizeImage(pickedUri);
-
-    setImage(safeUri);
-
-    setImageSourceType('upload');
-
-
-  } catch(error){
-
-    console.error(
-      "Image picker error:",
-      error
-    );
-
-
-    Alert.alert(
-      "Upload Failed",
-      "Unable to select image."
-    );
-
+  // Re-upload: only valid when the current image came from the gallery.
+  // Reopens the image picker directly instead of routing through Camera.
+  function reuploadPhoto() {
+    if (isAnalysing) return;
+    setImage(null);
+    setImageSourceType(null);
+    handlePickFile();
   }
 
-}
+  async function handlePickFile() {
+    if (isAnalysing) return;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your gallery.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsEditing: false,
+      });
+      if (result.canceled) return;
+
+      const pickedUri = result.assets[0].uri;
+      const safeUri = await stabilizeImage(pickedUri);
+      setImage(safeUri);
+      setImageSourceType('upload');
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Upload Failed', 'Unable to select image.');
+    }
+  }
 
   function handleResetPress() {
     if (isAnalysing) return;
@@ -208,98 +218,103 @@ const Scan = ({ navigation, route }) => {
     Alert.alert('Reset Form', 'Clear all entered data?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Reset', style: 'destructive',
+        text: 'Reset',
+        style: 'destructive',
         onPress: () => {
-          setPatientName(''); setPatientAge(''); setPatientGender('');
-          setTemperature(''); setBloodPressure('');
-          setImage(null); setImageSourceType(null);
-          setImageViewerOpen(false); setScanId(generateScanId());
+          setPatientName('');
+          setPatientAge('');
+          setPatientGender('');
+          setTemperature('');
+          setBloodPressure('');
+          setErrors({});
+          setImage(null);
+          setImageSourceType(null);
+          setImageViewerOpen(false);
+          setScanId(generateScanId());
         },
       },
     ]);
   }
+
   async function handleStartAnalysis() {
-  if (!isFormValid || isAnalysing) return;
+    if (!isFormValid || isAnalysing) return;
 
-  console.log('ABOUT TO CALL getRemainingScans');
-  let rem;
-  try {
-    rem = await getRemainingScans(user.id, plan);
-    console.log('getRemainingScans returned:', rem);
-  } catch (err) {
-    console.error('getRemainingScans THREW:', err);
-    Alert.alert('Error', 'Could not check scan limit: ' + err.message);
-    return;
-  }
+    let rem;
+    try {
+      rem = await getRemainingScans(user.id, plan);
+    } catch (err) {
+      console.error('getRemainingScans THREW:', err);
+      Alert.alert('Error', 'Could not check scan limit: ' + err.message);
+      return;
+    }
 
-  if (rem !== Infinity && rem <= 0) {
-    Alert.alert('Scan Limit Reached', getUpgradeMessage(plan), [
-      { text: 'Maybe Later', style: 'cancel' },
-      { text: 'View Plans', onPress: () => navigation.navigate('Subscription') },
-    ]);
-    return;
-  }
+    if (rem !== Infinity && rem <= 0) {
+      Alert.alert('Scan Limit Reached', getUpgradeMessage(plan), [
+        { text: 'Maybe Later', style: 'cancel' },
+        { text: 'View Plans', onPress: () => navigation.navigate('Subscription') },
+      ]);
+      return;
+    }
 
-  setIsAnalysing(true);
-  console.log('STEP 1: starting analysis, image =', image);
-  try {
-    const compressedUri = await prepareImage(image);
-    console.log('STEP 2: compressImage done ', compressedUri);
-
+    setIsAnalysing(true);
+    try {
+      const compressedUri = await prepareImage(image);
 
       const { data: patientRow, error: patientErr } = await supabase
         .from('patients')
         .insert({
           created_by: user.id,
-          name:       patientName.trim(),
-          age:        patientAge ? parseInt(patientAge, 10) : null,
-          gender:     patientGender.toLowerCase(),
+          name: patientName.trim(),
+          age: patientAge ? parseInt(patientAge, 10) : null,
+          gender: patientGender.toLowerCase(),
         })
         .select('id')
         .single();
-      console.log('STEP 3: patient insert', { patientRow, patientErr });
       if (patientErr) throw patientErr;
-      const prediction = await analyzeBloodSmear(compressedUri, patientRow.id, temperature.trim(), bloodPressure.trim());
-      console.log('STEP 4: prediction ', prediction);
+
+      const prediction = await analyzeBloodSmear(
+        compressedUri,
+        patientRow.id,
+        temperature.trim(),
+        bloodPressure.trim()
+      );
       const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
-      console.log('STEP 4.5: image storage path ', storedImagePath);
 
-const conditionKey = resolveConditionKey(
-  prediction.is_anemic,
-  prediction.morphology_findings,
-  prediction.is_unreliable
-);
+      const conditionKey = resolveConditionKey(
+        prediction.is_anemic,
+        prediction.morphology_findings,
+        prediction.is_unreliable
+      );
 
-const report = buildReport({
-    patientName:   patientName.trim(),
-    patientId:     patientRow.id,
-    condition:     conditionKey, 
-    confidence:    prediction.explanation?.confidence ?? 'moderate',
-    labTechName,
-    image_url:  storedImagePath,
-    temperature:   temperature.trim(),
-    bloodPressure: bloodPressure.trim(),
-    morphologyFindings: prediction.morphology_findings,
-    cbcPatternSummary:  prediction.cbc_pattern_summary,
-    isUnreliable:       prediction.is_unreliable,
-    unreliableReasons:  prediction.unreliable_reasons,
-    imageQuality:       prediction.image_quality,
-    scanId, 
-});
+      const report = buildReport({
+        patientName: patientName.trim(),
+        patientId: patientRow.id,
+        condition: conditionKey,
+        confidence: prediction.explanation?.confidence ?? 'moderate',
+        labTechName,
+        image_url: storedImagePath,
+        temperature: temperature.trim(),
+        bloodPressure: bloodPressure.trim(),
+        morphologyFindings: prediction.morphology_findings,
+        cbcPatternSummary: prediction.cbc_pattern_summary,
+        isUnreliable: prediction.is_unreliable,
+        unreliableReasons: prediction.unreliable_reasons,
+        imageQuality: prediction.image_quality,
+        scanId,
+      });
 
-
-    const { data: scanRow, error: scanErr } = await supabase
-  .from('scans')
-  .insert({
-    patient_id:    patientRow.id,
-    created_by:    user.id,
-    image_url:     storedImagePath,
-    status:        'done',
-    prediction_id: prediction.prediction_id,
-    condition:     conditionKey,
-  })
-  .select('id')
-  .single();
+      const { data: scanRow, error: scanErr } = await supabase
+        .from('scans')
+        .insert({
+          patient_id: patientRow.id,
+          created_by: user.id,
+          image_url: storedImagePath,
+          status: 'done',
+          prediction_id: prediction.prediction_id,
+          condition: conditionKey,
+        })
+        .select('id')
+        .single();
       if (scanErr) throw scanErr;
       report.id = scanRow.id;
 
@@ -312,41 +327,48 @@ const report = buildReport({
         prediction,
         report,
         bonusJustGranted: usage.bonusJustGranted,
-        bonusRemaining:   usage.bonusRemaining,
-        remaining:        usage.remaining,
+        bonusRemaining: usage.bonusRemaining,
+        remaining: usage.remaining,
       });
 
-      setPatientName(''); setPatientAge(''); setPatientGender('');
-      setTemperature(''); setBloodPressure('');
-      setImage(null); setImageSourceType(null);
+      setPatientName('');
+      setPatientAge('');
+      setPatientGender('');
+      setTemperature('');
+      setBloodPressure('');
+      setErrors({});
+      setImage(null);
+      setImageSourceType(null);
       setScanId(generateScanId());
-
-    }  catch (err) {
-  console.error('Scan handleStartAnalysis:', err.message);
-  const message = err.message === 'IMAGE_EXPIRED'
-    ? 'The captured image is no longer available. Please retake or re-select the photo before trying again.'
-    : (err.message ?? 'Something went wrong. Please try again.');
-  Alert.alert('Analysis Failed', message, [{ text: 'OK' }]);
-}finally {
+    } catch (err) {
+      console.error('Scan handleStartAnalysis:', err.message);
+      const message =
+        err.message === 'IMAGE_EXPIRED'
+          ? 'The captured image is no longer available. Please retake or re-select the photo before trying again.'
+          : (err.message ?? 'Something went wrong. Please try again.');
+      Alert.alert('Analysis Failed', message, [{ text: 'OK' }]);
+    } finally {
       setIsAnalysing(false);
     }
   }
 
   function getValidationHint() {
-    if (!patientName.trim())    return 'Enter patient name';
-    if (!patientAge.trim())     return 'Enter patient age';
-    if (!patientGender)         return 'Select patient gender';
-    if (!temperature.trim())    return 'Enter temperature';
-    if (!bloodPressure.trim())  return 'Enter blood pressure';
-    if (!image)                 return 'Capture or upload a blood smear image';
+    if (!patientName.trim()) return 'Enter patient name';
+    if (!patientAge.trim()) return 'Enter patient age';
+    if (!patientGender) return 'Select patient gender';
+    if (!temperature.trim()) return 'Enter temperature';
+    if (!bloodPressure.trim()) return 'Enter blood pressure';
+    if (!image) return 'Capture or upload a blood smear image';
+    if (hasFieldErrors) return 'Fix the highlighted fields above';
     return '';
   }
 
-  const scanLimitLabel = remaining === null
-    ? ''
-    : remaining === Infinity
-    ? 'Unlimited scans'
-    : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`;
+  const scanLimitLabel =
+    remaining === null
+      ? ''
+      : remaining === Infinity
+        ? 'Unlimited scans'
+        : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -356,43 +378,57 @@ const report = buildReport({
         contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_CLEARANCE }]}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} disabled={isAnalysing}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            disabled={isAnalysing}
+          >
             <MaterialIcons name="arrow-back-ios-new" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Scan</Text>
 
           <View style={styles.resetWrapper}>
-            <TouchableOpacity style={styles.resetIconBtn} onPress={handleResetPress} disabled={isAnalysing}>
+            <TouchableOpacity
+              style={styles.resetIconBtn}
+              onPress={handleResetPress}
+              disabled={isAnalysing}
+            >
               <MaterialIcons name="restart-alt" size={22} color={COLORS.danger} />
             </TouchableOpacity>
             {showResetTip && (
               <Animated.View style={[styles.resetTooltip, { opacity: tipOpacity }]}>
+                <View style={styles.resetTooltipCaret} />
+                <MaterialIcons
+                  name="info-outline"
+                  size={12}
+                  color={COLORS.white}
+                  style={{ marginRight: 4 }}
+                />
                 <Text style={styles.resetTooltipText}>Tap again to reset</Text>
               </Animated.View>
             )}
           </View>
         </View>
 
-<View style={styles.usageBanner}>
-  <Text style={styles.usageBannerLabel}>SCANS TODAY</Text>
-  <Text style={[
-    styles.usageBannerValue,
-    remaining === 0 && styles.usageBannerValueWarning,
-  ]}>
-    {scanLimitLabel || '—'}
-  </Text>
-</View>
+        <View style={styles.usageBanner}>
+          <Text style={styles.usageBannerLabel}>SCANS TODAY</Text>
+          <Text
+            style={[styles.usageBannerValue, remaining === 0 && styles.usageBannerValueWarning]}
+          >
+            {scanLimitLabel || '—'}
+          </Text>
+        </View>
 
-<View style={styles.scanIdCard}>
-  <View style={styles.scanIdLeft}>
-    <MaterialCommunityIcons name="fingerprint" size={18} color={COLORS.textMuted} />
-    <Text style={styles.scanIdLabel}>SCAN ID</Text>
-  </View>
-  <View style={styles.scanIdRight}>
-    <Text style={styles.scanIdValue}>{scanId}</Text>
-  </View>
-</View>
+        <View style={styles.scanIdCard}>
+          <View style={styles.scanIdLeft}>
+            <MaterialCommunityIcons name="fingerprint" size={18} color={COLORS.textMuted} />
+            <Text style={styles.scanIdLabel}>SCAN ID</Text>
+          </View>
+          <View style={styles.scanIdRight}>
+            <Text style={styles.scanIdValue}>{scanId}</Text>
+          </View>
+        </View>
 
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="account-outline" size={20} color={COLORS.primary} />
@@ -405,9 +441,11 @@ const report = buildReport({
           placeholderTextColor={COLORS.textMuted}
           value={patientName}
           onChangeText={setPatientName}
-          style={styles.input}
+          onBlur={() => runValidation('patientName', patientName)}
+          style={[styles.input, errors.patientName && styles.inputError]}
           editable={!isAnalysing}
         />
+        {!!errors.patientName && <Text style={styles.fieldErrorText}>{errors.patientName}</Text>}
 
         <View style={styles.row}>
           <View style={styles.rowItem}>
@@ -416,17 +454,19 @@ const report = buildReport({
               placeholder="e.g. 34"
               placeholderTextColor={COLORS.textMuted}
               value={patientAge}
-              onChangeText={t => setPatientAge(t.replace(/\D/g, ''))}
+              onChangeText={(t) => setPatientAge(t.replace(/\D/g, ''))}
+              onBlur={() => runValidation('age', patientAge)}
               keyboardType="number-pad"
               maxLength={3}
-              style={[styles.input, styles.half]}
+              style={[styles.input, styles.half, errors.age && styles.inputError]}
               editable={!isAnalysing}
             />
+            {!!errors.age && <Text style={styles.fieldErrorText}>{errors.age}</Text>}
           </View>
           <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Gender</Text>
             <View style={styles.genderPillRow}>
-              {GENDERS.map(g => (
+              {GENDERS.map((g) => (
                 <TouchableOpacity
                   key={g}
                   style={[styles.genderPill, patientGender === g && styles.genderPillActive]}
@@ -440,7 +480,14 @@ const report = buildReport({
                     color={patientGender === g ? '#fff' : COLORS.textMuted}
                     style={{ marginRight: SPACING.xs }}
                   />
-                  <Text style={[styles.genderPillText, patientGender === g && styles.genderPillTextActive]}>{g}</Text>
+                  <Text
+                    style={[
+                      styles.genderPillText,
+                      patientGender === g && styles.genderPillTextActive,
+                    ]}
+                  >
+                    {g}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -455,10 +502,14 @@ const report = buildReport({
               placeholderTextColor={COLORS.textMuted}
               value={temperature}
               onChangeText={setTemperature}
+              onBlur={() => runValidation('temperature', temperature)}
               keyboardType="decimal-pad"
-              style={[styles.input, styles.half]}
+              style={[styles.input, styles.half, errors.temperature && styles.inputError]}
               editable={!isAnalysing}
             />
+            {!!errors.temperature && (
+              <Text style={styles.fieldErrorText}>{errors.temperature}</Text>
+            )}
           </View>
           <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Blood Pressure</Text>
@@ -467,9 +518,13 @@ const report = buildReport({
               placeholderTextColor={COLORS.textMuted}
               value={bloodPressure}
               onChangeText={setBloodPressure}
-              style={[styles.input, styles.half]}
+              onBlur={() => runValidation('bloodPressure', bloodPressure)}
+              style={[styles.input, styles.half, errors.bloodPressure && styles.inputError]}
               editable={!isAnalysing}
             />
+            {!!errors.bloodPressure && (
+              <Text style={styles.fieldErrorText}>{errors.bloodPressure}</Text>
+            )}
           </View>
         </View>
 
@@ -479,7 +534,11 @@ const report = buildReport({
         </View>
 
         {!image && (
-          <TouchableOpacity style={styles.takePictureBtn} onPress={openCamera} disabled={isAnalysing}>
+          <TouchableOpacity
+            style={styles.takePictureBtn}
+            onPress={openCamera}
+            disabled={isAnalysing}
+          >
             <MaterialIcons name="photo-camera" size={22} color={COLORS.primary} />
             <Text style={styles.takePictureText}>Take Picture</Text>
           </TouchableOpacity>
@@ -498,9 +557,19 @@ const report = buildReport({
                 <Text style={styles.previewZoomText}>Tap to enlarge</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={retakePhoto} style={styles.retakeBtn} disabled={isAnalysing}>
-              <MaterialIcons name="refresh" size={16} color={COLORS.primary} />
-              <Text style={styles.retakeText}>Retake Photo</Text>
+            <TouchableOpacity
+              onPress={imageSourceType === 'upload' ? reuploadPhoto : retakePhoto}
+              style={styles.retakeBtn}
+              disabled={isAnalysing}
+            >
+              <MaterialIcons
+                name={imageSourceType === 'upload' ? 'file-upload' : 'refresh'}
+                size={16}
+                color={COLORS.primary}
+              />
+              <Text style={styles.retakeText}>
+                {imageSourceType === 'upload' ? 'Re-upload Image' : 'Retake Photo'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -508,11 +577,19 @@ const report = buildReport({
         {!imageSourceType && (
           <View style={styles.uploadCard}>
             <View style={styles.uploadIconCircle}>
-              <MaterialCommunityIcons name="cloud-upload-outline" size={34} color={COLORS.primary} />
+              <MaterialCommunityIcons
+                name="cloud-upload-outline"
+                size={34}
+                color={COLORS.primary}
+              />
             </View>
             <Text style={styles.uploadTitle}>Upload Blood Smear File</Text>
             <Text style={styles.uploadSub}>PNG or JPG images supported</Text>
-            <TouchableOpacity style={styles.browseBtn} onPress={handlePickFile} disabled={isAnalysing}>
+            <TouchableOpacity
+              style={styles.browseBtn}
+              onPress={handlePickFile}
+              disabled={isAnalysing}
+            >
               <Text style={styles.browseBtnText}>Browse Files</Text>
             </TouchableOpacity>
           </View>
@@ -533,22 +610,28 @@ const report = buildReport({
           {isAnalysing ? (
             <>
               <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.buttonText}>  Analysing…</Text>
+              <Text style={styles.buttonText}> Analysing…</Text>
             </>
           ) : (
             <>
               <MaterialIcons name="analytics" size={20} color="#fff" />
-              <Text style={styles.buttonText}>  Start Analysis</Text>
+              <Text style={styles.buttonText}> Start Analysis</Text>
             </>
           )}
         </TouchableOpacity>
 
         <Text style={styles.hipaaText}>
-          By starting analysis, you agree to processing of medical data in accordance with GHS standards.
+          By starting analysis, you agree to processing of medical data in accordance with GHS
+          standards.
         </Text>
       </ScrollView>
 
-      <Modal visible={imageViewerOpen} transparent animationType="fade" onRequestClose={() => setImageViewerOpen(false)}>
+      <Modal
+        visible={imageViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageViewerOpen(false)}
+      >
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeViewer} onPress={() => setImageViewerOpen(false)}>
             <MaterialIcons name="close" size={28} color="#fff" />
@@ -572,17 +655,12 @@ const report = buildReport({
         />
       )}
 
-          {isAnalysing && (
-      <View
-        pointerEvents="auto"
-        style={styles.analysisOverlay}
-      >
-        <ActivityIndicator size="large" color="#fff" />
-        <Text style={styles.analysisText}>
-          Analysing blood smear...
-        </Text>
-      </View>
-    )}
+      {isAnalysing && (
+        <View pointerEvents="auto" style={styles.analysisOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.analysisText}>Analysing blood smear...</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };

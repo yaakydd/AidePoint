@@ -1,25 +1,5 @@
-# The reliability gate: catches inputs that don't match what AidePoint's
-# model was trained on (different stain/lighting, raw uncropped eyepiece
-# photos) BEFORE a confident ANEMIC/HEALTHY label is returned to the app.
-#
-# This is a direct port of the logic validated in Colab against a real
-# malaria smear photo , an embedding-distance-only check missed it
-# (high-dimensional distances concentrate; a different color palette and
-# heavy vignetting don't reliably move a 256-dim diagonal distance far
-# enough). Combining it with cheap, explainable pixel-level checks
-# catches it.
-#
-# What this gate does NOT do, and this matters for what shape_screening.py
-# exists to cover instead: it answers "does this image look statistically
-# like training data overall?" A well-cropped, properly-stained sickle
-# cell photo passes this fine, because it genuinely does resemble AneRBC's
-# color and framing distribution , the problem there isn't image
-# quality, it's that the model was never taught the difference. That's a
-# separate, narrower check (see shape_screening.py).
-
 import numpy as np
 import cv2
-
 
 def compute_embedding_distance(image_embedding: np.ndarray, reference_stats: dict) -> float:
     """

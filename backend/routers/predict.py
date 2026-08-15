@@ -99,17 +99,6 @@ async def predict(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty file received.",
         )
-
-    # preprocess_image() now returns a PreprocessResult dataclass, the
-    # model-ready tensor, the raw resized image the reliability/shape
-    # checks need and the before/after crop preview data used by the
-    # app's transparency trail.
-
-
-    # preprocess_image() now returns a PreprocessResult dataclass, the
-    # model-ready tensor, the raw resized image the reliability/shape
-    # checks need and the before/after crop preview data used by the
-    # app's transparency trail.
     try:
         preprocessed: PreprocessResult = preprocess_image(image_bytes)
     except Exception as exc:
@@ -159,37 +148,15 @@ async def predict(
     elapsed_ms: float = round((time.perf_counter() - t0) * 1000, 1)
 
 
-    # Photo quality is deliberately kept separate from is_unreliable.
-    # is_unreliable (from run_reliability_gate + shape_screening) answers
-    # "does this sample look like something the model wasn't trained to
-    # recognize". This is a genuine out-of-distribution signal, which is the
-    # closest honest proxy for "this might be a different disease
-    # entirely." Quality problems (blur, poor staining, bad lighting) are
-    # a completely different question . "is this photo usable at all"
-    # and mixing the two meant a blurry photo of a perfectly healthy
-    # sample and a well-photographed malaria smear both ended up tagged
-    # identically as "unreliable," with no way to tell them apart
-    # downstream.
     result["image_quality_warning"] = quality_result.quality_score == "poor"
     result["image_quality_reasons"] = (
         list(quality_result.failure_reasons) if result["image_quality_warning"] else []
     )
 
-    # Uncertainty-relabeled CBC pattern summary, replacing raw regression
-    # values with directional estimates + confidence tiers. Use
-    # cbc_uncertainty.py as reference for why presenting the raw numbers alone is a
-    # patient safety issue, not just a display preference.
     cbc_pattern_summary = serialize_pattern_summary(
         build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
     )
 
-    # Human-readable explanation of which morphology indicators and
-    # cell-level findings support this prediction. build_explanation now
-    # returns an Explanation dataclass and is converted to a plain dict here
-    # with asdict() since this same value is (a) spread into the JSON
-    # response below and (b) passed into build_prediction_record(), whose
-    # PredictionRecord.explanation field expects a plain dict, not a
-    # dataclass instance.
     explanation: Explanation = build_explanation(
         anemia_probability=result["anemia_probability"],
         decision_threshold=result["decision_threshold"],
@@ -199,31 +166,14 @@ async def predict(
     prediction_confidence = explanation.confidence
     explanation_dict = asdict(explanation)
 
-    # Same shape used for the audit trail record below and is built once here
-    # and reused, rather than computed twice, so the API response and the
-    # persisted record can never silently drift apart from each other.
-    morphology_findings = _build_morphology_findings(result["morphology_probs"])
 
-    # Logs whether the reliability gate flagged this request, so
-    # unreliable-result rates are visible in Railway logs rather than only
-    # showing up as a silent field in the JSON response.
+    morphology_findings = _build_morphology_findings(result["morphology_probs"])
     log.info(
         "predict  user=%s  is_anemic=%s  probability=%.3f  unreliable=%s  time=%sms",
         user.get("id"), result["is_anemic"], result["anemia_probability"],
         result["is_unreliable"], elapsed_ms,
     )
 
-    # Persist the audit trail record. This happens after inference
-    # succeeds but before the response is returned -- a prediction that
-    # was shown to a technician and not logged is worse than one that
-    # failed outright, since it leaves no trace to investigate later.
-    #
-    # Note: the FULL result (including the real anemia_probability) is
-    # always persisted here, even for unreliable/unknown results — the
-    # null-out below only affects what's shown to the technician in the
-    # response, never what's kept in the audit trail. The record needs
-    # the real numbers for later review even when the UI shouldn't
-    # display them as a confident finding.
     prediction_id: str | None = None
     if _supabase_client is not None:
         try:
@@ -254,10 +204,6 @@ async def predict(
             )
             prediction_id = persist_prediction_record(_supabase_client, record)
         except Exception as exc:
-            # A failed audit write should not block the technician from
-            # seeing a result they're waiting on in a clinical setting
-            # but it must be loud in the logs, since this is the one
-            # failure mode that leaves no other trace.
             log.error(
                 "Failed to persist prediction record for user=%s sample=%s: %s",
                 user.get("id"), patient_sample_id, exc,
@@ -268,13 +214,6 @@ async def predict(
             "sample=%s was not persisted.", user.get("id"), patient_sample_id,
         )
 
-    # ── Unknown-condition enforcement ──────────────────────────────
-    # This is the one authoritative place the three-way condition is
-    # decided. The frontend should branch on "condition" alone rather
-    # than reconstructing it from is_anemic/is_unreliable itself — and
-    # even if it doesn't, anemia_probability/prediction_confidence are
-    # physically null for an unknown result, not just conventionally
-    # unused.
     condition_is_unknown = result["is_unreliable"]
     condition = "unknown" if condition_is_unknown else ("anemic" if result["is_anemic"] else "healthy")
 
@@ -296,14 +235,6 @@ async def predict(
     if condition_is_unknown:
         response_payload["anemia_probability"] = None
         response_payload["prediction_confidence"] = None
-        # CHANGED: explanation_dict carries its own independent
-        # "confidence" field (from build_explanation()/classify_confidence()),
-        # which TransparencyTrail.js reads directly as
-        # prediction.explanation?.confidence rather than the top-level
-        # prediction_confidence field nulled above. Without this line,
-        # an unknown result's PDF/UI never saw the top-level null, but
-        # the frontend was actually reading this nested copy, so the
-        # confidence label kept rendering regardless.
         response_payload["explanation"]["confidence"] = None
 
     return JSONResponse(content=response_payload)

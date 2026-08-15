@@ -1,31 +1,7 @@
-# Two things live here now:
-#   1. run_shape_screening() - the original reliability check: "do enough
-#      of this image's cells look like normal round RBCs to trust a
-#      confident label?"
-#   2. get_cell_overlay() - returns per-cell shape data (position, size,
-#      and a severity score) so the app can draw a live annotation
-#      directly on top of the photo: a colored circle around every
-#      detected cell, green for normal, sliding through yellow to red the
-#      more elongated/irregular a cell's shape is. This is the actual
-#      visible proof of what the AI looked at and why , rather than a
-#      paragraph of text explaining a decision, the person watching sees
-#      it drawn on the real photo, cell by cell.
-#
-# Both functions share one contour-detection pass (detect_cell_contours)
-# rather than each re-running OpenCV independently , same image, same
-# contours, no reason to compute it twice.
-#
-# Same honesty boundary as before: this does not diagnose anything.
-# Overlapping cells, folds, and out-of-focus regions can produce
-# low-circularity contours with nothing to do with disease. What it does
-# show, accurately: how round and how uniform the visible cells actually
-# are, drawn exactly where they appear in the photo.
-
-from dataclasses import dataclass, field
-
 import cv2
 import numpy as np
 from scipy import ndimage
+from dataclasses import dataclass, field
 
 ECCENTRICITY_LIMIT = 0.55
 CIRCULARITY_FLOOR = 0.55

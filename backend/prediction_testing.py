@@ -3,10 +3,6 @@ import requests
 import json
 
 BASE_URL = "https://aidepoint.onrender.com"
-
-# Reads the token from an environment variable instead of hardcoding it in
-# the file -- keeps a real credential out of any code you paste, commit,
-# or share. Set it once in your terminal before running this script:
 #   export AIDEPOINT_TEST_TOKEN="your_token_here"
 ACCESS_TOKEN = os.environ.get("AIDEPOINT_TEST_TOKEN")
 if not ACCESS_TOKEN:
