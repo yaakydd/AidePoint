@@ -288,37 +288,18 @@ const report = buildReport({
 });
 
 
-      const { data: scanRow, error: scanErr } = await supabase
-        .from('scans')
-        .insert({
-              patient_id: patientRow.id,
-              created_by: user.id,
-              image_url: storedImagePath,
-              status: 'done',
-              prediction_id: prediction.prediction_id,
-              condition: conditionKey,
-          results: {
-            is_anemic:           prediction.is_anemic,
-            condition:           conditionKey,
-            anemia_probability:  prediction.anemia_probability,
-            confidence:          prediction.explanation?.confidence,
-            morphology_findings: prediction.morphology_findings,
-            cbc_pattern_summary: prediction.cbc_pattern_summary,
-            is_unreliable:       prediction.is_unreliable,
-            unreliable_reasons:  prediction.unreliable_reasons,
-            image_quality:       prediction.image_quality,
-            temperature:         temperature.trim(),
-            bloodPressure:       bloodPressure.trim(),
-            labTechName,
-            patientAge:          patientAge.trim(),
-            patientGender:       patientGender.toLowerCase(),
-            scanId,
-            analyzedAt:          new Date().toISOString(),
-            inference_ms:        prediction.inference_ms,
-          },
-        })
-        .select('id')
-        .single();
+    const { data: scanRow, error: scanErr } = await supabase
+  .from('scans')
+  .insert({
+    patient_id:    patientRow.id,
+    created_by:    user.id,
+    image_url:     storedImagePath,
+    status:        'done',
+    prediction_id: prediction.prediction_id,
+    condition:     conditionKey,
+  })
+  .select('id')
+  .single();
       if (scanErr) throw scanErr;
       report.id = scanRow.id;
 
