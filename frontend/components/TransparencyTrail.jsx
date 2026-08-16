@@ -9,7 +9,7 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import CellOverlay from './CellOverlay';
 import { CONDITION_CONFIG, resolveConditionKey, updateReportNotes } from '../utils/ReportUtils';
 import { ReportStyles } from '../styles/ReportStyles';
-import { COLORS, FONTS, SPACING, RADIUS, scale } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, scale, vScale } from '../assets/theme';
 
 
 const SEVERITY_COLORS = {
@@ -208,10 +208,14 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                     resizeMode="contain"
                   />
                 </View>
-                <View>
-                  <Text style={ReportStyles.reportBrandName}>AidePoint</Text>
-                  <Text style={ReportStyles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
-                </View>
+               <View>
+                <Image
+                source={require('../assets/brand/wordmark-teal.png')}
+                style={{ height: vScale(16), width: scale(90), marginBottom: 2 }}
+                resizeMode="contain"
+                />
+                <Text style={ReportStyles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
+              </View>
               </View>
               <View style={ReportStyles.reportMetaRight}>
                 <Text style={ReportStyles.reportMetaLabel}>Scan ID</Text>
