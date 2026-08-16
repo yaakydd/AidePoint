@@ -1,13 +1,3 @@
-// screens/ReportScreen.js
-//
-// Shows all generated reports in a searchable, filterable list.
-// Tapping a card opens a detail bottom sheet with full clinical information,
-// including PDF export.
-//
-// Gated behind a per-user PIN (see utils/reportPin.js and components/PinModal.js).
-// The PIN check runs on every screen focus, not just on mount, so returning
-// to this tab after the session timeout re-locks it.
-
 import React, {
   useState, useEffect, useMemo,
   useCallback, useRef,
@@ -31,6 +21,7 @@ import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import PinModal from '../components/PinModal';
 import DetailModal from '../components/DetailModal';
 import { ReportStyles as styles, REPORT_LIST_BOTTOM_CLEARANCE } from '../styles/ReportStyles';
+import Header from '../components/Header';
 import { COLORS } from '../assets/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -68,7 +59,7 @@ const getRelativeTime = (iso) => {
 };
 
 // Full UUIDs (e.g. "396ba0a3-3adb-429a-a2b4-69a56bb24a55") are too long
-// to display on a card without wrapping to two lines -- confirmed on a
+// to display on a card without wrapping to two lines, confirmed on a
 // real device screenshot. Truncating to the first 8 characters keeps
 // enough of the ID to be useful for a quick visual match while staying
 // on one line; the full ID is still visible in the report detail sheet.
@@ -243,8 +234,13 @@ const ReportScreen = ({ navigation, route }) => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+
+        <Header
+          center={<Text style={styles.headerTitle}>Scan Reports</Text>}
+          right={<Text style={styles.headerCount}>{reports?.length ?? 0} total</Text>}
+        />
 
         <FlatList
           data={visibleReports}
@@ -263,11 +259,6 @@ const ReportScreen = ({ navigation, route }) => {
 
           ListHeaderComponent={
             <View>
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Scan Reports</Text>
-                <Text style={styles.headerCount}>{reports?.length ?? 0} total</Text>
-              </View>
-
               <View style={styles.searchContainer}>
                 <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
                 <TextInput
