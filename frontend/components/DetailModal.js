@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Image } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
@@ -110,7 +110,11 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
             <View style={styles.reportHeaderCard}>
               <View style={styles.reportBrandRow}>
                 <View style={styles.reportBrandLogo}>
-                  <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 16 }}>A</Text>
+                  <Image
+                    source={require('../assets/brand/icon-white.png')}
+                    style={{ width: 20, height: 20 }}
+                    resizeMode="contain"
+                  />
                 </View>
                 <View>
                   <Text style={styles.reportBrandName}>AidePoint</Text>
