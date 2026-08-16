@@ -202,7 +202,11 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
             <View style={ReportStyles.reportHeaderCard}>
               <View style={ReportStyles.reportBrandRow}>
                 <View style={ReportStyles.reportBrandLogo}>
-                  <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 16 }}>A</Text>
+                  <Image
+                    source={require('../assets/brand/icon-white.png')}
+                    style={{ width: 20, height: 20 }}
+                    resizeMode="contain"
+                  />
                 </View>
                 <View>
                   <Text style={ReportStyles.reportBrandName}>AidePoint</Text>
