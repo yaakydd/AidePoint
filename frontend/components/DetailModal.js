@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
 import { CONDITION_CONFIG, updateReportNotes } from '../utils/ReportUtils';
 import { exportReportAsPdf } from '../utils/ReportPDF';
-import { COLORS, SPACING, FONTS, RADIUS, scale } from '../assets/theme';
+import { COLORS, SPACING, FONTS, RADIUS, scale, vScale } from '../assets/theme';
 
 function getRecommendation(conditionKey, isUnreliable) {
   if (conditionKey === 'unknown' && isUnreliable) {
