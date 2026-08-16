@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Image } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
 import { CONDITION_CONFIG, updateReportNotes } from '../utils/ReportUtils';
 import { exportReportAsPdf } from '../utils/ReportPDF';
-import { COLORS, SPACING, FONTS, RADIUS } from '../assets/theme';
+import { COLORS, SPACING, FONTS, RADIUS, scale, vScale } from '../assets/theme';
 
 function getRecommendation(conditionKey, isUnreliable) {
   if (conditionKey === 'unknown' && isUnreliable) {
@@ -110,12 +110,20 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
             <View style={styles.reportHeaderCard}>
               <View style={styles.reportBrandRow}>
                 <View style={styles.reportBrandLogo}>
-                  <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 16 }}>A</Text>
+                  <Image
+                    source={require('../assets/brand/icon-white.png')}
+                    style={{ width: 20, height: 20 }}
+                    resizeMode="contain"
+                  />
                 </View>
-                <View>
-                  <Text style={styles.reportBrandName}>AidePoint</Text>
-                  <Text style={styles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
-                </View>
+                      <View>
+                        <Image
+                          source={require('../assets/brand/wordmark-teal.png')}
+                          style={{ height: vScale(16), width: scale(90), marginBottom: 2 }}
+                          resizeMode="contain"
+                          />
+                        <Text style={styles.reportBrandSub}>AI-Assisted Blood Smear Report</Text>
+                      </View>
               </View>
               <View style={styles.reportMetaRight}>
                 <Text style={styles.reportMetaLabel}>Scan ID</Text>

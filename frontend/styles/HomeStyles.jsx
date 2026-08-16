@@ -22,28 +22,6 @@ export const homeStyles = StyleSheet.create({
     paddingTop: SPACING.sm,
   },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.pagePad,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.md,
-  },
-
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-
-  greetingBlock: {
-    flex: 1,
-    marginLeft: SPACING.sm,
-    paddingRight: SPACING.xl, // Prevent text from overlapping the notification icon
-  },
-
   greeting: {
     fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
@@ -54,13 +32,6 @@ export const homeStyles = StyleSheet.create({
     marginTop: 2,
     fontSize: FONTS.sm,
     color: COLORS.textSecondary,
-  },
-
-  // Right side: notification icon only, kept clear of the avatar
-  headerRightRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: SPACING.lg,
   },
 
   notificationButton: {

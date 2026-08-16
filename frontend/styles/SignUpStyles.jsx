@@ -29,10 +29,14 @@ export const signupStyle = StyleSheet.create({
   },
 
   brandRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    justifyContent: 'center',
     marginTop: SPACING.lg,        // was 2xl
+  },
+
+  brandLogoImage: {
+    width: scale(180),
+    height: scale(42),   // matches the logo's ~4.28:1 aspect ratio
   },
 
   logoCircle: {

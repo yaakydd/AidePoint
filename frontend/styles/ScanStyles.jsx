@@ -27,31 +27,6 @@ export const scanStyles = StyleSheet.create({
 
 
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.pagePad,
-    paddingVertical: SPACING.md,
-    marginHorizontal: -SPACING.pagePad, // bleed to screen edges
-    marginBottom: SPACING.lg,
-    overflow: 'visible',
-    zIndex: 20,
-    elevation: 20,
-    ...SHADOWS.sm,
-  },
-
-  headerSide: {
-    width: scale(40),
-    justifyContent: 'center',
-  },
-
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
   backButton: {
     width: scale(36),
     height: scale(36),

@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale, mScale, HEADER } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale, mScale } from '../assets/theme';
 
 export const styles = StyleSheet.create({
   safe: {
@@ -7,16 +7,6 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: HEADER.paddingHorizontal,
-    paddingVertical: HEADER.paddingVertical,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
   headerTitle: {
     fontSize: FONTS.lg,
     fontWeight: FONTS.bold,

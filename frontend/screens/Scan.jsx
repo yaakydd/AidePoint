@@ -25,7 +25,8 @@ import { prepareImage, stabilizeImage } from '../utils/imageUtils';
 import { getRemainingScans, recordScan, uploadScanImage } from '../utils/scanStorage';
 import { getPlan } from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
-import { COLORS, SPACING } from '../assets/theme';
+import Header from '../components/Header';
+import { COLORS, SPACING, HEADER } from '../assets/theme';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 const GENDERS = ['Male', 'Female'];
@@ -367,23 +368,19 @@ const Scan = ({ navigation, route }) => {
         : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_CLEARANCE }]}
-      >
-        <View style={styles.header}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <Header
+        left={
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
             disabled={isAnalysing}
           >
-            <MaterialIcons name="arrow-back-ios-new" size={20} color={COLORS.textPrimary} />
+            <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>Scan</Text>
-
+        }
+        center={<Text style={styles.headerTitle}>Scan</Text>}
+        right={
           <View style={styles.resetWrapper}>
             <TouchableOpacity
               style={styles.resetIconBtn}
@@ -405,8 +402,14 @@ const Scan = ({ navigation, route }) => {
               </Animated.View>
             )}
           </View>
-        </View>
+        }
+      />
 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_CLEARANCE }]}
+      >
         <View style={styles.usageBanner}>
           <Text style={styles.usageBannerLabel}>SCANS TODAY</Text>
           <Text

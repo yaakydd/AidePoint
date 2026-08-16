@@ -17,6 +17,8 @@ import { clearPin, endSession } from '../utils/reportPin';
 import { deleteAllScanImages } from '../utils/scanStorage';
 import { clearReports } from '../utils/ReportUtils';
 import { MaterialIcons } from '@expo/vector-icons';
+import Header from '../components/Header';
+import { HEADER } from '../assets/theme';
 
 const AVATAR_BUCKET = 'avatars';
 
@@ -200,19 +202,20 @@ async function handleToggle(newValue) {
 }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Account</Text>
-        <View style={{ width: 22 }} />
-      </View>
+      <Header
+        left={
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={HEADER.iconSize} color="#1F2937" />
+          </TouchableOpacity>
+        }
+        center={<Text style={styles.headerTitle}>Account</Text>}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

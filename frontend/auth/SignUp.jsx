@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { Image } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -301,18 +302,19 @@ const SignUp = () => {
         : canProceedPassword;
 
   async function checkEmailAvailable(email) {
-    // Supabase doesn't expose a direct "does this email exist" lookup on
-    // the client for security reasons, so we use signInWithOtp with
-    // shouldCreateUser: false — it succeeds silently if the email exists
-    // (without sending anything unexpected) and errors if it doesn't.
-    // This just tells us existence, nothing more.
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    });
-    // No error means an account with this email already exists.
-    return !!error; // true = available, false = already registered
+  const { data, error } = await supabase
+    .from('email_lookup')
+    .select('email')
+    .ilike('email', email.trim())
+    .maybeSingle();
+
+  if (error) {
+    console.error('checkEmailAvailable:', error.message);
+    return true; // fail open — register() still catches a real duplicate
   }
+
+  return !data; // true = available, false = already registered
+}
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -325,34 +327,29 @@ const SignUp = () => {
         extraScrollHeight={20}
         keyboardOpeningTime={0}
       >
-        {/*  Top bar: close/back + "Log in" (mirrors reference's X + Log in)  */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            onPress={handleBack}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialCommunityIcons
-              name={stepIndex === 0 ? 'close' : 'arrow-left'}
-              size={24}
-              color={COLORS.textPrimary}
-            />
-          </TouchableOpacity>
-          {stepIndex === 0 && (
+        {/*  Top bar: back navigation only on steps after the first.
+            The close (X) icon and "Log in" link that used to sit here on
+            step 0 are gone -- the centered logo below now occupies that
+            space instead. Back navigation is kept for steps 2-3, since
+            without it there'd be no way to return to a previous step. */}
+        {stepIndex > 0 && (
+          <View style={styles.topBar}>
             <TouchableOpacity
-              onPress={() => navigation.navigate('SignIn')}
+              onPress={handleBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={styles.topBarLogin}>Log in</Text>
+              <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
-          )}
-        </View>
-
-        {/*  Logo + wordmark  */}
-        <View style={styles.brandRow}>
-          <View style={styles.logoCircle}>
-            <MaterialCommunityIcons name="microscope" size={22} color={COLORS.primary} />
           </View>
-          <Text style={styles.brandText}>AidePoint</Text>
+        )}
+
+        {/*  Centered logo  */}
+        <View style={styles.brandRow}>
+          <Image
+            source={require('../assets/brand/logo-primary-teal.png')}
+            style={styles.brandLogoImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/*  Step icons with connecting line + labels  */}

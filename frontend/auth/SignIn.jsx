@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, StatusBar,
+  ActivityIndicator, StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -9,7 +9,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../assets/theme';
+import { COLORS, scale, vScale } from '../assets/theme';
 import { signInStyles as styles } from '../styles/SignInStyles';
 
 const SignIn = () => {
@@ -59,19 +59,20 @@ const SignIn = () => {
         extraScrollHeight={30}
         keyboardOpeningTime={0}
       >
-        {/* Curved header / log*/}
+        {/* Curved header / logo */}
         <View style={styles.headerSection}>
-          {/* PLACEHOLDER: replace this whole View with your logo Image
-              once you have the asset in /assets. Example:
-                <Image
-                  source={require('../assets/logo.png')}
-                  style={styles.logoImage}
-                />
-              Delete the MaterialCommunityIcons child below when you do. */}
           <View style={styles.logoCircle}>
-            <MaterialCommunityIcons name="microscope" size={34} color={COLORS.primary} />
+            <Image
+              source={require('../assets/brand/icon-teal.png')}
+              style={{ width: 44, height: 44 }}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.brandTitle}>AIDEPOINT</Text>
+          <Image
+            source={require('../assets/brand/wordmark-white.png')}
+            style={{ height: vScale(20), width: scale(110), marginTop: SPACING.sm }}
+            resizeMode="contain"
+          />
         </View>
 
         {/* White card */}
