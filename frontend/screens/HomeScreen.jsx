@@ -11,7 +11,8 @@ import { AuthContext } from '../context/AuthContext';
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import { supabase } from '../utils/supabase';
 import { homeStyles as styles } from '../styles/HomeStyles';
-import { COLORS } from '../assets/theme';
+import Header from '../components/Header';
+import { COLORS, HEADER } from '../assets/theme';
 
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
@@ -256,34 +257,32 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
 
-      {/*  Header  */}
-      <View style={styles.header}>
-        <View style={styles.profileRow}>
+      <Header
+        left={
           <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-  <View style={[styles.avatar, styles.avatarCircle]}>
-    {user?.avatarUrl ? (
-      <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
-    ) : (
-      <Text style={styles.avatarInitials}>{getInitial(displayName)}</Text>
-    )}
-  </View>
-</TouchableOpacity>
-          <View style={styles.greetingBlock}>
-            <Text style={styles.greeting} numberOfLines={1}>
-              {getGreeting()}, {displayName.split(' ')[0]}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRightRow}>
+            <View style={[styles.avatar, styles.avatarCircle]}>
+              {user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarInitials}>{getInitial(displayName)}</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        }
+        center={
+          <Text style={styles.greeting} numberOfLines={1}>
+            {getGreeting()}, {displayName.split(' ')[0]}
+          </Text>
+        }
+        right={
           <TouchableOpacity
             style={styles.notificationButton}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Ionicons name="notifications-outline" size={24} color={COLORS.textPrimary} />
+            <Ionicons name="notifications-outline" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
-        </View>
-      </View>
+        }
+      />
 
       {/*  Scrollable Content  */}
       <ScrollView
