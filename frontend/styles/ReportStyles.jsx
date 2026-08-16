@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale, HEADER } from '../assets/theme';
+import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale } from '../assets/theme';
 
 export const REPORT_LIST_BOTTOM_CLEARANCE = layout.tabBarHeight + SPACING.lg;
 
@@ -10,19 +10,6 @@ export const ReportStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
-header: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: COLORS.surface,
-  marginTop: SPACING.xs,
-  paddingHorizontal: SPACING.lg,
-  paddingVertical: SPACING.md,
-  marginBottom: SPACING.sm,
-  borderBottomWidth: 1,
-  borderBottomColor: COLORS.divider,
-},
 
   headerTitle: {
     fontSize: FONTS.xl,
