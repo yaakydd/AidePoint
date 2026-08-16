@@ -10,6 +10,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/NotificationStyles';
+import Header from '../components/Header';
+import { HEADER } from '../assets/theme';
 
 
 function iconFor(title = '') {
@@ -104,25 +106,27 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 ? (
-          <TouchableOpacity onPress={markAllRead} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.markAllText}>Mark all read</Text>
+      <Header
+        left={
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={HEADER.iconSize} color="#1F2937" />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 22 }} />
-        )}
-      </View>
+        }
+        center={<Text style={styles.headerTitle}>Notifications</Text>}
+        right={
+          unreadCount > 0 ? (
+            <TouchableOpacity onPress={markAllRead} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.markAllText}>Mark all read</Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      />
 
       {loading ? (
         <View style={styles.centerFill}>

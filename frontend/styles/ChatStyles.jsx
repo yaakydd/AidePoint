@@ -249,20 +249,6 @@ export const ChatStyles = StyleSheet.create({
     },
 
     // Base Chat Window Styling 
-    leftHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: SPACING.lg,
-        height: vScale(70),
-        backgroundColor: COLORS.surface,
-        ...SHADOWS.md,
-        zIndex: 10,
-    },
-    leftContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     titleLayout: {
         marginLeft: SPACING.md,
     },

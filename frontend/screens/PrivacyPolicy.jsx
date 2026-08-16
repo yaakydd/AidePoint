@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { COLORS } from '../assets/theme';
+import { COLORS, HEADER } from '../assets/theme';
 import { styles } from '../styles/PrivacyPolicyStyles';
+import Header from '../components/Header';
 
 const PLACEHOLDER_SECTIONS = [
   {
@@ -33,19 +34,20 @@ const PrivacyPolicy = () => {
   const navigation = useNavigation();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Privacy Policy</Text>
-        <View style={{ width: 22 }} />
-      </View>
+      <Header
+        left={
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={HEADER.iconSize} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        }
+        center={<Text style={styles.headerTitle}>Privacy Policy</Text>}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.lastUpdated}>Last updated: Not yet published</Text>

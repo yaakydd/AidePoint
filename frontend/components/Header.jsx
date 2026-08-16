@@ -24,6 +24,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: HEADER.borderBottomWidth,
     borderBottomColor: HEADER.borderBottomColor,
     ...HEADER.shadow,
+    zIndex: 20,
+    elevation: 20,
+    overflow: 'visible',
   },
 
   content: {

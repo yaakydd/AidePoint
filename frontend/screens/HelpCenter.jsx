@@ -7,8 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../assets/theme';
+import { COLORS, HEADER } from '../assets/theme';
 import { styles } from '../styles/HelpCenterStyles';
+import Header from '../components/Header';
 
 const FAQS = [
   {
@@ -69,19 +70,20 @@ const HelpCenter = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help Center</Text>
-        <View style={{ width: 22 }} />
-      </View>
+      <Header
+        left={
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={HEADER.iconSize} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        }
+        center={<Text style={styles.headerTitle}>Help Center</Text>}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 

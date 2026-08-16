@@ -5,16 +5,6 @@ import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale } from '../assets/theme'
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
   headerTitle: { fontSize: FONTS.lg, fontWeight: FONTS.bold, color: COLORS.textPrimary },
 
   scrollContent: { padding: SPACING.lg, paddingBottom: SPACING['4xl'] },

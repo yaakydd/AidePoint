@@ -8,6 +8,7 @@ import SignUp           from '../auth/SignUp';
 import VerifyEmail      from '../auth/VerifyEmail';
 import ForgotPassword   from '../auth/ForgotPassword';
 import SplashScreen from "../screens/SplashScreen";
+import PrivacyPolicyScreen from "../screens/PrivacyPolicy";
 
 const Stack = createNativeStackNavigator();
 const LAUNCHED_KEY = 'aidepoint_has_launched';
@@ -57,6 +58,14 @@ if (isFirstLaunch === null) {
       */}
       <Stack.Screen name="VerifyEmail" component={VerifyEmail} />
       <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+
+      {/*
+        Static legal screen with no auth dependency, so it's registered
+        here too (in addition to RootNavigator's APP-gated copy) so
+        SignUp/Onboarding's "Privacy Policy" link resolves before the
+        user has a session.
+      */}
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 }

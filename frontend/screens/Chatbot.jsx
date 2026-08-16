@@ -16,7 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from '@react-navigation/native';
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
-import { COLORS } from "../assets/theme";
+import { COLORS, HEADER } from "../assets/theme";
+import Header from "../components/Header";
 import { AuthContext } from "../context/AuthContext";
 import { sendToGemini } from "../utils/gemini";
 import {
@@ -225,28 +226,31 @@ const Chatbot = () => {
     const canSend = inputText.trim().length > 0 && !isSending && !limitReached;
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
 
-            {/* Fixed Header */}
-            <View style={styles.leftHeader}>
-                <View style={styles.leftContent}>
+            <Header
+                left={
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <MaterialIcons name="arrow-back" size={28} color={COLORS.primary} />
+                        <MaterialIcons name="arrow-back" size={HEADER.iconSize} color={COLORS.primary} />
                     </TouchableOpacity>
+                }
+                center={
                     <View style={styles.titleLayout}>
                         <Text style={styles.title}>AideBot AI</Text>
                         <Text style={styles.subTitle}>Lab Assistant Online</Text>
                     </View>
-                </View>
-                <View style={styles.headerIconsRight}>
-                    <TouchableOpacity onPress={() => setIsInfoVisible(true)}>
-                        <MaterialIcons name="info-outline" size={24} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setSidebarVisible(true)}>
-                        <MaterialIcons name="menu" size={24} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+                }
+                right={
+                    <View style={styles.headerIconsRight}>
+                        <TouchableOpacity onPress={() => setIsInfoVisible(true)}>
+                            <MaterialIcons name="info-outline" size={HEADER.iconSize} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setSidebarVisible(true)}>
+                            <MaterialIcons name="menu" size={HEADER.iconSize} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                }
+            />
 
             {/*  Outer Layout System */}
             <KeyboardAvoidingView

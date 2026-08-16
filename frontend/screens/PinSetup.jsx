@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, Animated,
   StyleSheet, Vibration, Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +10,8 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { savePin } from '../utils/reportPin';
 import { COLORS, FONTS, SPACING, RADIUS, scale, vScale } from '../assets/theme';
+import React from 'react';
+import { styles } from '../components/PinModal';
 
 const PIN_LENGTH = 4;
 const BACKSPACE_KEY = 'backspace';
@@ -117,9 +120,13 @@ const PinSetup = () => {
       )}
 
       <View style={styles.header}>
-        <View style={styles.iconWrap}>
-          <MaterialCommunityIcons name="shield-key-outline" size={scale(32)} color={COLORS.white} />
-        </View>
+          <View style={styles.iconWrap}>
+            <Image
+              source={require('../assets/brand/icon-white.png')}
+              style={{ width: scale(36), height: scale(36) }}
+              resizeMode="contain"
+            />
+          </View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>

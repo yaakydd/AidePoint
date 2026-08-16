@@ -194,7 +194,7 @@ export default function PinModal({ mode, userId, onSuccess }) {
 // design 1:1 , same iconWrap/dot/key sizing and spacing tokens , so
 // PIN creation (onboarding) and PIN verification/re-creation (Reports)
 // now look like the same product surface instead of two different ones.
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: COLORS.primary,
