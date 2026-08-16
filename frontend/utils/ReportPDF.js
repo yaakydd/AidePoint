@@ -160,6 +160,7 @@ const buildReportHtml = (report) => {
           display: flex; align-items: center; justify-content: center;
           font-size: 16px; flex-shrink: 0;
         }
+        .brand-logo-img { width: 36px; height: 36px; flex-shrink: 0; }
         .brand-wordmark { height: 17px; display: block; }
         .brand-name { font-size: 17px; font-weight: 700; }
         .brand-sub { font-size: 10px; color: #6B7C93; margin-top: 1px; }
@@ -211,6 +212,8 @@ const buildReportHtml = (report) => {
           margin-top: 20px; padding-top: 12px; border-top: 1px solid #EDF2F7;
           font-size: 9px; color: #9CA3AF; line-height: 1.6;
         }
+        .verified-by { margin-top: 20px; font-size: 11px; color: #6B7C93; }
+        .verified-line { margin-bottom: 2px; }
         .end-of-report {
           text-align: center; font-size: 10px; font-weight: 600;
           color: #6B7C93; letter-spacing: 1px; text-transform: uppercase;
@@ -259,9 +262,7 @@ const buildReportHtml = (report) => {
 
       <div class="divider"></div>
 
-      ${buildReliabilitySection(report.isUnreliable, report.unreliableReasons, report.imageQuality)}
-
-      <div class="section-bar">AI Analysis Result</div>
+      <div class="section-bar">Scan Analysis Results</div>
       <div class="result-statement">
         Based on the blood smear analysis, the screening result is:
         <strong>${escapeHtml(cfg.label)}</strong>. ${escapeHtml(cfg.morphology)}
@@ -294,6 +295,11 @@ const buildReportHtml = (report) => {
         laboratory measurements. Like any diagnostic aid, this result should not be used alone to make a
         final diagnosis; all available clinical and laboratory information should be considered before
         reaching a conclusion.
+      </div>
+
+      <div class="divider"></div>
+      <div class="verified-by">
+        <div class="verified-line">Reviewed by: <strong>${safeLabTechName}</strong></div>
       </div>
 
       <div class="end-of-report">End of Report</div>
