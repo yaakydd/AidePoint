@@ -9,7 +9,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS, scale, vScale } from '../assets/theme';
+import { COLORS, scale, vScale, SPACING } from '../assets/theme';
 import { signInStyles as styles } from '../styles/SignInStyles';
 
 const SignIn = () => {
@@ -64,13 +64,13 @@ const SignIn = () => {
           <View style={styles.logoCircle}>
             <Image
               source={require('../assets/brand/icon-teal.png')}
-              style={{ width: 44, height: 44 }}
+              style={{ width: scale(64), height: scale(64) }}
               resizeMode="contain"
             />
           </View>
           <Image
             source={require('../assets/brand/wordmark-white.png')}
-            style={{ height: vScale(20), width: scale(110), marginTop: SPACING.sm }}
+            style={{ height: vScale(28), width: scale(150), marginTop: SPACING.md }}
             resizeMode="contain"
           />
         </View>

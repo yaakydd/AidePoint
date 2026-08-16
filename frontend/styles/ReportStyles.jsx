@@ -135,11 +135,6 @@ cardRight: {
     color: COLORS.textMuted,
   },
 
-  cardRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-
   cardTime: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,

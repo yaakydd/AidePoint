@@ -199,18 +199,18 @@ def compute_severity_color(eccentricity: float, circularity: float) -> SeverityI
     signals disagreeing with each other.
     """
     # Scaled so severity == FLAG_BOUNDARY_SEVERITY exactly at the point a
-# cell would be flagged by run_shape_screening (ECCENTRICITY_LIMIT /
-# CIRCULARITY_FLOOR), matching TransparencyTrail.jsx's "unusual" bucket
-# floor (0.66) instead of maxing the gradient out at the flag line.
-        FLAG_BOUNDARY_SEVERITY = 0.66
+    # cell would be flagged by run_shape_screening (ECCENTRICITY_LIMIT /
+    # CIRCULARITY_FLOOR), matching TransparencyTrail.jsx's "unusual" bucket
+    # floor (0.66) instead of maxing the gradient out at the flag line.
+    FLAG_BOUNDARY_SEVERITY = 0.66
 
-        eccentricity_component = np.clip(
-            (eccentricity / ECCENTRICITY_LIMIT) * FLAG_BOUNDARY_SEVERITY, 0.0, 1.0
-        )
-        circularity_component = np.clip(
-            ((CIRCULARITY_FLOOR - circularity) / CIRCULARITY_FLOOR) * FLAG_BOUNDARY_SEVERITY, 0.0, 1.0
-        )
-        severity = float(np.clip(max(eccentricity_component, circularity_component), 0.0, 1.0))
+    eccentricity_component = np.clip(
+        (eccentricity / ECCENTRICITY_LIMIT) * FLAG_BOUNDARY_SEVERITY, 0.0, 1.0
+    )
+    circularity_component = np.clip(
+        ((CIRCULARITY_FLOOR - circularity) / CIRCULARITY_FLOOR) * FLAG_BOUNDARY_SEVERITY, 0.0, 1.0
+    )
+    severity = float(np.clip(max(eccentricity_component, circularity_component), 0.0, 1.0))
 
     if severity < 0.5:
         blend_ratio = severity / 0.5

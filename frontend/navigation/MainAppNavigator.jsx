@@ -9,6 +9,7 @@ import {
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
+import { COLORS } from "../assets/theme";
 import HomeScreen from "../screens/HomeScreen";
 import ScanScreenNavigator from "./ScanScreenNavigator"; // Scan has its OWN stack navigator
 import ReportScreen from "../screens/ReportScreen";
@@ -111,8 +112,8 @@ function MainAppNavigator() {
               <Ionicons
                 name={iconName}
                 size={24}
-                color={focused ? "#6200EE" : "#9CA3AF"}
-                // focused tab = purple, inactive = grey
+                color={focused ? COLORS.primaryDark : COLORS.textMuted}
+                // focused tab = brand teal (dark variant, for contrast against white), inactive = muted grey
               />
             );
           },
@@ -122,26 +123,18 @@ function MainAppNavigator() {
           Each Tab.Screen needs:
             name   = the route name used in navigation.navigate("Home")
             component = the screen to render when this tab is active
-            listeners = event handlers. tabPress fires when the user taps the tab.
+            listeners = event handlers.
 
-          We call animateTab(index) in the listener so the underline
-          moves when the user taps. The index matches the tab position: 0-4.
+          focus fires when this screen becomes active by ANY means
+          (tab press, programmatic navigation, deep link, etc.), so a
+          single focus listener is enough — no need for a separate
+          tabPress handler duplicating the same call.
         */}
-        <Tab.Screen name="Home" component={HomeScreen} listeners={{ tabPress: () => animateTab(0),   // focus fires when this screen becomes active by ANY means
-  // (tab press, programmatic navigation, deep link, etc.)
-  focus: () => animateTab(0)}} />
-        <Tab.Screen name="Scan" component={ScanScreenNavigator} listeners={{ tabPress: () => animateTab(1),   // focus fires when this screen becomes active by ANY means
-  // (tab press, programmatic navigation, deep link, etc.)
-  focus: () => animateTab(1)}} />
-        <Tab.Screen name="Report"  component={ReportScreen} listeners={{ tabPress: () => animateTab(2),   // focus fires when this screen becomes active by ANY means
-  // (tab press, programmatic navigation, deep link, etc.)
-  focus: () => animateTab(2)}} />
-        <Tab.Screen name="Chatbot" component={Chatbot} listeners={{ tabPress: () => animateTab(3),   // focus fires when this screen becomes active by ANY means
-  // (tab press, programmatic navigation, deep link, etc.)
-  focus: () => animateTab(3)}} />
-        <Tab.Screen name="Profile" component={ProfileScreen} listeners={{ tabPress: () => animateTab(4),   // focus fires when this screen becomes active by ANY means
-  // (tab press, programmatic navigation, deep link, etc.)
-  focus: () => animateTab(4)}} />
+        <Tab.Screen name="Home" component={HomeScreen} listeners={{ focus: () => animateTab(0) }} />
+        <Tab.Screen name="Scan" component={ScanScreenNavigator} listeners={{ focus: () => animateTab(1) }} />
+        <Tab.Screen name="Report" component={ReportScreen} listeners={{ focus: () => animateTab(2) }} />
+        <Tab.Screen name="Chatbot" component={Chatbot} listeners={{ focus: () => animateTab(3) }} />
+        <Tab.Screen name="Profile" component={ProfileScreen} listeners={{ focus: () => animateTab(4) }} />
       </Tab.Navigator>
 
       {/*
@@ -202,9 +195,9 @@ const styles = StyleSheet.create({
     height: TAB_BAR_HEIGHT,
     paddingTop: 10,
     paddingBottom: Platform.OS === "ios" ? 20 : 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderTopWidth: 0.5,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: COLORS.border,
     elevation: 10,          // Android shadow
     shadowColor: "#000",    // iOS shadow
     shadowOffset: { width: 0, height: -2 },
@@ -222,6 +215,6 @@ const styles = StyleSheet.create({
   indicator: {
     height: 3,
     borderRadius: 999,            // fully rounded pill shape
-    backgroundColor: "#6200EE",   // matches the focused icon colour
+    backgroundColor: COLORS.primaryDark,   // matches the focused icon colour
   },
 });

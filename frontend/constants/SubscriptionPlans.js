@@ -3,6 +3,7 @@ export const PLANS = {
     id: 'basic',
     label: 'Basic',
     price: 'Free',
+    comingSoon: false,
     // AideBot
     dailyChatLimit: 15,
     chatHistoryDays: 7,
@@ -24,6 +25,7 @@ export const PLANS = {
     id: 'max',
     label: 'Max',
     price: 'Mid-tier',
+    comingSoon: true,
     dailyChatLimit: 100,
     chatHistoryDays: 30,
     reportHistoryDays: 90,
@@ -45,6 +47,7 @@ export const PLANS = {
     id: 'pro',
     label: 'Pro',
     price: 'Top-tier',
+    comingSoon: true,
     dailyChatLimit: 500,
     chatHistoryDays: 365,
     reportHistoryDays: 365,

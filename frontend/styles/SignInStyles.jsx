@@ -23,8 +23,8 @@ export const signInStyles = StyleSheet.create({
   },
 
   logoCircle: {
-    width: scale(76),
-    height: scale(76),
+    width: scale(96),
+    height: scale(96),
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
     alignItems: 'center',
@@ -58,14 +58,14 @@ export const signInStyles = StyleSheet.create({
   },
 
   greetingTitle: {
-    fontSize: FONTS['2xl'],
+    fontSize: FONTS['3xl'],
     fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
     marginBottom: SPACING.xs,
   },
 
   greetingSubtitle: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.textMuted,
     marginBottom: SPACING['2xl'],
   },
@@ -82,7 +82,7 @@ export const signInStyles = StyleSheet.create({
 
   errorText: {
     color: COLORS.danger,
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     flex: 1,
   },
 
@@ -91,7 +91,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   inputLabel: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     fontWeight: FONTS.semibold,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
@@ -119,7 +119,7 @@ export const signInStyles = StyleSheet.create({
 
   textInput: {
     flex: 1,
-    fontSize: FONTS.md,
+    fontSize: FONTS.lg,
     color: COLORS.textPrimary,
   },
 
@@ -129,7 +129,7 @@ export const signInStyles = StyleSheet.create({
 
   fieldError: {
     color: COLORS.danger,
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     marginTop: SPACING.xs,
   },
 
@@ -140,7 +140,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   forgotText: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.primary,
     fontWeight: FONTS.semibold,
   },
@@ -162,7 +162,7 @@ export const signInStyles = StyleSheet.create({
 
   signInBtnText: {
     color: COLORS.white,
-    fontSize: FONTS.lg,
+    fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
     marginRight: SPACING.sm,
   },
@@ -173,7 +173,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   signUpText: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.textMuted,
   },
 

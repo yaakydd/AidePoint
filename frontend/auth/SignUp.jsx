@@ -136,28 +136,6 @@ const SignUp = () => {
     return () => clearTimeout(timeout);
   }, [hospitalQuery]);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const q = hospitalQuery.trim().toLowerCase();
-      if (!q) {
-        setFilteredList(hospitalList.slice(0, 20));
-        return;
-      }
-      const results = hospitalList.filter(
-        (item) =>
-          item.name?.toLowerCase().includes(q) ||
-          item.city?.toLowerCase().includes(q) ||
-          item.type?.toLowerCase().includes(q)
-      );
-      setFilteredList(results.slice(0, 30));
-    }, 150);
-
-    return () => {
-      alive = false;
-      clearTimeout(timeout);
-    };
-  }, [hospitalQuery]);
-
   const openModal = () => {
     Keyboard.dismiss();
     setShowCustomInput(false);

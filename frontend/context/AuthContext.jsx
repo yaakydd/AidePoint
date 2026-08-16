@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
         // (see suppressHydration comment above). ForgotPassword.js owns
         // this flag end-to-end.
         if (event === 'PASSWORD_RECOVERY' || suppressHydration.current) return;
-
+        if (event === 'INITIAL_SESSION') return;
         if (session?.user) {
           await hydrateUser(session, true);
         } else {

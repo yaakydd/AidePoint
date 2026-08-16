@@ -1,46 +1,50 @@
-  {
-    "expo": {
-      "name": "AidePoint",
-      "slug": "AidePoint",
-      "scheme": "aidepoint",
-      "version": "1.0.0",
-      "orientation": "portrait",
-      "icon": "./assets/icon.png",
-      "userInterfaceStyle": "light",
-      "splash": {
-        "image": "./assets/splash-icon.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff"
+{
+  "expo": {
+    "name": "AidePoint",
+    "slug": "AidePoint",
+    "scheme": "aidepoint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.aidepoint.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "ios": {
-        "supportsTablet": true
-      },
-      "android": {
-        "package": "com.aidepoint.app",
-        "adaptiveIcon": {
-          "backgroundColor": "#E6F4FE",
-          "foregroundImage": "./assets/android-icon-foreground.png",
-          "backgroundImage": "./assets/android-icon-background.png",
-          "monochromeImage": "./assets/android-icon-monochrome.png"
-        },
-        "permissions": [
-          "CAMERA",
-          "READ_EXTERNAL_STORAGE",
-          "WRITE_EXTERNAL_STORAGE"
-        ]
-      },
-      "web": {
-        "favicon": "./assets/favicon.png"
-      },
-      "plugins": [
-        "expo-font",
-        "expo-secure-store",
-        "expo-web-browser"
-      ],
-      "extra": {
-        "eas": {
-          "projectId": "1300091e-e1a7-4407-87eb-a92b161e97be"
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/icon-white.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#00CFE8"
         }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1300091e-e1a7-4407-87eb-a92b161e97be"
       }
     }
   }
+}

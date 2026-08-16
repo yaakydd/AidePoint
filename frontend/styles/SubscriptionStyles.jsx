@@ -34,6 +34,18 @@ export const styles = StyleSheet.create({
     padding: SPACING.lg + 2,
     marginBottom: SPACING.lg,
     position: 'relative',
+    ...SHADOWS.sm,
+  },
+
+  cardCurrent: {
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+    ...SHADOWS.md,
+  },
+
+  cardLocked: {
+    backgroundColor: COLORS.surfaceAlt,
+    opacity: 0.85,
   },
 
   currentBadge: {
@@ -43,8 +55,25 @@ export const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm + 2,
     paddingVertical: 4,
     borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
   },
   currentBadgeText: {
+    fontSize: 10,
+    fontWeight: FONTS.bold,
+    color: COLORS.white,
+    letterSpacing: 0.5,
+  },
+
+  comingSoonBadge: {
+    position: 'absolute',
+    top: -10,
+    right: SPACING.lg,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.textMuted,
+  },
+  comingSoonBadgeText: {
     fontSize: 10,
     fontWeight: FONTS.bold,
     color: COLORS.white,
@@ -63,9 +92,15 @@ export const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.primaryLight,
+  },
+  planIconLocked: {
+    backgroundColor: COLORS.border,
   },
   planName: { fontSize: FONTS.lg, fontWeight: FONTS.bold, color: COLORS.textPrimary },
-  planPrice: { fontSize: FONTS.sm, fontWeight: FONTS.semibold, marginTop: 1 },
+  planNameLocked: { color: COLORS.textSecondary },
+  planPrice: { fontSize: FONTS.sm, fontWeight: FONTS.semibold, marginTop: 1, color: COLORS.primaryDark },
+  planPriceLocked: { color: COLORS.textMuted },
 
   featureRow: {
     flexDirection: 'row',
@@ -74,6 +109,7 @@ export const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   featureText: { fontSize: FONTS.sm, color: COLORS.textPrimary, flex: 1 },
+  featureTextLocked: { color: COLORS.textMuted },
 
   actionBtn: {
     marginTop: SPACING.xs,
@@ -81,6 +117,7 @@ export const styles = StyleSheet.create({
     borderRadius: RADIUS.sm + 2,
     alignItems: 'center',
   },
+  actionBtnActive: { backgroundColor: COLORS.primary },
   actionBtnDisabled: { backgroundColor: COLORS.surfaceAlt },
   actionBtnText: { fontSize: FONTS.sm, fontWeight: FONTS.bold, color: COLORS.white },
   actionBtnTextDisabled: { color: COLORS.textMuted },

@@ -1,22 +1,7 @@
-// PIN entry / creation modal for the Reports screen.
-// Handles both "create PIN" (first time) and "enter PIN" (subsequent visits).
-// Supports biometric fallback where available.
-//
-// RESTYLED: now matches PinSetup.js's full-bleed brand-colour visual
-// design (white plain-text digit keys, no button chips/shadows, centered
-// dot progress) instead of the old white-background card with circular
-// shadowed keys. Functionality is unchanged , mode prop, biometric
-// fallback, failCount, and the Modal wrapper (needed here since, unlike
-// PinSetup.js, this renders on top of ReportScreen.js rather than as its
-// own full screen in the nav stack) all still work exactly as before.
-//
-// Usage in ReportScreen.js , see that file for the full wiring, including
-// the useFocusEffect that decides when to show this modal at all.
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, Animated,
-  StyleSheet, Modal, Vibration, Platform,
+  StyleSheet, Modal, Vibration, Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -141,7 +126,11 @@ export default function PinModal({ mode, userId, onSuccess }) {
 
         <View style={styles.header}>
           <View style={styles.iconWrap}>
-            <MaterialCommunityIcons name="lock-outline" size={scale(32)} color={COLORS.white} />
+            <Image
+              source={require('../assets/brand/icon-white.png')}
+              style={{ width: scale(36), height: scale(36) }}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>

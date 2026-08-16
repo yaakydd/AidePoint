@@ -21,30 +21,37 @@ export const styles = StyleSheet.create({
 identityBlock: {
   flexDirection: 'row',
   alignItems: 'center',
-  paddingTop: SPACING['2xl'],
-  paddingBottom: SPACING['2xl'],
-  paddingHorizontal: SPACING['2xl'],
-  backgroundColor: COLORS.background,   // was COLORS.surface
-  marginBottom: SPACING.md,
+  padding: SPACING.xl,
+  marginHorizontal: SPACING.lg,
+  marginTop: SPACING.lg,
+  marginBottom: SPACING.lg,
+  backgroundColor: COLORS.surface,
+  borderRadius: RADIUS.xl,
+  ...SHADOWS.sm,
 },
 avatarWrap: {
-  marginRight: SPACING.lg,              // was marginBottom: SPACING.lg
+  marginRight: SPACING.lg,
+},
+avatarRing: {
+  width: scale(84),
+  height: scale(84),
+  borderRadius: scale(42),
+  borderWidth: 2,
+  borderColor: COLORS.primaryLight,
+  justifyContent: 'center',
+  alignItems: 'center',
 },
 avatarCircle: {
-  width: scale(80),                     // slightly smaller — sits better next to text at row height
-  height: scale(80),
-  borderRadius: scale(40),
+  width: scale(74),
+  height: scale(74),
+  borderRadius: scale(37),
   backgroundColor: COLORS.primary,
   justifyContent: 'center',
   alignItems: 'center',
-  shadowColor: COLORS.primary,
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.3,
-  shadowRadius: 10,
-  elevation: 6,
+  ...SHADOWS.md,
 },
 avatarInitials: {
-  fontSize: FONTS.xl,                   // was FONTS['2xl'] — scaled down with the circle
+  fontSize: FONTS.xl,
   fontWeight: FONTS.bold,
   color: COLORS.white,
   letterSpacing: 1,
@@ -52,72 +59,70 @@ avatarInitials: {
 avatarImage: {
   width: '100%',
   height: '100%',
-  borderRadius: scale(40),
+  borderRadius: scale(37),
 },
 avatarBadge: {
   position: 'absolute',
-  bottom: 0,
+  bottom: -2,
   right: -2,
-  width: scale(22),
-  height: scale(22),
-  borderRadius: scale(11),
+  width: scale(24),
+  height: scale(24),
+  borderRadius: scale(12),
   backgroundColor: COLORS.primaryDark,
   justifyContent: 'center',
   alignItems: 'center',
   borderWidth: 2,
-  borderColor: COLORS.background,       // was COLORS.surface — matches new identityBlock bg so the ring reads clean
+  borderColor: COLORS.surface,
 },
 identityInfo: {
   flex: 1,
 },
 userName: {
-  fontSize: FONTS.xl,
+  fontSize: FONTS.lg,
   fontWeight: FONTS.bold,
   color: COLORS.textPrimary,
   marginBottom: 2,
-  textAlign: 'left',                    // was 'center'
 },
 userEmail: {
   fontSize: FONTS.sm,
   color: COLORS.textSecondary,
   marginBottom: SPACING.xs,
-  textAlign: 'left',                    // was 'center'
 },
 userRole: {
   fontSize: FONTS.xs,
   color: COLORS.textMuted,
   fontWeight: FONTS.medium,
-  marginBottom: SPACING.md,             // was SPACING.lg — tighter since the pill+button now wrap under it, not centered below everything
-  textAlign: 'left',                    // was 'center'
+  marginBottom: SPACING.sm,
+},
+identityMetaRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: SPACING.sm,
 },
 tierPill: {
   flexDirection: 'row',
   alignItems: 'center',
-  alignSelf: 'flex-start',              // new — was implicitly centered by the old column parent
   gap: SPACING.xs,
-  paddingHorizontal: SPACING.md,
-  paddingVertical: SPACING.xs,
+  paddingHorizontal: SPACING.sm + 2,
+  paddingVertical: 5,
   borderRadius: RADIUS.full,
   borderWidth: 1,
-  marginBottom: SPACING.md,             // was SPACING.lg
 },
 tierPillText: {
   fontSize: FONTS.xs,
   fontWeight: FONTS.bold,
 },
 manageBtn: {
-  alignSelf: 'flex-start',              // new — was implicitly centered
-  paddingHorizontal: SPACING.xl,
-  paddingVertical: SPACING.sm + 2,
+  paddingHorizontal: SPACING.md,
+  paddingVertical: 5,
   borderRadius: RADIUS.full,
-  borderWidth: 1.3,
-  borderColor: COLORS.border,
-  backgroundColor: COLORS.surfaceAlt,
+  backgroundColor: COLORS.primary,
+  ...SHADOWS.sm,
 },
 manageBtnText: {
-  fontSize: FONTS.sm,
-  fontWeight: FONTS.semibold,
-  color: COLORS.textPrimary,
+  fontSize: FONTS.xs,
+  fontWeight: FONTS.bold,
+  color: COLORS.white,
 },
 
   // Cards / sections

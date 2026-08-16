@@ -89,7 +89,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   stepIconLabel: {
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     color: COLORS.textMuted,
     marginTop: SPACING.xs,
     textAlign: 'center',
@@ -144,9 +144,9 @@ export const signupStyle = StyleSheet.create({
 
   privacyText: {
     flex: 1,
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     color: COLORS.textSecondary,
-    lineHeight: FONTS.xs * FONTS.normal,
+    lineHeight: FONTS.sm * FONTS.normal,
   },
 
   privacyLink: {
@@ -157,14 +157,14 @@ export const signupStyle = StyleSheet.create({
   //  Step title/subtitle 
 //  Step title/subtitle 
   stepTitle: {
-    fontSize: FONTS['2xl'],
+    fontSize: FONTS['3xl'],
     fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
     marginBottom: SPACING.xs,
   },
 
   stepSubtitle: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.textMuted,
     marginBottom: SPACING.lg,     // was 2xl
     lineHeight: FONTS.sm * FONTS.normal,
@@ -173,7 +173,7 @@ export const signupStyle = StyleSheet.create({
 
 //  Form 
   label: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     fontWeight: FONTS.semibold,
     color: COLORS.textSecondary,
     marginTop: SPACING.md,        // was lg
@@ -201,20 +201,20 @@ export const signupStyle = StyleSheet.create({
 
   input: {
     flex: 1,
-    fontSize: FONTS.md,
+    fontSize: FONTS.lg,
     color: COLORS.textPrimary,
   },
 
   fieldError: {
     color: COLORS.danger,
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     marginTop: SPACING.xs,
   },
 
   //  Hospital field (tappable, opens modal) 
   hospitalInputText: {
     flex: 1,
-    fontSize: FONTS.md,
+    fontSize: FONTS.lg,
     color: COLORS.textPrimary,
   },
 
@@ -237,7 +237,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   strengthHint: {
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     color: COLORS.textMuted,
     marginTop: SPACING.sm,
   },
@@ -254,7 +254,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   checkText: {
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
   },
 
   checkPass: {
@@ -286,7 +286,7 @@ export const signupStyle = StyleSheet.create({
 
   nextBtnText: {
     color: COLORS.white,
-    fontSize: FONTS.lg,
+    fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
     marginRight: SPACING.sm,
   },
@@ -302,7 +302,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   signinText: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.textMuted,
   },
 
@@ -324,7 +324,7 @@ export const signupStyle = StyleSheet.create({
 
   errorText: {
     color: COLORS.danger,
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     flex: 1,
   },
 
@@ -358,7 +358,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   modalTitle: {
-    fontSize: FONTS.md,
+    fontSize: FONTS.lg,
     fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
   },
@@ -378,7 +378,7 @@ export const signupStyle = StyleSheet.create({
 
   modalSearchInput: {
     flex: 1,
-    fontSize: FONTS.md,
+    fontSize: FONTS.lg,
     color: COLORS.textPrimary,
   },
 
@@ -390,13 +390,13 @@ export const signupStyle = StyleSheet.create({
   },
 
   listItemName: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     fontWeight: FONTS.medium,
     color: COLORS.textPrimary,
   },
 
   listItemCity: {
-    fontSize: FONTS.xs,
+    fontSize: FONTS.sm,
     color: COLORS.textMuted,
     marginTop: 2,
   },
@@ -410,7 +410,7 @@ export const signupStyle = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     color: COLORS.textMuted,
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     marginTop: SPACING['3xl'],
   },
 
@@ -421,7 +421,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   typePillText: {
-    fontSize: 10,
+    fontSize: xs,
     fontWeight: FONTS.semibold,
     textTransform: 'capitalize',
   },
@@ -437,7 +437,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   customLabel: {
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },
@@ -454,7 +454,7 @@ export const signupStyle = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
     color: COLORS.textPrimary,
     backgroundColor: COLORS.surface,
   },
@@ -473,6 +473,6 @@ export const signupStyle = StyleSheet.create({
   customConfirmText: {
     color: COLORS.white,
     fontWeight: FONTS.semibold,
-    fontSize: FONTS.sm,
+    fontSize: FONTS.md,
   },
 });
