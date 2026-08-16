@@ -3,6 +3,9 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { CONDITION_CONFIG } from './ReportUtils';
 
+
+const BRAND_WORDMARK_TEAL_BASE64 = 'PASTE_BASE64_HERE';
+
 const shouldShowProbabilityAndConfidence = (conditionKey) =>
   conditionKey === 'anemic' || conditionKey === 'healthy';
 
@@ -157,6 +160,7 @@ const buildReportHtml = (report) => {
           display: flex; align-items: center; justify-content: center;
           font-size: 16px; flex-shrink: 0;
         }
+        .brand-wordmark { height: 17px; display: block; }
         .brand-name { font-size: 17px; font-weight: 700; }
         .brand-sub { font-size: 10px; color: #6B7C93; margin-top: 1px; }
         .brand-contact { font-size: 9px; color: #9CA3AF; margin-top: 6px; line-height: 1.5; }
@@ -217,9 +221,9 @@ const buildReportHtml = (report) => {
     <body>
       <div class="letterhead">
         <div class="brand">
-          <div class="brand-logo">A</div>
+          
           <div>
-            <div class="brand-name">AidePoint</div>
+            <img class="brand-wordmark" src="data:image/png;base64,${BRAND_WORDMARK_TEAL_BASE64}" />
             <div class="brand-sub">AI-Assisted Blood Smear Screening Report</div>
             <div class="brand-contact">
               AI screening tool for anemia risk from red blood cell imagery<br/>
