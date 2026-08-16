@@ -286,7 +286,7 @@ const Scan = ({ navigation, route }) => {
         patientName: patientName.trim(),
         patientId: patientRow.id,
         condition: conditionKey,
-        confidence: prediction.explanation?.confidence ?? 'moderate',
+        confidence: prediction.anemia_probability,
         labTechName,
         image_url: storedImagePath,
         temperature: temperature.trim(),
