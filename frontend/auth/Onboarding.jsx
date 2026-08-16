@@ -7,7 +7,7 @@ import {
   Animated,
   Dimensions,
   StatusBar,
-  // Image, // unused until real photos are added back
+  Image,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -86,10 +86,11 @@ export default function Onboarding() {
 
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
-          <View style={styles.logoBadge}>
-            <MaterialCommunityIcons name="dna" size={scale(16)} color="#FFFFFF" />
-          </View>
-          <Text style={styles.logoText}>AidePoint</Text>
+          <Image
+            source={require('../assets/brand/logo-primary-teal.png')}
+            style={{ width: scale(130), height: scale(30) }}
+            resizeMode="contain"
+          />
         </View>
 
         {!isLastSlide && (
