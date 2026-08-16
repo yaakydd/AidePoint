@@ -9,7 +9,7 @@ import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../assets/theme';
+import { COLORS, scale, vScale } from '../assets/theme';
 import { signInStyles as styles } from '../styles/SignInStyles';
 
 const SignIn = () => {
@@ -68,7 +68,11 @@ const SignIn = () => {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.brandTitle}>AIDEPOINT</Text>
+          <Image
+            source={require('../assets/brand/wordmark-white.png')}
+            style={{ height: vScale(20), width: scale(110), marginTop: SPACING.sm }}
+            resizeMode="contain"
+          />
         </View>
 
         {/* White card */}
