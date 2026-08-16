@@ -368,7 +368,7 @@ const Scan = ({ navigation, route }) => {
         : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <Header
         left={
           <TouchableOpacity
