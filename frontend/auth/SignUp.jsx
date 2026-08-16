@@ -302,18 +302,19 @@ const SignUp = () => {
         : canProceedPassword;
 
   async function checkEmailAvailable(email) {
-    // Supabase doesn't expose a direct "does this email exist" lookup on
-    // the client for security reasons, so we use signInWithOtp with
-    // shouldCreateUser: false — it succeeds silently if the email exists
-    // (without sending anything unexpected) and errors if it doesn't.
-    // This just tells us existence, nothing more.
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    });
-    // No error means an account with this email already exists.
-    return !!error; // true = available, false = already registered
+  const { data, error } = await supabase
+    .from('email_lookup')
+    .select('email')
+    .ilike('email', email.trim())
+    .maybeSingle();
+
+  if (error) {
+    console.error('checkEmailAvailable:', error.message);
+    return true; // fail open — register() still catches a real duplicate
   }
+
+  return !data; // true = available, false = already registered
+}
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
