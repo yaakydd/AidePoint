@@ -421,7 +421,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   typePillText: {
-    fontSize: xs,
+    fontSize: FONTS.xs,
     fontWeight: FONTS.semibold,
     textTransform: 'capitalize',
   },
