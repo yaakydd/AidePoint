@@ -221,7 +221,7 @@ const buildReportHtml = (report) => {
     <body>
       <div class="letterhead">
         <div class="brand">
-          
+          <img class="brand-logo-img" src="data:image/png;base64,${BRAND_LOGO_ICON_BASE64}" />
           <div>
             <img class="brand-wordmark" src="data:image/png;base64,${BRAND_WORDMARK_TEAL_BASE64}" />
             <div class="brand-sub">AI-Assisted Blood Smear Screening Report</div>
