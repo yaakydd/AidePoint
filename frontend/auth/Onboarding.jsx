@@ -24,22 +24,28 @@ const ONBOARDING_KEY = "aidepoint_has_launched";
 const SLIDES = [
   {
     id: "1",
-    // image: require("../assets/onboarding/microscope-capture.jpg"),
+    image: require("../assets/onboarding/microscope-capture.png"),
     accent: "#0EA5E9",
+    stepLabel: "Step 1 \u00b7 Capture",
+    stepIcon: "camera",
     title: "Scan the smear",
     description: "Photograph a blood smear on the microscope. That's it.",
   },
   {
     id: "2",
-    // image: require("../assets/onboarding/microscope-results.jpg"),
+    image: require("../assets/onboarding/microscope-results.png"),
     accent: "#10B981",
+    stepLabel: "Step 2 \u00b7 Analyze",
+    stepIcon: "chart-line",
     title: "Get results instantly",
     description: "Anemia risk and a full CBC read, in seconds.",
   },
   {
     id: "3",
-    // image: require("../assets/onboarding/patient-reports.jpg"),
+    image: require("../assets/onboarding/patient-reports.png"),
     accent: "#6366F1",
+    stepLabel: "Step 3 \u00b7 Save",
+    stepIcon: "folder",
     title: "Every report saved",
     description: "Every scan is saved and searchable by patient.",
   },
@@ -109,18 +115,49 @@ export default function Onboarding() {
       <Animated.FlatList
         ref={flatListRef}
         data={SLIDES}
-        renderItem={({ item }) => (
-          <View style={[styles.slide, { width }]}>
-            <View style={styles.photoFrame}>
-              {/* Placeholder tinted block instead of <Image /> */}
-              <View style={[styles.photo, { backgroundColor: `${item.accent}22` }]} />
-              <View style={[styles.photoAccentBar, { backgroundColor: item.accent }]} />
-            </View>
+        renderItem={({ item, index }) => {
+          const inputRange = [
+            (index - 1) * width,
+            index * width,
+            (index + 1) * width,
+          ];
 
-            <Text style={styles.slideTitle}>{item.title}</Text>
-            <Text style={styles.slideDescription}>{item.description}</Text>
-          </View>
-        )}
+          const cardScale = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.88, 1, 0.88],
+            extrapolate: "clamp",
+          });
+
+          const cardOpacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.5, 1, 0.5],
+            extrapolate: "clamp",
+          });
+
+          return (
+            <View style={[styles.slide, { width }]}>
+              <Animated.View
+                style={[
+                  styles.photoFrame,
+                  { transform: [{ scale: cardScale }], opacity: cardOpacity },
+                ]}
+              >
+                <View style={[styles.photoGlow, { backgroundColor: `${item.accent}22` }]} />
+                <View style={styles.photoInner}>
+                  <Image source={item.image} style={styles.photo} resizeMode="contain" />
+                </View>
+              </Animated.View>
+
+              <View style={[styles.stepBadge, { backgroundColor: `${item.accent}22` }]}>
+                <MaterialCommunityIcons name={item.stepIcon} size={13} color={item.accent} />
+                <Text style={[styles.stepBadgeText, { color: item.accent }]}>{item.stepLabel}</Text>
+              </View>
+
+              <Text style={styles.slideTitle}>{item.title}</Text>
+              <Text style={styles.slideDescription}>{item.description}</Text>
+            </View>
+          );
+        }}
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
