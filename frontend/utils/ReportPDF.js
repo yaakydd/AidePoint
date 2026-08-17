@@ -1,10 +1,29 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Asset } from 'expo-asset';
 import { CONDITION_CONFIG } from './ReportUtils';
 
+// ── Brand images, loaded from disk the first time a PDF is exported ──
+// (cached after that so repeat exports don't re-read from disk every time)
+let cachedLogoBase64 = null;
+let cachedWordmarkBase64 = null;
 
-const BRAND_WORDMARK_TEAL_BASE64 = 'PASTE_BASE64_HERE';
+async function loadBrandImages() {
+  if (cachedLogoBase64 && cachedWordmarkBase64) return;
+
+  const logoAsset = Asset.fromModule(require('../assets/brand/icon-white.png'));
+  const wordmarkAsset = Asset.fromModule(require('../assets/brand/wordmark-teal.png'));
+  await Promise.all([logoAsset.downloadAsync(), wordmarkAsset.downloadAsync()]);
+
+  const [logoBase64, wordmarkBase64] = await Promise.all([
+    FileSystem.readAsStringAsync(logoAsset.localUri, { encoding: FileSystem.EncodingType.Base64 }),
+    FileSystem.readAsStringAsync(wordmarkAsset.localUri, { encoding: FileSystem.EncodingType.Base64 }),
+  ]);
+
+  cachedLogoBase64 = logoBase64;
+  cachedWordmarkBase64 = wordmarkBase64;
+}
 
 const shouldShowProbabilityAndConfidence = (conditionKey) =>
   conditionKey === 'anemic' || conditionKey === 'healthy';
@@ -38,9 +57,6 @@ const buildMorphologySection = (morphologyFindings) => {
       <div class="note-text">No abnormal morphology flags detected above the reporting threshold.</div>`;
   }
 
-  // Flag names come from MORPHOLOGY_KEYS on the backend (a fixed list),
-  // not user input -- no escaping needed here, but keeping the
-  // replace(/_/g, ' ') formatting as-is.
   const items = flaggedEntries
     .map(([flagName]) => `<li>${flagName.replace(/_/g, ' ')}</li>`)
     .join('');
@@ -54,8 +70,6 @@ const buildCbcSection = (cbcPatternSummary) => {
   const entries = Object.entries(cbcPatternSummary ?? {});
   if (entries.length === 0) return '';
 
-  // fieldName/display_text come from fixed backend config
-  // (CBC_KEYS / cbc_uncertainty.py), not user input.
   const rows = entries
     .map(([fieldName, fieldData]) => row(
       fieldName.toUpperCase(),
@@ -81,10 +95,6 @@ const buildReliabilitySection = (isUnreliable, unreliableReasons, imageQuality) 
 
   if (!isUnreliable && imageQuality?.quality_score !== 'poor') return '';
 
-  // Reasons are backend-generated diagnostic strings (from
-  // quality_checks.py / shape_screening.py), not user input -- no
-  // escaping needed, but left defensively safe since these do get
-  // embedded as list items.
   const items = reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('');
 
   return `
@@ -95,8 +105,6 @@ const buildReliabilitySection = (isUnreliable, unreliableReasons, imageQuality) 
 };
 
 const buildTechnicianNotesSection = (report) => {
-  // labTechName and labTechNotes are both technician-entered --
-  // row() already escapes both label and value.
   const rows = [
     row('Lab Technician', report.labTechName),
     row('Notes', report.labTechNotes || 'No notes recorded'),
@@ -107,7 +115,9 @@ const buildTechnicianNotesSection = (report) => {
     <table>${rows}</table>`;
 };
 
-const buildReportHtml = (report) => {
+// ── logoBase64 / wordmarkBase64 are now passed in as arguments, ──
+// ── instead of being read from hardcoded module-level constants ──
+const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
   const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
   const showProbabilityConfidence = shouldShowProbabilityAndConfidence(report.condition);
   const confidencePct = typeof report.confidence === 'number'
@@ -120,10 +130,6 @@ const buildReportHtml = (report) => {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
 
-  // Pre-escape every user-supplied field once, up front, rather than
-  // scattering escapeHtml(...) calls through the template below --
-  // keeps the template itself readable and makes it obvious at a glance
-  // which fields have been sanitized.
   const safePatientName = escapeHtml(report.patientName) ?? '—';
   const safePatientId = escapeHtml(report.patientId) ?? '—';
   const safeLabTechName = escapeHtml(report.labTechName) ?? '—';
@@ -160,7 +166,7 @@ const buildReportHtml = (report) => {
           display: flex; align-items: center; justify-content: center;
           font-size: 16px; flex-shrink: 0;
         }
-        .brand-logo-img { width: 36px; height: 36px; flex-shrink: 0; }
+        .brand-logo-img { width: 36px; height: 36px; flex-shrink: 0; border-radius: 8px; background: #00CFE8; padding: 6px; }
         .brand-wordmark { height: 17px; display: block; }
         .brand-name { font-size: 17px; font-weight: 700; }
         .brand-sub { font-size: 10px; color: #6B7C93; margin-top: 1px; }
@@ -224,9 +230,9 @@ const buildReportHtml = (report) => {
     <body>
       <div class="letterhead">
         <div class="brand">
-          <img class="brand-logo-img" src="data:image/png;base64,${BRAND_LOGO_ICON_BASE64}" />
+          <img class="brand-logo-img" src="data:image/png;base64,${logoBase64}" />
           <div>
-            <img class="brand-wordmark" src="data:image/png;base64,${BRAND_WORDMARK_TEAL_BASE64}" />
+            <img class="brand-wordmark" src="data:image/png;base64,${wordmarkBase64}" />
             <div class="brand-sub">AI-Assisted Blood Smear Screening Report</div>
             <div class="brand-contact">
               AI screening tool for anemia risk from red blood cell imagery<br/>
@@ -316,7 +322,9 @@ const sanitizeFileName = (name) => {
 };
 
 export const exportReportAsPdf = async (report) => {
-  const html = buildReportHtml(report);
+  await loadBrandImages();
+
+  const html = buildReportHtml(report, cachedLogoBase64, cachedWordmarkBase64);
   const { uri } = await Print.printToFileAsync({ html });
 
   const safeName = sanitizeFileName(report.patientName);
