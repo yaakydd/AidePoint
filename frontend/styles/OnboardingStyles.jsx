@@ -43,7 +43,6 @@ export const styles = StyleSheet.create({
     fontWeight: FONTS.medium,
   },
 
-  // Progress bar
   progressTrack: {
     height: 3,
     backgroundColor: COLORS.divider,
@@ -63,52 +62,80 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Photo frame: full slide width (minus the slide's own horizontal
-  // padding), fixed 4:3 aspect ratio via aspectRatio rather than a
-  // hardcoded height, so it scales correctly across every device width
-  // instead of relying on one baseline pixel value. resizeMode="cover"
-  // on the Image inside crops to fill this exact box.
+  // Photo frame: soft accent-tinted glow behind a smaller inset card
+  // holding the illustration, rather than one flat edge-to-edge box.
+  // Scale/opacity are animated per-slide from Onboarding.jsx based on
+  // scrollX, so the active slide's card sits at full size/opacity and
+  // neighbors shrink and fade slightly as you swipe past them.
   photoFrame: {
     width: "100%",
     aspectRatio: 4 / 3,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scale(20),
+  },
+
+  photoGlow: {
+    position: "absolute",
+    width: "78%",
+    height: "78%",
+    borderRadius: 9999,
+  },
+
+  photoInner: {
+    width: "58%",
+    height: "58%",
     borderRadius: RADIUS.xl,
-    overflow: "hidden",
     backgroundColor: COLORS.surfaceAlt,
-    marginBottom: scale(36),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     ...SHADOWS.md,
   },
 
   photo: {
-    width: "100%",
-    height: "100%",
+    width: "70%",
+    height: "70%",
   },
 
-  // Thin accent bar under the photo, colored per-slide to tie the image
-  // back to the active progress/navigator color.
-  photoAccentBar: {
-    height: scale(4),
-    width: "100%",
+  // Small pill badge above the title, replacing the old flat accent bar.
+  // Ties the slide's accent color to a meaning (step + action) instead
+  // of being purely decorative.
+  stepBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: RADIUS.full,
+    marginBottom: SPACING.sm,
+  },
+
+  stepBadgeText: {
+    fontSize: FONTS.xs,
+    fontWeight: FONTS.medium,
   },
 
   slideTitle: {
     fontSize: FONTS["2xl"],
     fontWeight: FONTS.bold,
-    textAlign: "center",
+    textAlign: "left",
+    alignSelf: "flex-start",
     marginBottom: SPACING.md,
     color: COLORS.textPrimary,
   },
 
   slideDescription: {
     fontSize: FONTS.md,
-    textAlign: "center",
+    textAlign: "left",
+    alignSelf: "flex-start",
     color: COLORS.textSecondary,
     lineHeight: scale(22),
-    paddingHorizontal: scale(6),
   },
 
-  // Enlarged pill-style page navigator, replacing the old small dots --
-  // bigger hit target, bigger visual weight, active pill grows into a
-  // wide pill rather than just a slightly bigger dot.
   navigatorRow: {
     flexDirection: "row",
     justifyContent: "center",
