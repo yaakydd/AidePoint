@@ -1,11 +1,3 @@
-// utils/api.js
-//
-// Talks to the backend running locally during development
-// (uvicorn main:app --reload), and later to the deployed
-// Hugging Face Spaces backend once that's live.
-//
-// EXPO_PUBLIC_API_URL in .env controls which one it hits.
-
 import { supabase } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
