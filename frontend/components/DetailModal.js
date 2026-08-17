@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Image, useWindowDimensions } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
-import { CONDITION_CONFIG, updateReportNotes } from '../utils/ReportUtils';
+import { CONDITION_CONFIG, updateReportNotes, computeSeverityBreakdown } from '../utils/ReportUtils';
 import { exportReportAsPdf } from '../utils/ReportPDF';
+import CellOverlay from './CellOverlay';
 import { COLORS, SPACING, FONTS, RADIUS, scale, vScale } from '../assets/theme';
 
 function getRecommendation(conditionKey, isUnreliable) {
@@ -20,9 +21,35 @@ function getRecommendation(conditionKey, isUnreliable) {
   return 'No anemia pattern detected in this sample. No immediate action needed based on this screening alone; continue routine care and re-screen if the patient becomes symptomatic.';
 }
 
-
 function shouldShowProbabilityAndConfidence(conditionKey) {
   return conditionKey === 'anemic' || conditionKey === 'healthy';
+}
+
+function ReportImageWithOverlay({ imageUri, cellOverlay, showOverlay }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const displaySize = screenWidth - SPACING['2xl'] * 2;
+
+  if (!imageUri) return null;
+
+  return (
+    <View style={{ width: displaySize, height: displaySize, marginBottom: SPACING.sm }}>
+      <Image
+        source={{ uri: imageUri }}
+        style={{ width: displaySize, height: displaySize, borderRadius: RADIUS.md }}
+        resizeMode="cover"
+      />
+      {showOverlay && cellOverlay?.cells?.length > 0 && (
+        <CellOverlay
+          cellOverlay={cellOverlay}
+          displayWidth={displaySize}
+          displayHeight={displaySize}
+          showAllCells
+          minimumSeverityToDraw={0}
+          maximumSeverityToDraw={1.001}
+        />
+      )}
+    </View>
+  );
 }
 
 export default function DetailModal({ report, visible, onClose, onNotesSaved, userId }) {
@@ -30,12 +57,15 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
   const [notesDraft, setNotesDraft] = useState(report?.labTechNotes ?? '');
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSavedAt, setNotesSavedAt] = useState(null);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [selectedSeverityBand, setSelectedSeverityBand] = useState(null);
 
   const [openedReportId, setOpenedReportId] = useState(report?.id ?? null);
   if (report && report.id !== openedReportId) {
     setOpenedReportId(report.id);
     setNotesDraft(report.labTechNotes ?? '');
     setNotesSavedAt(null);
+    setSelectedSeverityBand(null);
   }
 
   if (!report) return null;
@@ -49,6 +79,9 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
   const morphologyEntries = Object.entries(report.morphologyFindings ?? {})
     .filter(function (entry) { return entry[1] && entry[1].flagged === true; });
   const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
+
+  const hasCellOverlay = report.cellOverlay?.cells?.length > 0;
+  const severityBreakdown = hasCellOverlay ? computeSeverityBreakdown(report.cellOverlay.cells) : [];
 
   const recommendationText = getRecommendation(report.condition, report.isUnreliable);
 
@@ -145,6 +178,63 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
               <Text style={[styles.resultBannerValue, { color: cfg.badgeText }]}>{cfg.label}</Text>
               <Text style={[styles.resultBannerMorphology, { color: cfg.badgeText }]}>{cfg.morphology}</Text>
             </View>
+
+            {report.imageUri ? (
+              <View style={{ alignItems: 'center', marginTop: SPACING.md }}>
+                <ReportImageWithOverlay
+                  imageUri={report.imageUri}
+                  cellOverlay={report.cellOverlay}
+                  showOverlay={showOverlay}
+                />
+                {hasCellOverlay && (
+                  <TouchableOpacity
+                    onPress={() => setShowOverlay((v) => !v)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 4,
+                      backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.sm,
+                      paddingHorizontal: SPACING.sm + 2, paddingVertical: 6, marginBottom: SPACING.sm,
+                    }}
+                  >
+                    <MaterialIcons name={showOverlay ? 'visibility-off' : 'visibility'} size={16} color={COLORS.primary} />
+                    <Text style={{ fontSize: FONTS.xs, color: COLORS.primary, fontWeight: FONTS.semibold }}>
+                      {showOverlay ? 'Hide cell overlay' : 'Show cell overlay'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
+
+            {hasCellOverlay ? (
+              <View>
+                <Text style={styles.sectionHeading}>Cell Shape Breakdown</Text>
+                <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: SPACING.xs }}>
+                  {report.cellOverlay.cell_count} cells detected, {report.cellOverlay.flagged_count} flagged for unusual shape
+                </Text>
+                {severityBreakdown.map(function (bucket) {
+                  const isSelected = selectedSeverityBand === bucket.key;
+                  return (
+                    <TouchableOpacity
+                      key={bucket.key}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', paddingVertical: 6,
+                        backgroundColor: isSelected ? COLORS.surfaceAlt : 'transparent',
+                        borderRadius: RADIUS.sm,
+                      }}
+                      onPress={() => setSelectedSeverityBand(isSelected ? null : bucket.key)}
+                      disabled={bucket.count === 0}
+                    >
+                      <View style={{ width: 14, height: 14, borderRadius: 4, marginRight: SPACING.sm, backgroundColor: bucket.color }} />
+                      <Text style={{ flex: 1, fontSize: FONTS.sm, color: bucket.count === 0 ? COLORS.textMuted : COLORS.textPrimary }}>
+                        {bucket.label}
+                      </Text>
+                      <Text style={{ fontSize: FONTS.sm, fontWeight: FONTS.semibold, color: COLORS.textSecondary }}>
+                        {bucket.count} cell{bucket.count !== 1 ? 's' : ''} ({bucket.percent}%)
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
 
             <Text style={styles.sectionHeading}>AI Analysis</Text>
             {showProbabilityConfidence ? (
@@ -251,9 +341,6 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
               <Text style={styles.detailLabel}>Lab Technician</Text>
               <Text style={styles.detailValue}>{report.labTechName ?? '\u2014'}</Text>
             </View>
-            <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.detailLabel}>Reviewing Doctor</Text>
-            </View>
 
             <View style={styles.exportRow}>
               <TouchableOpacity style={styles.exportBtn} onPress={handleExportPdf} disabled={exporting}>
@@ -301,4 +388,4 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
       </View>
     </Modal>
   );
-}
+         }
