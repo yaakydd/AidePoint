@@ -287,7 +287,15 @@ const Scan = ({ navigation, route }) => {
         patientName: patientName.trim(),
         patientId: patientRow.id,
         condition: conditionKey,
-        confidence: prediction.explanation?.confidence ?? 'moderate',
+        // FIXED: was `prediction.explanation?.confidence ?? 'moderate'`, which
+        // stores the confidence TIER STRING ('high'/'moderate'/'low') into a
+        // field DetailModal/ReportPDF only ever render as a number-formatted
+        // percentage. That meant the real probability was silently dropped
+        // and the saved report could never show a percentage, only ever the
+        // string fallback dash. Store the actual number here, and keep the
+        // tier string in its own field alongside it.
+        confidence: prediction.anemia_probability,
+        confidenceLabel: prediction.explanation?.confidence ?? 'moderate',
         labTechName,
         image_url: storedImagePath,
         temperature: temperature.trim(),
@@ -297,6 +305,12 @@ const Scan = ({ navigation, route }) => {
         isUnreliable: prediction.is_unreliable,
         unreliableReasons: prediction.unreliable_reasons,
         imageQuality: prediction.image_quality,
+        // FIXED: cell_overlay (per-cell shape/severity data used for the
+        // "normal cells" breakdown and the drawn overlay) was never passed
+        // through at all, so it existed only for the lifetime of the
+        // TransparencyTrail screen and was gone by the time anyone opened
+        // the saved report later.
+        cellOverlay: prediction.cell_overlay,
         scanId,
       });
 
