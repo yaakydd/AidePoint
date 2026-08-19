@@ -660,5 +660,118 @@ usageBanner: {
     right: SPACING.xl,
     zIndex: 99,
   },
+    overlay: {
+    flex: 1,
+    backgroundColor:
+      'rgba(26,35,50,0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal:
+      SPACING.xl,
+  },
+
+  card: {
+    width: '100%',
+    maxWidth: scale(350),
+    backgroundColor:
+      COLORS.surface,
+    borderRadius:
+      RADIUS['2xl'],
+    paddingHorizontal:
+      SPACING.xl,
+    paddingVertical:
+      SPACING['2xl'],
+    alignItems: 'center',
+    ...SHADOWS.lg,
+  },
+
+  iconOuter: {
+    width: scale(78),
+    height: scale(78),
+    borderRadius:
+      RADIUS.full,
+    backgroundColor:
+      COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom:
+      SPACING.lg,
+    borderWidth: 1,
+    borderColor:
+      COLORS.primary,
+  },
+
+  title: {
+    fontFamily:
+      FONTS.family.bold,
+    fontSize:
+      FONTS.xl,
+    color:
+      COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom:
+      SPACING.sm,
+  },
+
+  description: {
+    fontFamily:
+      FONTS.family.regular,
+    fontSize:
+      FONTS.sm,
+    lineHeight:
+      FONTS.sm * FONTS.normal,
+    color:
+      COLORS.textSecondary,
+    textAlign: 'center',
+    maxWidth: scale(285),
+    marginBottom:
+      SPACING.xl,
+  },
+
+  stageBox: {
+    width: '100%',
+    minHeight: scale(48),
+    borderRadius:
+      RADIUS.md,
+    backgroundColor:
+      COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor:
+      COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal:
+      SPACING.md,
+    marginBottom:
+      SPACING.lg,
+  },
+
+  stageText: {
+    flex: 1,
+    marginLeft:
+      SPACING.sm,
+    fontFamily:
+      FONTS.family.medium,
+    fontSize:
+      FONTS.sm,
+    color:
+      COLORS.textPrimary,
+  },
+
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  infoText: {
+    marginLeft:
+      SPACING.xs,
+    fontFamily:
+      FONTS.family.medium,
+    fontSize:
+      FONTS.xs,
+    color:
+      COLORS.textSecondary,
 
 });
