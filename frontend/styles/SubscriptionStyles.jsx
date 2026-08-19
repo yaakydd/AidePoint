@@ -1,13 +1,20 @@
-// styles/SubscriptionStyles.js
 import { StyleSheet } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, scale } from '../assets/theme';
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
 
-  headerTitle: { fontSize: FONTS.lg, fontWeight: FONTS.bold, color: COLORS.textPrimary },
+  headerTitle: { 
+    fontSize: FONTS.xl, 
+    fontWeight: FONTS.bold, 
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+  },
 
-  scrollContent: { padding: SPACING.lg, paddingBottom: SPACING['4xl'] },
+  scrollContent: { 
+    padding: SPACING.lg, 
+    paddingBottom: SPACING['4xl'] 
+  },
 
   intro: {
     fontSize: FONTS.sm,

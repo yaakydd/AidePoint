@@ -43,8 +43,8 @@ export const homeStyles = StyleSheet.create({
   },
 
   avatar: {
-    width: 48,
-    height: 48,
+    width: 45,
+    height: 45,
     borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",

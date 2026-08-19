@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, Alert, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, Feather,  MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
@@ -33,13 +33,9 @@ export default function SubscriptionScreen() {
 
   function handleUpgrade(plan) {
     if (plan.id === currentPlan?.id || plan.comingSoon) return;
-
-    // TODO: hook this up to a real payment flow (mobile money most likely)
-    // once that's built. For now this is just a placeholder so the button
-    // isn't dead — don't ship this Alert to real users.
     Alert.alert(
       `Switch to ${plan.label}`,
-      `Payments aren't set up yet — for now, reach out to support to change your plan to ${plan.label}.`,
+      `Payments aren't set up yet, for now, reach out to support to change your plan to ${plan.label}.`,
       [{ text: 'OK' }],
     );
   }
@@ -54,7 +50,7 @@ export default function SubscriptionScreen() {
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={HEADER.iconSize} color={COLORS.textPrimary} />
+            <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
         }
         center={<Text style={styles.headerTitle}>Subscription</Text>}

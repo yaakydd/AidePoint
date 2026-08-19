@@ -19,7 +19,7 @@ import { clearReports } from '../utils/ReportUtils';
 import { clearAllSessions } from '../utils/chatstorage';
 import { MaterialIcons } from '@expo/vector-icons';
 import Header from '../components/Header';
-import { HEADER } from '../assets/theme';
+import { HEADER, COLORS } from '../assets/theme';
 
 const AVATAR_BUCKET = 'avatars';
 
@@ -221,7 +221,7 @@ async function handleToggle(newValue) {
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={HEADER.iconSize} color="#1F2937" />
+            <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
         }
         center={<Text style={styles.headerTitle}>Account</Text>}

@@ -4,8 +4,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 import { CONDITION_CONFIG } from './ReportUtils';
 
-// ── Brand images, loaded from disk the first time a PDF is exported ──
-// (cached after that so repeat exports don't re-read from disk every time)
 let cachedLogoBase64 = null;
 let cachedWordmarkBase64 = null;
 
@@ -80,7 +78,7 @@ const buildCbcSection = (cbcPatternSummary) => {
   return `
     <div class="section-bar">Estimated Hematological Pattern</div>
     <div class="note-text">
-      Image-based estimates only, covering RBC / Haemoglobin / Haematocrit / MCV / MCH / MCHC --
+      Image-based estimates only, covering RBC / Haemoglobin / Haematocrit / MCV / MCH / MCHC ,
       not a full laboratory CBC panel and not laboratory measurements. Confirm with laboratory CBC
       testing before relying on these values.
     </div>
@@ -115,8 +113,6 @@ const buildTechnicianNotesSection = (report) => {
     <table>${rows}</table>`;
 };
 
-// ── logoBase64 / wordmarkBase64 are now passed in as arguments, ──
-// ── instead of being read from hardcoded module-level constants ──
 const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
   const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
   const showProbabilityConfidence = shouldShowProbabilityAndConfidence(report.condition);
@@ -296,7 +292,7 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
       <div class="footer">
         <strong>Important Note:</strong> This is an AI-assisted screening result, not a laboratory
         diagnostic report. It reflects anemia risk only, based on hemoglobin-related patterns in red
-        blood cells -- it does not screen for malaria, sickle cell disease, or other blood conditions.
+        blood cells , it does not screen for malaria, sickle cell disease, or other blood conditions.
         Estimated hematological values above are rough, directional, image-based estimates and are not
         laboratory measurements. Like any diagnostic aid, this result should not be used alone to make a
         final diagnosis; all available clinical and laboratory information should be considered before

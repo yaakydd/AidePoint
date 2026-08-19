@@ -9,8 +9,9 @@ export const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: FONTS.xl,
-    fontFamily: FONTS.family.bold,
+    fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
+    textAlign: 'center',
   },
 
   scrollContent: {
@@ -19,7 +20,7 @@ export const styles = StyleSheet.create({
     paddingBottom: layout.tabBarHeight + SPACING.xl,
   },
 
-  // ── Intro banner ──
+ 
   introCard: {
     flexDirection: 'row',
     alignItems: 'center',

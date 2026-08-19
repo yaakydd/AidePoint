@@ -4,14 +4,14 @@ import {
   StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { styles } from '../styles/NotificationStyles';
 import Header from '../components/Header';
-import { HEADER } from '../assets/theme';
+import { HEADER, COLORS } from '../assets/theme';
 
 
 function iconFor(title = '') {
@@ -47,7 +47,7 @@ export default function NotificationsScreen() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(40);
 
     if (!error) setNotifications(data ?? []);
     setLoading(false);
@@ -93,7 +93,7 @@ export default function NotificationsScreen() {
         onPress={() => markAsRead(item)}
       >
         <View style={[styles.iconBox, { backgroundColor: icon.bg }]}>
-          <MaterialCommunityIcons name={icon.name} size={19} color={icon.color} />
+          <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
@@ -115,7 +115,7 @@ export default function NotificationsScreen() {
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={HEADER.iconSize} color="#1F2937" />
+            <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
         }
         center={<Text style={styles.headerTitle}>Notifications</Text>}

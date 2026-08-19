@@ -231,7 +231,7 @@ const Chatbot = () => {
             <Header
                 left={
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <MaterialIcons name="arrow-back" size={HEADER.iconSize} color={COLORS.primary} />
+                        <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
                     </TouchableOpacity>
                 }
                 center={

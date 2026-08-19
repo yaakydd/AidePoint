@@ -23,7 +23,7 @@ export const ReportStyles = StyleSheet.create({
     color: COLORS.primaryDark,
     fontWeight: FONTS.bold,
     backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: 6,
     borderRadius: RADIUS.full,
     overflow: 'hidden',
@@ -47,13 +47,13 @@ export const ReportStyles = StyleSheet.create({
     flex: 1,
     fontSize: FONTS.md,
     color: COLORS.textPrimary,
-    marginLeft: SPACING.sm,
+    marginLeft: SPACING.md,
   },
 
   // ─── FILTER STRIP — plain row, no boxed/bordered wrapper
   filterWrapper: {
     backgroundColor: 'transparent',
-    paddingBottom: SPACING.md,
+    paddingBottom: SPACING.xl,
   },
 
   filterContent: {
@@ -66,7 +66,7 @@ export const ReportStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: 10,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
@@ -115,13 +115,13 @@ export const ReportStyles = StyleSheet.create({
 cardBody: {
   flex: 1,
   gap: 4,
-  justifyContent: 'center',   // was implicit; keeps left column vertically centered now that it's only 2 lines instead of 3
+  justifyContent: 'center',  
 },
 
 cardRight: {
   alignItems: 'flex-end',
-  justifyContent: 'center',   // was implicit
-  gap: SPACING.xs,            // was gap: 6 — using the theme token instead of a raw number, now that this column holds badge + time rather than time + dot
+  justifyContent: 'center',   
+  gap: SPACING.sm,           
 },
 
   cardName: {

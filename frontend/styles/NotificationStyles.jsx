@@ -5,9 +5,10 @@ export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
 
   headerTitle: { 
-    fontSize: FONTS.lg, 
+    fontSize: FONTS.xl, 
     fontWeight: FONTS.bold, 
-    color: COLORS.textPrimary 
+    color: COLORS.textPrimary,
+    textAlign: 'center',
   },
   markAllText: { 
     fontSize: FONTS.xs, 

@@ -389,7 +389,7 @@ const Scan = ({ navigation, route }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
             disabled={isAnalysing}
-          >
+          >      
             <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
         }

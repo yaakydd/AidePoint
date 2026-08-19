@@ -4,7 +4,7 @@ import {
   TextInput, Modal, Linking, Alert, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, HEADER } from '../assets/theme';
@@ -20,17 +20,17 @@ const FAQS = [
   {
     id: 'scope',
     q: 'Does the scan check for malaria, sickle cell, or other conditions?',
-    a: 'No -- the model only screens for anemia risk based on red blood cell patterns. A "No Anemia" result does not rule out malaria, sickle cell disease, or any other blood condition.',
+    a: 'No, the model only screens for anemia risk based on red blood cell patterns. A "No Anemia" result does not rule out malaria, sickle cell disease, or any other blood condition.',
   },
   {
     id: 'unreliable',
     q: 'Why was my result marked as unreliable?',
-    a: 'This usually means the smear image had a quality issue -- poor lighting, low contrast, or under/over-staining. Retake the photo following the in-app capture guide for a more reliable result.',
+    a: 'This usually means the smear image had a quality issue, that is poor lighting, low contrast or under/over-staining. Retake the photo following the in-app capture guide for a more reliable result.',
   },
   {
     id: 'pin',
     q: 'I forgot my Report PIN. What do I do?',
-    a: 'Go to Profile → Reset Report PIN. You\'ll be asked to set a new 4-digit PIN the next time you open the Reports tab.',
+    a: 'Go to Profile then Reset Report PIN. You\'ll be asked to set a new 4-digit PIN the next time you open the Reports tab.',
   },
   {
     id: 'images',
@@ -79,7 +79,7 @@ const HelpCenter = () => {
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={HEADER.iconSize} color={COLORS.textPrimary} />
+            <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
           </TouchableOpacity>
         }
         center={<Text style={styles.headerTitle}>Help Center</Text>}
@@ -168,12 +168,10 @@ const HelpCenter = () => {
         </View>
 
         <View style={styles.footerBlock}>
-          <Text style={styles.footerText}>AIDEPOINT V2.4.1</Text>
+          <Text style={styles.footerText}>AidePoint V1.0.0</Text>
           <Text style={styles.footerText}>Made for lab technicians, by AidePoint</Text>
         </View>
       </ScrollView>
-
-      {/* Bug Report Modal -- same pattern as Chatbot.js */}
       <Modal
         animationType="slide"
         transparent

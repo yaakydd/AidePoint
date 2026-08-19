@@ -308,7 +308,7 @@ const HomeScreen = () => {
         ) : null}
 
         {/*  Stat Cards  */}
-        <Text style={styles.sectionTitle}>Today's Overview</Text>
+        <Text style={styles.sectionTitle}>General Overview</Text>
         <View style={styles.statsRow}>
 
           <View style={[styles.statCard, styles.statCardPrimary, styles.statCardHalf]}>
