@@ -18,6 +18,10 @@ export const COLORS = {
   primaryLight:   '#E0F7FA',
   primaryDark:    '#0097A7',
 
+  brand:      '#00E6E6', 
+  brandDark:  '#007373', 
+  brandLight: '#E0FBFB', 
+
   background:     '#F1F5F9',
   surface:        '#FFFFFF',
   surfaceAlt:     '#F7FAFB',
