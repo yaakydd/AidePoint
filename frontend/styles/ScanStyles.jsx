@@ -35,7 +35,6 @@ export const scanStyles = StyleSheet.create({
   },
 
   headerTitle: {
-    flex: 1,
     textAlign: 'center',
     fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
@@ -67,25 +66,29 @@ export const scanStyles = StyleSheet.create({
   },
 
   resetTooltip: {
-    position: 'absolute',
-    top: scale(44),
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.textPrimary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.md,
-    zIndex: 100,
-    elevation: 30,
-    ...SHADOWS.md,
-  },
+  position: 'absolute',
+  top: scale(44),
+  right: 0,
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: COLORS.textPrimary,
+  paddingHorizontal: SPACING.sm,
+  paddingVertical: SPACING.xs + 2,
+  borderRadius: RADIUS.md,
+  zIndex: 100,
+  elevation: 30,
+  ...SHADOWS.md,
 
-  resetTooltipText: {
-    color: COLORS.white,
-    fontSize: FONTS.xs,
-    fontWeight: FONTS.medium,
-  },
+  // Prevent the tooltip from collapsing too narrowly
+  width: scale(145),
+},
+
+resetTooltipText: {
+  color: COLORS.white,
+  fontSize: FONTS.sm,
+  flexShrink: 0,
+  flexWrap: 'nowrap',
+},
 
 
   resetTooltipCaret: {
@@ -163,16 +166,18 @@ export const scanStyles = StyleSheet.create({
     color: COLORS.danger,
   },
 
-  usageBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
+usageBanner: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  backgroundColor: COLORS.primaryLight,
+  borderRadius: RADIUS.lg,
+  paddingHorizontal: SPACING.lg,
+  paddingVertical: SPACING.md,
+
+  marginTop: SPACING.lg,
+  marginBottom: SPACING.lg,
+},
 
   usageBannerLabel: {
     fontSize: FONTS.xs,

@@ -210,7 +210,7 @@ export const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   title: { fontSize: FONTS['2xl'], fontWeight: FONTS.bold, color: COLORS.white, marginBottom: 6 },
-  subtitle: { fontSize: FONTS.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center', paddingHorizontal: SPACING['2xl'] },
+  subtitle: { fontSize: FONTS.md, color: 'rgba(255,255,255,0.85)', textAlign: 'center', paddingHorizontal: SPACING['2xl'] },
 
   dotsRow: { flexDirection: 'row', gap: SPACING.lg, marginBottom: SPACING.sm },
   dot: {
@@ -228,7 +228,7 @@ export const styles = StyleSheet.create({
     width: scale(72), height: scale(72),
     alignItems: 'center', justifyContent: 'center',
   },
-  keyText: { fontSize: FONTS.xl, fontWeight: FONTS.semibold, color: COLORS.white },
+  keyText: { fontSize: FONTS['3xl'], fontWeight: FONTS.semibold, color: COLORS.white },
 
   bioBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.xl },
   bioText: { fontSize: FONTS.sm, color: COLORS.white, fontWeight: FONTS.semibold },

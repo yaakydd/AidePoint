@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Image } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
@@ -111,6 +111,17 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false);
 
   const strength = getStrength(password);
+
+  // authError lives in shared AuthContext, so a failed Sign In left behind
+  // would otherwise still be showing here. Clear it every time this screen
+  // gains focus (not just on first mount) — native-stack keeps screen
+  // instances alive across back-navigation, so a mount-only effect
+  // wouldn't re-run on a second visit.
+  useFocusEffect(
+    React.useCallback(() => {
+      clearError?.();
+    }, [])
+  );
 
   useEffect(() => {
     const timeout = setTimeout(async () => {
@@ -294,32 +305,46 @@ const SignUp = () => {
   return !data; // true = available, false = already registered
 }
 
+  // While the hospital picker Modal is open, its own TextInput owns the
+  // keyboard. KeyboardAwareScrollView listens for keyboard events
+  // GLOBALLY (not scoped to its own children), so without this swap the
+  // background form below would still shift/pad itself for a keyboard
+  // that belongs to the modal — visible through the modal's translucent
+  // overlay as an unwanted "everything jumps up" effect. A plain View
+  // has no keyboard listeners at all, so background content stays put
+  // while the modal owns the keyboard; we swap back once it closes.
+  const ScrollWrapper = modalVisible ? View : KeyboardAwareScrollView;
+  const scrollWrapperProps = modalVisible
+    ? { style: styles.scrollContent }
+    : {
+        contentContainerStyle: styles.scrollContent,
+        keyboardShouldPersistTaps: 'handled',
+        showsVerticalScrollIndicator: false,
+        enableOnAndroid: true,
+        extraScrollHeight: 20,
+        keyboardOpeningTime: 0,
+      };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        enableOnAndroid={true}
-        extraScrollHeight={20}
-        keyboardOpeningTime={0}
-      >
-        {/*  Top bar: back navigation only on steps after the first.
-            The close (X) icon and "Log in" link that used to sit here on
-            step 0 are gone -- the centered logo below now occupies that
-            space instead. Back navigation is kept for steps 2-3, since
-            without it there'd be no way to return to a previous step. */}
-        {stepIndex > 0 && (
-          <View style={styles.topBar}>
+      <ScrollWrapper {...scrollWrapperProps}>
+        {/*  Top bar: always rendered (even on step 0) so the logo and
+            step icons below sit at the same vertical position on every
+            step. Only the back arrow itself is conditional — step 0 has
+            nowhere to go back to within this screen. */}
+        <View style={styles.topBar}>
+          {stepIndex > 0 ? (
             <TouchableOpacity
               onPress={handleBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <View style={{ width: 24, height: 24 }} />
+          )}
+        </View>
 
         {/*  Centered logo  */}
         <View style={styles.brandRow}>
@@ -762,7 +787,7 @@ const SignUp = () => {
             </TouchableOpacity>
           )}
         </View>
-      </KeyboardAwareScrollView>
+      </ScrollWrapper>
     </SafeAreaView>
   );
 };

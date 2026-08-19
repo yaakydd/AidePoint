@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
 import { COLORS, scale, vScale, SPACING } from '../assets/theme';
@@ -20,6 +20,16 @@ const SignIn = () => {
   const [showPass, setShowPass] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // authError lives in shared AuthContext — clear on every focus (not just
+  // mount) so a stale error from SignUp doesn't show up here either.
+  // native-stack keeps screen instances alive across back-navigation, so
+  // a mount-only effect wouldn't re-run on a second visit.
+  useFocusEffect(
+    React.useCallback(() => {
+      clearError?.();
+    }, [])
+  );
 
   const validate = () => {
     const e = {};
