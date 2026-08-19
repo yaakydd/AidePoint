@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, StatusBar, Image,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  StatusBar,
+  Image,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -12,166 +18,462 @@ import { useAuth } from '../context/AuthContext';
 import { COLORS, scale, vScale, SPACING } from '../assets/theme';
 import { signInStyles as styles } from '../styles/SignInStyles';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const SignIn = () => {
   const navigation = useNavigation();
   const { login, authError, clearError } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
   const [showPass, setShowPass] = useState(false);
-  const [errors, setErrors] = useState({});
+
+  const [errors, setErrors] = useState({
+    email: null,
+    password: null,
+  });
+
   const [loading, setLoading] = useState(false);
 
-  // authError lives in shared AuthContext — clear on every focus (not just
-  // mount) so a stale error from SignUp doesn't show up here either.
-  // native-stack keeps screen instances alive across back-navigation, so
-  // a mount-only effect wouldn't re-run on a second visit.
+  /*
+   * Clear stale authentication errors every time this screen receives focus.
+   *
+   * This matters because React Navigation may keep the screen mounted.
+   * Without this, an old error from a previous authentication attempt can
+   * still be displayed when the user returns to Sign In.
+   */
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       clearError?.();
-    }, [])
+
+      return () => {
+        Keyboard.dismiss();
+      };
+    }, [clearError])
   );
 
-  const validate = () => {
-    const e = {};
-    if (!email.trim())
-      e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      e.email = 'Invalid email address';
-    if (!password)
-      e.password = 'Password is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+  /*
+   * Keep the form validity explicit.
+   *
+   * This does NOT replace validation.
+   * validate() is still responsible for producing useful error messages.
+   */
+  const isFormValid = useMemo(() => {
+    const normalizedEmail = email.trim();
 
+    return (
+      normalizedEmail.length > 0 &&
+      EMAIL_REGEX.test(normalizedEmail) &&
+      password.length > 0
+    );
+  }, [email, password]);
+
+  /*
+   * Clear only the requested field error.
+   */
+  const clearFieldError = useCallback(
+    (field) => {
+      setErrors((previous) => ({
+        ...previous,
+        [field]: null,
+      }));
+
+      clearError?.();
+    },
+    [clearError]
+  );
+
+  /*
+   * Validate the complete form.
+   */
+  const validate = useCallback(() => {
+    const nextErrors = {};
+
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
+      nextErrors.email = 'Email is required';
+    } else if (!EMAIL_REGEX.test(normalizedEmail)) {
+      nextErrors.email = 'Enter a valid email address';
+    }
+
+    if (!password) {
+      nextErrors.password = 'Password is required';
+    }
+
+    setErrors({
+      email: nextErrors.email ?? null,
+      password: nextErrors.password ?? null,
+    });
+
+    return Object.keys(nextErrors).length === 0;
+  }, [email, password]);
+
+  /*
+   * Handle sign in safely.
+   */
   const handleSignIn = async () => {
-    if (!validate() || loading) return;
+    /*
+     * Prevent accidental double submissions.
+     */
+    if (loading) return;
+
+    /*
+     * Validate before making any network request.
+     */
+    if (!validate()) return;
+
+    Keyboard.dismiss();
+
     setLoading(true);
     clearError?.();
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const result = await login(email, password);
+      const result = await login(normalizedEmail, password);
+
+      /*
+       * AuthContext should normally return an object.
+       * Still protect against an unexpected/undefined result.
+       */
       if (!result?.success) {
-        setErrors({ email: result?.error ?? 'Invalid email or password.' });
+        const message =
+          result?.error || 'Unable to sign in. Please check your details and try again.';
+
+        /*
+         * Keep authentication errors generic.
+         *
+         * We don't want to reveal whether an email exists in the system.
+         */
+        setErrors({
+          email: message,
+          password: null,
+        });
+
+        return;
       }
+
+      /*
+       * Successful authentication is normally handled by AuthContext/
+       * navigation state. We intentionally do not manually navigate here
+       * unless your AuthContext requires it.
+       */
+    } catch (error) {
+      /*
+       * Never allow an unexpected exception to leave the button permanently
+       * disabled/loading.
+       */
+      console.error('[SignIn] login error:', error);
+
+      setErrors({
+        email: 'Unable to sign in right now. Please try again.',
+        password: null,
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  /*
+   * Pressing "Next" on the email field moves naturally to password.
+   */
+  const handleEmailSubmit = () => {
+    if (!email.trim()) {
+      setErrors((previous) => ({
+        ...previous,
+        email: 'Email is required',
+      }));
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setErrors((previous) => ({
+        ...previous,
+        email: 'Enter a valid email address',
+      }));
+      return;
+    }
+
+    Keyboard.dismiss();
+
+    /*
+     * We intentionally don't manually focus the password field here because
+     * there is no ref required for the normal keyboard behavior.
+     */
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+
       <KeyboardAwareScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        enableOnAndroid={true}
+        enableOnAndroid
         extraScrollHeight={30}
         keyboardOpeningTime={0}
+        enableAutomaticScroll
       >
-        {/* Curved header / logo */}
+        {/* Header / logo */}
         <View style={styles.headerSection}>
           <View style={styles.logoCircle}>
             <Image
               source={require('../assets/brand/icon-teal.png')}
-              style={{ width: scale(64), height: scale(64) }}
+              style={{
+                width: scale(64),
+                height: scale(64),
+              }}
               resizeMode="contain"
             />
           </View>
+
           <Image
             source={require('../assets/brand/wordmark-white.png')}
-            style={{ height: vScale(28), width: scale(150), marginTop: SPACING.md }}
+            style={{
+              height: vScale(28),
+              width: scale(150),
+              marginTop: SPACING.md,
+            }}
             resizeMode="contain"
           />
         </View>
 
-        {/* White card */}
+        {/* Main card */}
         <View style={styles.card}>
-          <Text style={styles.greetingTitle}>Welcome back </Text>
-          <Text style={styles.greetingSubtitle}>Sign in to continue to AidePoint</Text>
+          <Text style={styles.greetingTitle}>Welcome back</Text>
+
+          <Text style={styles.greetingSubtitle}>
+            Sign in to continue to AidePoint
+          </Text>
 
           {!!authError && (
             <View style={styles.errorBox}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={16} color={COLORS.danger} />
-              <Text style={styles.errorText}>{authError}</Text>
+              <MaterialCommunityIcons
+                name="alert-circle-outline"
+                size={16}
+                color={COLORS.danger}
+              />
+
+              <Text style={styles.errorText}>
+                {authError}
+              </Text>
             </View>
           )}
 
           <View style={styles.form}>
-            {/* Email */}
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <View style={[styles.inputBox, errors.email && styles.inputBoxError]}>
+            {/* ==================== EMAIL ==================== */}
+
+            <Text style={styles.inputLabel}>
+              Email Address
+            </Text>
+
+            <View
+              style={[
+                styles.inputBox,
+                errors.email && styles.inputBoxError,
+              ]}
+            >
               <MaterialCommunityIcons
-                name="email-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon}
+                name="email-outline"
+                size={18}
+                color={COLORS.textMuted}
+                style={styles.inputIcon}
               />
+
               <TextInput
                 placeholder="you@example.com"
                 placeholderTextColor={COLORS.textMuted}
                 value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  setErrors((e) => ({ ...e, email: null }));
-                  clearError?.();
+                onChangeText={(text) => {
+                  setEmail(text);
+
+                  if (errors.email) {
+                    clearFieldError('email');
+                  } else {
+                    clearError?.();
+                  }
                 }}
                 autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
                 keyboardType="email-address"
+                keyboardAppearance="light"
+                returnKeyType="next"
                 style={styles.textInput}
+                maxLength={254}
+                editable={!loading}
+                onSubmitEditing={handleEmailSubmit}
               />
             </View>
-            {errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
 
-            {/* Password */}
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={[styles.inputBox, errors.password && styles.inputBoxError]}>
+            {errors.email && (
+              <Text style={styles.fieldError}>
+                {errors.email}
+              </Text>
+            )}
+
+            {/* ==================== PASSWORD ==================== */}
+
+            <Text style={styles.inputLabel}>
+              Password
+            </Text>
+
+            <View
+              style={[
+                styles.inputBox,
+                errors.password && styles.inputBoxError,
+              ]}
+            >
               <MaterialCommunityIcons
-                name="lock-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon}
+                name="lock-outline"
+                size={18}
+                color={COLORS.textMuted}
+                style={styles.inputIcon}
               />
+
               <TextInput
                 placeholder="Enter your password"
                 placeholderTextColor={COLORS.textMuted}
                 value={password}
-                onChangeText={(t) => {
-                  setPassword(t);
-                  setErrors((e) => ({ ...e, password: null }));
+                onChangeText={(text) => {
+                  setPassword(text);
+
+                  if (errors.password) {
+                    clearFieldError('password');
+                  } else {
+                    clearError?.();
+                  }
                 }}
                 secureTextEntry={!showPass}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="password"
+                textContentType="password"
+                returnKeyType="done"
                 style={styles.textInput}
+                maxLength={128}
+                editable={!loading}
+                onSubmitEditing={handleSignIn}
               />
-              <TouchableOpacity onPress={() => setShowPass((p) => !p)} style={styles.eyeBtn}>
-                <Feather name={showPass ? 'eye-off' : 'eye'} size={19} color={COLORS.textMuted} />
+
+              <TouchableOpacity
+                onPress={() => setShowPass((previous) => !previous)}
+                style={styles.eyeBtn}
+                disabled={loading}
+                hitSlop={{
+                  top: 10,
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showPass ? 'Hide password' : 'Show password'
+                }
+              >
+                <Feather
+                  name={showPass ? 'eye-off' : 'eye'}
+                  size={19}
+                  color={COLORS.textMuted}
+                />
               </TouchableOpacity>
             </View>
-            {errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
 
-            {/* Forgot password — link below the field, right-aligned */}
+            {errors.password && (
+              <Text style={styles.fieldError}>
+                {errors.password}
+              </Text>
+            )}
+
+            {/* ==================== FORGOT PASSWORD ==================== */}
+
             <TouchableOpacity
-              onPress={() => navigation.navigate('ForgotPassword')}
+              onPress={() => {
+                if (loading) return;
+
+                Keyboard.dismiss();
+                clearError?.();
+                navigation.navigate('ForgotPassword');
+              }}
               style={styles.forgotBtn}
+              disabled={loading}
+              activeOpacity={0.7}
             >
-              <Text style={styles.forgotText}>Forgot password?</Text>
+              <Text style={styles.forgotText}>
+                Forgot password?
+              </Text>
             </TouchableOpacity>
 
-            {/* Submit */}
+            {/* ==================== SIGN IN ==================== */}
+
             <TouchableOpacity
-              style={[styles.signInBtn, loading && styles.signInBtnDisabled]}
-              disabled={loading}
+              style={[
+                styles.signInBtn,
+
+                /*
+                 * Disabled visually when:
+                 * - the form isn't valid, OR
+                 * - a request is currently running.
+                 */
+                (!isFormValid || loading) &&
+                  styles.signInBtnDisabled,
+              ]}
+              disabled={!isFormValid || loading}
               onPress={handleSignIn}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{
+                disabled: !isFormValid || loading,
+                busy: loading,
+              }}
             >
               {loading ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
                 <>
-                  <Text style={styles.signInBtnText}>Sign In</Text>
-                  <Feather name="arrow-right" size={20} color={COLORS.white} />
+                  <Text
+                    style={[
+                      styles.signInBtnText,
+                      !isFormValid && styles.signInBtnTextDisabled,
+                    ]}
+                  >
+                    Sign In
+                  </Text>
+
+                  {isFormValid && (
+                    <Feather
+                      name="arrow-right"
+                      size={20}
+                      color={COLORS.white}
+                    />
+                  )}
                 </>
               )}
             </TouchableOpacity>
 
-            {/* Sign up link */}
-            <TouchableOpacity style={styles.signUpRow} onPress={() => navigation.navigate('SignUp')}>
+            {/* ==================== SIGN UP ==================== */}
+
+            <TouchableOpacity
+              style={styles.signUpRow}
+              onPress={() => {
+                if (loading) return;
+
+                Keyboard.dismiss();
+                clearError?.();
+                navigation.navigate('SignUp');
+              }}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
               <Text style={styles.signUpText}>
-                Don't have an account? <Text style={styles.signUpLink}>Create one</Text>
+                Don't have an account?{' '}
+                <Text style={styles.signUpLink}>
+                  Create one
+                </Text>
               </Text>
             </TouchableOpacity>
           </View>
