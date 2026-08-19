@@ -11,7 +11,7 @@ import {
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -24,32 +24,70 @@ const ONBOARDING_KEY = "aidepoint_has_launched";
 const SLIDES = [
   {
     id: "1",
-    image: require("../assets/onboarding/microscope-capture.png"),
+    // image: require("../assets/onboarding/microscope-capture.jpg"),
     accent: "#0EA5E9",
-    stepLabel: "Step 1 \u00b7 Capture",
-    stepIcon: "camera",
     title: "Scan the smear",
     description: "Photograph a blood smear on the microscope. That's it.",
   },
   {
     id: "2",
-    image: require("../assets/onboarding/microscope-results.png"),
+    // image: require("../assets/onboarding/microscope-results.jpg"),
     accent: "#10B981",
-    stepLabel: "Step 2 \u00b7 Analyze",
-    stepIcon: "chart-line",
     title: "Get results instantly",
     description: "Anemia risk and a full CBC read, in seconds.",
   },
   {
     id: "3",
-    image: require("../assets/onboarding/patient-reports.png"),
+    // image: require("../assets/onboarding/patient-reports.jpg"),
     accent: "#6366F1",
-    stepLabel: "Step 3 \u00b7 Save",
-    stepIcon: "folder",
     title: "Every report saved",
     description: "Every scan is saved and searchable by patient.",
   },
+  {
+    id: "4",
+    type: "chat",
+    accent: COLORS.primary,
+    title: "Meet AideBot",
+    description: "Ask questions about your results anytime, right inside the app.",
+  },
 ];
+
+// Static mock of the real Chatbot screen (see screens/Chatbot.jsx + ChatStyles)
+// — no live AI call here, just a preview so the user recognizes the feature
+// once they're signed in and it's actually wired up to Gemini.
+function ChatPreview() {
+  return (
+    <View style={styles.chatPreviewFrame}>
+      <View style={styles.chatPreviewRow}>
+        <View style={styles.chatPreviewAvatar}>
+          <MaterialIcons name="smart-toy" size={scale(16)} color={COLORS.white} />
+        </View>
+        <View style={styles.chatPreviewBubbleBot}>
+          <Text style={styles.chatPreviewTextBot}>
+            Hi! I'm AideBot. Ask me about anemia risk, CBC values, or your scan results.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.chatPreviewRowUser}>
+        <View style={styles.chatPreviewBubbleUser}>
+          <Text style={styles.chatPreviewTextUser}>What does my CBC result mean?</Text>
+        </View>
+      </View>
+
+      <View style={styles.chatPreviewRow}>
+        <View style={styles.chatPreviewAvatar}>
+          <MaterialIcons name="smart-toy" size={scale(16)} color={COLORS.white} />
+        </View>
+        <View style={styles.chatPreviewBubbleBot}>
+          <Text style={styles.chatPreviewTextBot}>
+            Sure — let's break down your hemoglobin and RBC count together.
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export default function Onboarding() {
   const navigation = useNavigation();
@@ -115,49 +153,22 @@ export default function Onboarding() {
       <Animated.FlatList
         ref={flatListRef}
         data={SLIDES}
-        renderItem={({ item, index }) => {
-          const inputRange = [
-            (index - 1) * width,
-            index * width,
-            (index + 1) * width,
-          ];
-
-          const cardScale = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.88, 1, 0.88],
-            extrapolate: "clamp",
-          });
-
-          const cardOpacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.5, 1, 0.5],
-            extrapolate: "clamp",
-          });
-
-          return (
-            <View style={[styles.slide, { width }]}>
-              <Animated.View
-                style={[
-                  styles.photoFrame,
-                  { transform: [{ scale: cardScale }], opacity: cardOpacity },
-                ]}
-              >
-                <View style={[styles.photoGlow, { backgroundColor: `${item.accent}22` }]} />
-                <View style={styles.photoInner}>
-                  <Image source={item.image} style={styles.photo} resizeMode="contain" />
-                </View>
-              </Animated.View>
-
-              <View style={[styles.stepBadge, { backgroundColor: `${item.accent}22` }]}>
-                <MaterialCommunityIcons name={item.stepIcon} size={13} color={item.accent} />
-                <Text style={[styles.stepBadgeText, { color: item.accent }]}>{item.stepLabel}</Text>
+        renderItem={({ item }) => (
+          <View style={[styles.slide, { width }]}>
+            {item.type === "chat" ? (
+              <ChatPreview />
+            ) : (
+              <View style={styles.photoFrame}>
+                {/* Placeholder tinted block instead of <Image /> */}
+                <View style={[styles.photo, { backgroundColor: `${item.accent}22` }]} />
+                <View style={[styles.photoAccentBar, { backgroundColor: item.accent }]} />
               </View>
+            )}
 
-              <Text style={styles.slideTitle}>{item.title}</Text>
-              <Text style={styles.slideDescription}>{item.description}</Text>
-            </View>
-          );
-        }}
+            <Text style={styles.slideTitle}>{item.title}</Text>
+            <Text style={styles.slideDescription}>{item.description}</Text>
+          </View>
+        )}
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
