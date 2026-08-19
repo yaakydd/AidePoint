@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
     width: scale(88),
     height: scale(88),
     borderRadius: RADIUS.full,
-    backgroundColor: '#E0F7FA',
+    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.lg,

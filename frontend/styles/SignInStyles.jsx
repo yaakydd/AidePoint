@@ -3,10 +3,17 @@ import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../asset
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// Sign-in screen uses COLORS.brand / brandDark / brandLight (see assets/theme.js)
+// instead of COLORS.primary — this is the one screen where the logo appears
+// directly, so it uses the exact logo hex (#00E6E6) for the hero, and the
+// AA-contrast-safe brandDark (#007373) for anything carrying text, so the
+// header and the logo circle behind it read as the same color instead of
+// two slightly different cyans.
+
 export const signInStyles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.brand,
   },
 
   container: {
@@ -17,7 +24,7 @@ export const signInStyles = StyleSheet.create({
   // 40% of screen height for the logo/header section
   headerSection: {
     height: SCREEN_HEIGHT * 0.4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -109,6 +116,13 @@ export const signInStyles = StyleSheet.create({
     height: scale(54),
   },
 
+  // Focused input ties back to the logo hue without needing a saturated
+  // fill — brandLight is a light tint of the same color as `brand`.
+  inputBoxFocused: {
+    borderColor: COLORS.brandDark,
+    backgroundColor: COLORS.brandLight,
+  },
+
   inputBoxError: {
     borderColor: COLORS.danger,
   },
@@ -141,15 +155,17 @@ export const signInStyles = StyleSheet.create({
 
   forgotText: {
     fontSize: FONTS.md,
-    color: COLORS.primary,
+    color: COLORS.brandDark,
     fontWeight: FONTS.semibold,
   },
 
+  // The one primary action on this screen — stays a solid fill.
+  // brandDark, not brand, because it carries white text (5.68:1 contrast).
   signInBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.brandDark,
     height: scale(56),
     borderRadius: RADIUS.full,
     marginTop: SPACING['2xl'],
@@ -178,7 +194,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   signUpLink: {
-    color: COLORS.primary,
+    color: COLORS.brandDark,
     fontWeight: FONTS.bold,
   },
 });
