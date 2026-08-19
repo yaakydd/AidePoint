@@ -24,7 +24,7 @@ export const homeStyles = StyleSheet.create({
 
   greeting: {
     fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
+    fontWeight: FONTS.medium,
     color: COLORS.textPrimary,
   },
 

@@ -8,16 +8,19 @@ export const styles = StyleSheet.create({
   },
   
   headerTitle: {
-    fontSize: FONTS.lg,
+    fontSize: FONTS.xl,
     fontWeight: FONTS.bold,
     color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
   },
 
   scrollContent: {
     paddingBottom: SPACING['4xl'],
   },
 
-// ── Identity block (avatar left, info right) ──
+
 identityBlock: {
   flexDirection: 'row',
   alignItems: 'center',

@@ -460,7 +460,9 @@ export const signupStyle = StyleSheet.create({
   },
 
   customConfirmBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     justifyContent: 'center',
@@ -471,7 +473,7 @@ export const signupStyle = StyleSheet.create({
   },
 
   customConfirmText: {
-    color: COLORS.white,
+    color: COLORS.primary,
     fontWeight: FONTS.semibold,
     fontSize: FONTS.md,
   },

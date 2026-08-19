@@ -3,12 +3,7 @@ import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, layout, scale } from '../asset
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Sign-in screen uses COLORS.brand / brandDark / brandLight (see assets/theme.js)
-// instead of COLORS.primary — this is the one screen where the logo appears
-// directly, so it uses the exact logo hex (#00E6E6) for the hero, and the
-// AA-contrast-safe brandDark (#007373) for anything carrying text, so the
-// header and the logo circle behind it read as the same color instead of
-// two slightly different cyans.
+
 
 export const signInStyles = StyleSheet.create({
   safe: {
