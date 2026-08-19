@@ -49,8 +49,9 @@ function computeSeverityBreakdown(cells) {
   });
 }
 
-const shouldShowProbabilityAndConfidence = (conditionKey) =>
-  conditionKey === 'anemic' || conditionKey === 'healthy';
+const shouldShowProbabilityAndConfidence = (conditionKey, anemiaProbability) =>
+  (conditionKey === 'anemic' || conditionKey === 'healthy') &&
+  typeof anemiaProbability === 'number';
 
 const getRecommendation = (conditionKey, isUnreliable, imageQualityWarning) => {
   if (conditionKey === 'unknown' && isUnreliable) {
@@ -154,7 +155,10 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   );
   const cfg = CONDITION_CONFIG[conditionKey] ?? CONDITION_CONFIG.healthy;
   const sevStyle = SEVERITY_COLORS[cfg.severity] ?? SEVERITY_COLORS.yellow;
-  const showProbabilityConfidence = shouldShowProbabilityAndConfidence(conditionKey);
+  const showProbabilityConfidence = shouldShowProbabilityAndConfidence(
+    conditionKey,
+    prediction.anemia_probability
+  );
 
   const confidenceInfo =
     CONFIDENCE_LABELS[prediction.explanation?.confidence]

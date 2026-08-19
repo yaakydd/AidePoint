@@ -429,7 +429,7 @@ const Scan = ({ navigation, route }) => {
           <Text
             style={[styles.usageBannerValue, remaining === 0 && styles.usageBannerValueWarning]}
           >
-            {scanLimitLabel || '0'}
+            {scanLimitLabel || '—'}
           </Text>
         </View>
 
@@ -450,7 +450,7 @@ const Scan = ({ navigation, route }) => {
 
         <Text style={styles.inputLabel}>Patient Name</Text>
         <TextInput
-          placeholder="e.g. Joshua Antwi"
+          placeholder="e.g. John Doe"
           placeholderTextColor={COLORS.textMuted}
           value={patientName}
           onChangeText={setPatientName}
@@ -464,7 +464,7 @@ const Scan = ({ navigation, route }) => {
           <View style={styles.rowItem}>
             <Text style={styles.inputLabel}>Age</Text>
             <TextInput
-              placeholder="e.g. 27"
+              placeholder="e.g. 34"
               placeholderTextColor={COLORS.textMuted}
               value={patientAge}
               onChangeText={(t) => setPatientAge(t.replace(/\D/g, ''))}

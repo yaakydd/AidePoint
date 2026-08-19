@@ -34,79 +34,31 @@ export const CONDITION_CONFIG = {
 };
 
 export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
+  // isUnreliable must be checked before isAnemic: the backend forces
+  // anemia_probability to null whenever is_unreliable is true (see
+  // predict.py's "Unknown-condition contract"), regardless of what
+  // is_anemic says. If we check isAnemic first, an unreliable-but-
+  // is_anemic=true result gets classified 'anemic' here, which then
+  // tries to render a null probability as text.
+  if (isUnreliable) return 'unknown';
+
   if (isAnemic) return 'anemic';
 
   const hasFlaggedMorphology = Object.values(morphologyFindings ?? {}).some(
     (finding) => finding?.flagged === true
   );
 
-  if (hasFlaggedMorphology || isUnreliable) return 'unknown';
+  if (hasFlaggedMorphology) return 'unknown';
 
   return 'healthy';
 };
 
-// ── Cell shape severity buckets ──
-// Single source of truth for bucketing/coloring cell_overlay.cells by
-// severity, shared between TransparencyTrail.jsx (right after a scan)
-// and DetailModal.js (viewing a saved report later) so both screens
-// always agree on what "Normal / Mild / Unusual" means and never drift
-// out of sync with each other.
-export const SEVERITY_BUCKETS = [
-  { key: 'normal',  label: 'Normal shape',   min: 0.0,  max: 0.33 },
-  { key: 'mild',    label: 'Mild variation', min: 0.33, max: 0.66 },
-  { key: 'unusual', label: 'Unusual shape',  min: 0.66, max: 1.001 }, // 1.001: severity===1.0 falls in top bucket
-];
-
-// Mirrors the gradient math in shape_screening.py's compute_severity_color()
-// and (previously) TransparencyTrail.jsx's local severityToColor() -- kept
-// here now as the one copy, so a saved report's breakdown swatches always
-// match the colors actually drawn on the overlay.
-export const severityToColor = (severityScore) => {
-  let redValue, greenValue, blueValue;
-  if (severityScore < 0.5) {
-    const blendRatio = severityScore / 0.5;
-    redValue   = Math.round(0x16 + (0xEA - 0x16) * blendRatio);
-    greenValue = Math.round(0xA3 + (0xB3 - 0xA3) * blendRatio);
-    blueValue  = Math.round(0x4A + (0x08 - 0x4A) * blendRatio);
-  } else {
-    const blendRatio = (severityScore - 0.5) / 0.5;
-    redValue   = Math.round(0xEA + (0xDC - 0xEA) * blendRatio);
-    greenValue = Math.round(0xB3 + (0x26 - 0xB3) * blendRatio);
-    blueValue  = Math.round(0x08 + (0x26 - 0x08) * blendRatio);
-  }
-  const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
-  return `#${toHex(redValue)}${toHex(greenValue)}${toHex(blueValue)}`;
-};
-
-export const computeSeverityBreakdown = (cells) => {
-  const total = cells.length;
-  return SEVERITY_BUCKETS.map((bucket) => {
-    const count = cells.filter(
-      (cell) => cell.severity >= bucket.min && cell.severity < bucket.max
-    ).length;
-    const midpoint = (bucket.min + Math.min(bucket.max, 1)) / 2;
-    return {
-      ...bucket,
-      count,
-      percent: total > 0 ? Math.round((count / total) * 100) : 0,
-      color: severityToColor(midpoint),
-    };
-  });
-};
 
 export const buildReport = ({
   patientName, patientId, condition, confidence,
-  confidenceLabel,   // 'high' | 'moderate' | 'low' -- explanation.confidence tier,
-                      // kept alongside the raw numeric `confidence` (anemia_probability)
-                      // rather than instead of it, so DetailModal/ReportPDF can show
-                      // both the percentage and the human-readable tier.
   labTechName, imageUri, temperature, bloodPressure,
   morphologyFindings, cbcPatternSummary,
   isUnreliable, unreliableReasons, imageQuality,
-  cellOverlay,   // full cell_overlay object from the prediction response
-                 // ({ cells, cell_count, flagged_count }) -- stored in full so
-                 // DetailModal can redraw the shape overlay on the saved image
-                 // later, not just show summary counts.
   scanId,   // human-facing ID generated on the Scan screen (see Scan.jsx's
             // generateScanId()) -- the only ID ever shown in the UI.
             // `id` below stays as the internal/Supabase linkage key.
@@ -134,8 +86,7 @@ export const buildReport = ({
 
     condition:      resolvedCondition,
     conditionLabel: cfg.label,
-    confidence,             // numeric 0-1 anemia_probability, or undefined/null when condition is 'unknown'
-    confidenceLabel: confidenceLabel ?? null,   // 'high' | 'moderate' | 'low'
+    confidence,
     severity:       cfg.severity,
     morphology:     cfg.morphology,
     urgency:        cfg.urgency,
@@ -144,7 +95,6 @@ export const buildReport = ({
     isUnreliable:       isUnreliable ?? false,
     unreliableReasons:  unreliableReasons ?? [],
     imageQuality:       imageQuality ?? null,
-    cellOverlay:        cellOverlay ?? null,
 
     labTechName, imageUri,
 
