@@ -468,44 +468,6 @@ usageBanner: {
     color: COLORS.textSecondary,
   },
 
-  analysisOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-
-  analysisCard: {
-    width: '100%',
-    maxWidth: scale(340),
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS['2xl'],
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING['3xl'],
-    alignItems: 'center',
-    ...SHADOWS.lg,
-  },
-
-  analysisTitle: {
-    fontSize: FONTS.xl,
-    fontWeight: FONTS.bold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-
-  analysisSub: {
-    textAlign: 'center',
-    fontSize: FONTS.sm,
-    lineHeight: mScale(22),
-    color: COLORS.textSecondary,
-  },
-
 
   successOverlay: {
     flex: 1,
@@ -656,7 +618,7 @@ usageBanner: {
 
   closeViewer: {
     position: 'absolute',
-    top: layout.topInset ? layout.topInset + SPACING.xl : SPACING.xl,
+    top: layout.statusBarHeight + SPACING.xl,
     right: SPACING.xl,
     zIndex: 99,
   },
