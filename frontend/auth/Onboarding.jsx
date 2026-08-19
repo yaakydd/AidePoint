@@ -24,21 +24,21 @@ const ONBOARDING_KEY = "aidepoint_has_launched";
 const SLIDES = [
   {
     id: "1",
-    // image: require("../assets/onboarding/microscope-capture.jpg"),
+    image: require("../assets/onboarding/technician.png"),
     accent: "#0EA5E9",
     title: "Scan the smear",
     description: "Photograph a blood smear on the microscope. That's it.",
   },
   {
     id: "2",
-    // image: require("../assets/onboarding/microscope-results.jpg"),
+    image: require("../assets/onboarding/results.png"),
     accent: "#10B981",
     title: "Get results instantly",
     description: "Anemia risk and a full CBC read, in seconds.",
   },
   {
     id: "3",
-    // image: require("../assets/onboarding/patient-reports.jpg"),
+    image: require("../assets/onboarding/patient-reports.png"),
     accent: "#6366F1",
     title: "Every report saved",
     description: "Every scan is saved and searchable by patient.",
