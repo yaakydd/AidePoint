@@ -113,7 +113,7 @@ const PinSetup = () => {
   return (
     <SafeAreaView style={styles.safe}>
       {step === 'confirm' && (
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}>
           <MaterialIcons name="arrow-back" size={22} color={COLORS.white} />
         </TouchableOpacity>
       )}

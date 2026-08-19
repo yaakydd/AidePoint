@@ -14,6 +14,7 @@ from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_patter
 from services.morphology_explanations import build_explanation, classify_confidence, Explanation
 from services.audit_trail import build_prediction_record, persist_prediction_record
 from services.prediction_helpers import _extract_image_quality_fields, _build_morphology_findings
+from services.condition import resolve_condition
 
 log = logging.getLogger("aidepoint")
 router = APIRouter()
@@ -49,26 +50,24 @@ async def predict(
       - Every completed prediction is persisted to prediction_records for
         audit purposes, independent of the response returned to the app
 
-    Condition / confidence contract (revised):
-      - "condition" is driven by is_anemic first: "anemic" whenever
-        is_anemic is True, full stop. is_unreliable no longer overrides
-        this — a low-quality image that the model still calls anemic is
-        reported as anemic, with the uncertainty communicated through
-        "prediction_confidence" (low/moderate/high, see
-        classify_confidence) and the unreliable_reasons / image_quality
-        warning banner, not by hiding the result.
-      - "unknown" is now reserved for the case where is_anemic is False
-        but the read still can't be trusted as a clean "healthy" —
-        either because shape screening flagged the sample
-        (is_unreliable) or a non-anemia morphology flag fired. In that
-        case only, anemia_probability and prediction_confidence stay
-        present but the frontend intentionally does not surface a
-        headline probability for a condition that isn't a real
-        diagnosis either way.
-      - anemia_probability and prediction_confidence are ALWAYS real
-        values from the model now (never forced to None). Reliability
-        is communicated via confidence level + reasons, not via
-        withholding the number.
+    Condition contract (see services/condition.py -- the single place this
+    is decided; this docstring is a summary, not the source of truth):
+      - is_unreliable always wins -> "unknown", regardless of is_anemic.
+        A low-quality/out-of-distribution read is exactly as untrustworthy
+        whether the model leaned anemic or not.
+      - Otherwise, is_anemic decides "anemic" vs a provisional "healthy",
+        and a provisional "healthy" is downgraded to "unknown" if a
+        non-anemia morphology flag fired.
+      - anemia_probability and prediction_confidence are always real
+        values from the model (never forced to None); reliability is
+        communicated via prediction_confidence (capped at "low" whenever
+        is_unreliable is true, see classify_confidence) and via
+        unreliable_reasons, not by withholding the number.
+      - cell_overlay / cell_count / flagged_count are only populated when
+        condition is determinate ("anemic" or "healthy"); they're zeroed
+        out whenever condition is "unknown", since per-cell shape data is
+        exactly the thing a "the read itself can't be trusted" verdict
+        shouldn't imply confidence in.
     """
 
     _model = request.app.state.model
@@ -166,6 +165,35 @@ async def predict(
         list(quality_result.failure_reasons) if result["image_quality_warning"] else []
     )
 
+    # morphology_findings has to exist before condition is decided --
+    # resolve_condition() needs it to know whether a non-anemia flag fired.
+    morphology_findings = _build_morphology_findings(result["morphology_probs"])
+
+    # The single canonical condition decision (services/condition.py),
+    # computed immediately after the model call so everything downstream
+    # -- the explanation, the audit record, and the response -- is built
+    # from the same final condition rather than racing ahead of it.
+    condition = resolve_condition(
+        is_anemic=result["is_anemic"],
+        is_unreliable=result["is_unreliable"],
+        morphology_findings=morphology_findings,
+    )
+
+    # Cell overlay/count are only meaningful for a determinate condition.
+    # get_cell_overlay() in model.py runs unconditionally (by design, so a
+    # failure there never blocks the core anemia prediction), so it must be
+    # zeroed out here, before anything else reads it -- build_explanation()
+    # below summarizes cell_overlay into cell_level_summary, and that
+    # summary gets persisted to the audit trail, so this has to happen
+    # before both, not just before the JSON response is assembled.
+    if condition == "unknown":
+        result["cell_overlay"] = {
+            **result["cell_overlay"],
+            "cells": [],
+            "cell_count": 0,
+            "flagged_count": 0,
+        }
+
     cbc_pattern_summary = serialize_pattern_summary(
         build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
     )
@@ -180,8 +208,6 @@ async def predict(
     prediction_confidence = explanation.confidence
     explanation_dict = asdict(explanation)
 
-
-    morphology_findings = _build_morphology_findings(result["morphology_probs"])
     log.info(
         "predict  user=%s  is_anemic=%s  probability=%.3f  unreliable=%s  time=%sms",
         user.get("id"), result["is_anemic"], result["anemia_probability"],
@@ -227,14 +253,6 @@ async def predict(
             "Supabase client not configured -- prediction for user=%s "
             "sample=%s was not persisted.", user.get("id"), patient_sample_id,
         )
-
-    # "anemic" wins outright on is_anemic, regardless of is_unreliable --
-    # reliability is now expressed through prediction_confidence and the
-    # warning banner, not by demoting a positive result to "unknown".
-    # "unknown" is for a non-anemic result that still can't be trusted
-    # as clean/healthy (shape screening flagged it, or a non-anemia
-    # morphology flag fired).
-    condition = "anemic" if result["is_anemic"] else ("unknown" if result["is_unreliable"] else "healthy")
 
     response_payload = {
         **result,

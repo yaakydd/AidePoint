@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from supabase import Client
 
 from auth import verify_supabase_token, get_supabase_client
+from services.condition import resolve_condition
 
 log = logging.getLogger("aidepoint")
 router = APIRouter(prefix="/aidebot", tags=["aidebot"])
@@ -32,6 +33,15 @@ shape abnormalities), an estimated CBC pattern summary and a per-cell
 shape-severity overlay on the image (a green-to-red gradient, not a
 fixed category), these are image-based estimates, not laboratory
 measurements and you should say so if asked how reliable a number is.
+
+When report context includes a "condition" field, it is the app's
+authoritative verdict ("anemic", "healthy", or "unknown") -- always defer
+to that value rather than re-deriving it yourself from is_anemic/
+is_unreliable. "unknown" means the read itself couldn't be trusted (poor
+image quality, an out-of-distribution sample, or unusual cell shape) or a
+non-anemia finding was flagged; explain it as "the screening couldn't
+produce a reliable anemic/healthy verdict for this sample", not as a
+diagnosis of its own.
 
 You help technicians understand a specific result: what the probability
 and confidence mean, what a flagged morphology finding or condition
@@ -79,12 +89,13 @@ class ReportContext:
     it, not the full audit row (no need to hand image hashes etc. to
     Gemini)."""
 
+    condition: str
     anemia_probability: float | None
     is_anemic: bool | None
     prediction_confidence: str | None
     is_unreliable: bool | None
     unreliable_reasons: list | None
-    morphology_findings: list | None
+    morphology_findings: dict | None
     cbc_pattern_summary: dict | None
     explanation: str | None
 
@@ -129,7 +140,16 @@ def _fetch_verified_report_context(
             detail="This prediction does not belong to your account.",
         )
 
+    # Same canonical decision /predict uses, not left for Gemini to infer
+    # from raw is_anemic/is_unreliable on its own -- see services/condition.py.
+    condition = resolve_condition(
+        is_anemic=bool(record["is_anemic"]),
+        is_unreliable=bool(record["is_unreliable"]),
+        morphology_findings=record["morphology_findings"],
+    )
+
     return ReportContext(
+        condition=condition,
         anemia_probability=record["anemia_probability"],
         is_anemic=record["is_anemic"],
         prediction_confidence=record["prediction_confidence"],

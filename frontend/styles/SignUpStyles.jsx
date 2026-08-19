@@ -79,8 +79,8 @@ export const signupStyle = StyleSheet.create({
   },
 
   stepIconCircleActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.brandDark,
+    borderColor: COLORS.brandDark,
   },
 
   stepIconCircleDone: {

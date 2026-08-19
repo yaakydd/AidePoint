@@ -148,7 +148,11 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const [savingNotes, setSavingNotes] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
 
-  const conditionKey = resolveConditionKey(
+  // The backend is the single source of truth for this decision (see
+  // services/condition.py) -- prediction.condition is trusted directly.
+  // resolveConditionKey is only a fallback for the (should-never-happen
+  // on a current backend) case where the field is missing.
+  const conditionKey = prediction.condition ?? resolveConditionKey(
     prediction.is_anemic,
     prediction.morphology_findings,
     prediction.is_unreliable

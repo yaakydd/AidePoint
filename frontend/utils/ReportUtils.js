@@ -33,19 +33,23 @@ export const CONDITION_CONFIG = {
   },
 };
 
+// FALLBACK ONLY. The backend (services/condition.py's resolve_condition)
+// is the single source of truth for this decision now -- /predict always
+// returns a `condition` field, and every screen should pass that straight
+// through rather than calling this. This exists only so a report can
+// still get *a* reasonable condition if `condition` is ever genuinely
+// missing (e.g. a report saved by an old app version, before the backend
+// included this field, being reopened after an app update). Keep this in
+// exact sync with resolve_condition()'s rule if that rule ever changes --
+// mismatched logic here is exactly the bug class this fallback exists
+// to avoid becoming.
 export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) => {
-  // isUnreliable must be checked before isAnemic: the backend forces
-  // anemia_probability to null whenever is_unreliable is true (see
-  // predict.py's "Unknown-condition contract"), regardless of what
-  // is_anemic says. If we check isAnemic first, an unreliable-but-
-  // is_anemic=true result gets classified 'anemic' here, which then
-  // tries to render a null probability as text.
   if (isUnreliable) return 'unknown';
 
   if (isAnemic) return 'anemic';
 
-  const hasFlaggedMorphology = Object.values(morphologyFindings ?? {}).some(
-    (finding) => finding?.flagged === true
+  const hasFlaggedMorphology = Object.entries(morphologyFindings ?? {}).some(
+    ([flagName, finding]) => flagName !== 'normal_morphology' && finding?.flagged === true
   );
 
   if (hasFlaggedMorphology) return 'unknown';
@@ -55,7 +59,7 @@ export const resolveConditionKey = (isAnemic, morphologyFindings, isUnreliable) 
 
 
 export const buildReport = ({
-  patientName, patientId, condition, confidence,
+  patientName, patientId, condition, isAnemic, confidence,
   labTechName, imageUri, temperature, bloodPressure,
   morphologyFindings, cbcPatternSummary,
   isUnreliable, unreliableReasons, imageQuality,
@@ -64,8 +68,12 @@ export const buildReport = ({
             // `id` below stays as the internal/Supabase linkage key.
 }) => {
   const now = new Date();
+  // `condition` should always be present -- it comes straight from the
+  // backend's /predict response via Scan.jsx/TransparencyTrail.jsx. The
+  // fallback only fires for the legacy case described above, and needs
+  // the real isAnemic (not a hardcoded false) to be correct in that case.
   const resolvedCondition = condition ?? resolveConditionKey(
-    false, 
+    isAnemic ?? false,
     morphologyFindings,
     isUnreliable
   );

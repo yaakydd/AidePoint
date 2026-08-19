@@ -277,7 +277,11 @@ const Scan = ({ navigation, route }) => {
       );
       const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
 
-      const conditionKey = resolveConditionKey(
+      // The backend is the single source of truth for this decision (see
+      // services/condition.py) -- prediction.condition is trusted directly.
+      // resolveConditionKey is only a fallback for the (should-never-happen
+      // on a current backend) case where the field is missing.
+      const conditionKey = prediction.condition ?? resolveConditionKey(
         prediction.is_anemic,
         prediction.morphology_findings,
         prediction.is_unreliable
@@ -287,6 +291,7 @@ const Scan = ({ navigation, route }) => {
         patientName: patientName.trim(),
         patientId: patientRow.id,
         condition: conditionKey,
+        isAnemic: prediction.is_anemic,
         // FIXED: was `prediction.explanation?.confidence ?? 'moderate'`, which
         // stores the confidence TIER STRING ('high'/'moderate'/'low') into a
         // field DetailModal/ReportPDF only ever render as a number-formatted
