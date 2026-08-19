@@ -46,13 +46,33 @@ class Explanation:
     limitations: str
 
 
-def classify_confidence(anemia_probability: float, decision_threshold: float) -> str:
+def classify_confidence(
+    anemia_probability: float,
+    decision_threshold: float,
+    is_unreliable: bool = False,
+) -> str:
     """
     Confidence is a function of distance from the decision threshold, not
     just distance from 0.5  a probability close to the actual decision
     threshold should read as lower confidence than the same distance from
     a default 0.5 would suggest.
+
+    is_unreliable caps the result at "low", regardless of how far the
+    probability sits from the threshold. Most images technicians actually
+    capture in the field are blurry/under-stained but still genuinely
+    anemic -- the condition contract in predict.py deliberately still
+    reports these as "anemic" rather than hiding them behind "unknown",
+    but a probability sitting far from the threshold on a *known-bad*
+    segmentation isn't real high confidence, it's a number computed from
+    noisy inputs that happens to land far from the line. Without this
+    cap, a badly-segmented image could claim "high confidence" purely by
+    chance, which is worse than not showing a confidence label at all --
+    it actively tells the technician to trust a number that was never
+    trustworthy to begin with.
     """
+    if is_unreliable:
+        return "low"
+
     distance_from_threshold = abs(anemia_probability - decision_threshold)
 
     if distance_from_threshold >= 0.35:
@@ -93,6 +113,7 @@ def build_explanation(
     decision_threshold: float,
     morphology_probabilities: dict[str, float],
     cell_overlay: list[dict[str, Any]],
+    is_unreliable: bool = False,
 ) -> Explanation:
     """
     Produces the explanation block attached to every prediction record
@@ -100,8 +121,9 @@ def build_explanation(
 
     morphology_probabilities: e.g. {"hypochromia": 0.82, "microcytosis": 0.71, ...}
     cell_overlay: the same list already used to draw the client-side overlay
+    is_unreliable: caps confidence at "low" -- see classify_confidence.
     """
-    confidence = classify_confidence(anemia_probability, decision_threshold)
+    confidence = classify_confidence(anemia_probability, decision_threshold, is_unreliable)
 
     observed_indicators = [
         MORPHOLOGY_DISPLAY_NAMES.get(flag_name, flag_name.replace("_", " ").capitalize())

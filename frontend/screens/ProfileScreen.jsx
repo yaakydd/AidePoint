@@ -16,6 +16,7 @@ import { styles } from '../styles/ProfileStyles';
 import { clearPin, endSession } from '../utils/reportPin';
 import { deleteAllScanImages } from '../utils/scanStorage';
 import { clearReports } from '../utils/ReportUtils';
+import { clearAllSessions } from '../utils/chatstorage';
 import { MaterialIcons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { HEADER } from '../assets/theme';
@@ -182,10 +183,19 @@ async function handleToggle(newValue) {
     const { error } = await supabase.functions.invoke('delete-account');
     if (error) throw error;
 
-    // Reports live locally in AsyncStorage, scoped per-user
-    // (aidepoint_reports_v1:<userId>) , must clear before logout()
-    // invalidates access to user.id.
-    await clearReports(user.id);
+    // The confirmation dialog promises this deletes "your profile,
+    // saved reports, and chat history" -- all of it lives in
+    // device-local storage keyed by user.id (SecureStore for the PIN,
+    // AsyncStorage for reports/chat), so it has to be wiped explicitly
+    // here. The Supabase function only deletes the server-side row;
+    // it has no way to reach into this device's local storage.
+    // Must run before logout() clears user.id out of context.
+    await Promise.all([
+      clearReports(user.id),
+      clearAllSessions(user.id),
+      clearPin(user.id),
+      deleteAllScanImages(user.id),
+    ]);
 
     await logout();
   } catch (err) {

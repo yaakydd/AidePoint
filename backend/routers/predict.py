@@ -49,15 +49,28 @@ async def predict(
       - Every completed prediction is persisted to prediction_records for
         audit purposes, independent of the response returned to the app
 
-    Unknown-condition contract:
-      - When result["is_unreliable"] is True, the response's
-        "condition" field is "unknown" and both "anemia_probability" and
-        "prediction_confidence" are forced to None before the response
-        is built. This is enforced here, at the API boundary, rather
-        than left to the frontend to remember not to render those
-        fields — a null value can't accidentally be displayed the way a
-        real number sitting unused in a JSON payload can.
+    Condition / confidence contract (revised):
+      - "condition" is driven by is_anemic first: "anemic" whenever
+        is_anemic is True, full stop. is_unreliable no longer overrides
+        this — a low-quality image that the model still calls anemic is
+        reported as anemic, with the uncertainty communicated through
+        "prediction_confidence" (low/moderate/high, see
+        classify_confidence) and the unreliable_reasons / image_quality
+        warning banner, not by hiding the result.
+      - "unknown" is now reserved for the case where is_anemic is False
+        but the read still can't be trusted as a clean "healthy" —
+        either because shape screening flagged the sample
+        (is_unreliable) or a non-anemia morphology flag fired. In that
+        case only, anemia_probability and prediction_confidence stay
+        present but the frontend intentionally does not surface a
+        headline probability for a condition that isn't a real
+        diagnosis either way.
+      - anemia_probability and prediction_confidence are ALWAYS real
+        values from the model now (never forced to None). Reliability
+        is communicated via confidence level + reasons, not via
+        withholding the number.
     """
+
     _model = request.app.state.model
     _cbc_mean_absolute_errors = request.app.state.cbc_mean_absolute_errors
     _supabase_client = request.app.state.supabase_client
@@ -162,6 +175,7 @@ async def predict(
         decision_threshold=result["decision_threshold"],
         morphology_probabilities=result["morphology_probs"],
         cell_overlay=result["cell_overlay"].get("cells", []),
+        is_unreliable=result["is_unreliable"],
     )
     prediction_confidence = explanation.confidence
     explanation_dict = asdict(explanation)
@@ -214,8 +228,13 @@ async def predict(
             "sample=%s was not persisted.", user.get("id"), patient_sample_id,
         )
 
-    condition_is_unknown = result["is_unreliable"]
-    condition = "unknown" if condition_is_unknown else ("anemic" if result["is_anemic"] else "healthy")
+    # "anemic" wins outright on is_anemic, regardless of is_unreliable --
+    # reliability is now expressed through prediction_confidence and the
+    # warning banner, not by demoting a positive result to "unknown".
+    # "unknown" is for a non-anemic result that still can't be trusted
+    # as clean/healthy (shape screening flagged it, or a non-anemia
+    # morphology flag fired).
+    condition = "anemic" if result["is_anemic"] else ("unknown" if result["is_unreliable"] else "healthy")
 
     response_payload = {
         **result,
@@ -231,11 +250,6 @@ async def predict(
         "cropped_preview_base64": preprocessed.cropped_preview_base64,
         "image_quality": quality_result.__dict__,
     }
-
-    if condition_is_unknown:
-        response_payload["anemia_probability"] = None
-        response_payload["prediction_confidence"] = None
-        response_payload["explanation"]["confidence"] = None
 
     return JSONResponse(content=response_payload)
 
