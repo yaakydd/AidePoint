@@ -50,9 +50,17 @@ const CellOverlay = ({
               originX={centerXPixels}
               originY={centerYPixels}
               stroke={cell.color}
-              strokeWidth={cell.severity >= 0.5 ? 2.5 : 1.5}
+              // Was a hard cutoff (1.5px/8% below severity 0.5, 2.5px/18%
+              // at or above) -- on a real, low-contrast smear the faint
+              // end was visually indistinguishable from the background,
+              // so "normal" cells (which sit well under 0.5) rendered as
+              // effectively invisible even though they were technically
+              // in the SVG. A smooth gradient keeps flagged cells
+              // visually louder while guaranteeing every cell, including
+              // normal ones, has a real minimum visible stroke/fill.
+              strokeWidth={1.5 + cell.severity * 1.5}
               fill={cell.color}
-              fillOpacity={cell.severity >= 0.5 ? 0.18 : 0.08}
+              fillOpacity={0.14 + cell.severity * 0.16}
             />
           );
         })}
