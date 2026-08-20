@@ -293,10 +293,10 @@ def run_shape_screening(
             mean_eccentricity=None,
             cells_detected=len(cell_measurements),
             reason=(
-                f"only {len(cell_measurements)} cells could be separated for "
-                f"shape assessment (need at least {MINIMUM_CELLS_FOR_SHAPE_VERDICT}) "
-                f", likely due to low contrast or overlapping cells preventing "
-                f"reliable segmentation, not a specific shape finding"
+                f"Only {len(cell_measurements)} cells could be separated for shape "
+                f"assessment (need at least {MINIMUM_CELLS_FOR_SHAPE_VERDICT}). This is usually "
+                f"low contrast or overlapping cells preventing clean segmentation, not a specific "
+                f"shape finding. Recapture a field with a thinner, more evenly spread monolayer of cells."
             ),
         )
 
@@ -316,8 +316,10 @@ def run_shape_screening(
         mean_eccentricity=round(mean_eccentricity, 3),
         cells_detected=len(cell_measurements),
         reason=(
-            f"{flagged_fraction * 100:.0f}% of detected cells are unusually "
-            f"elongated or non-round for a typical smear"
+            f"{flagged_fraction * 100:.0f}% of detected cells are unusually elongated or "
+            f"non-round for a typical smear. This can be a genuine morphology finding, or "
+            f"an artefact of smear technique (e.g. a thick smear or drying too fast) -- "
+            f"manual microscopic review is recommended before acting on this result."
             if flagged_fraction > FLAGGED_FRACTION_THRESHOLD else None
         ),
     )
