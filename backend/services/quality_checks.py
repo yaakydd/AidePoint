@@ -44,19 +44,15 @@ def run_color_and_vignette_checks(raw_resized_image: np.ndarray, reference_stats
     if (abs(hue_mean - reference_stats["hue_mean"]) > 3 * reference_stats["hue_std"]
             or abs(saturation_mean - reference_stats["sat_mean"]) > 3 * reference_stats["sat_std"]):
         reasons.append(
-            f"unusual color/staining palette (hue {hue_mean:.0f} vs expected "
-            f"~{reference_stats['hue_mean']:.0f}\u00b1{reference_stats['hue_std']:.0f}, "
-            f"saturation {saturation_mean:.0f} vs ~{reference_stats['sat_mean']:.0f}"
-            f"\u00b1{reference_stats['sat_std']:.0f}) , may be a different stain "
-            f"type, white balance, or lighting setup"
+            "Color/staining palette looks unusual for this app's expected stain type. "
+            "Check the smear was stained with the standard reagent, and check your phone's "
+            "white balance/lighting before retaking the photo."
         )
     if vignette_ratio < reference_stats["vignette_min_ratio"]:
         reasons.append(
-            f"dark-cornered / circular vignette detected (corner-to-center "
-            f"brightness ratio {vignette_ratio:.2f}) , looks like an "
-            f"uncropped raw microscope eyepiece photo rather than a framed "
-            f"slide capture; ask the user to recapture using the in-app "
-            f"framing guide"
+            "Photo looks like an uncropped raw microscope eyepiece shot with dark corners "
+            "rather than a framed slide capture. Recapture using the in-app framing guide "
+            "so the smear fills the frame evenly."
         )
     return reasons
 
@@ -69,7 +65,9 @@ def run_reliability_gate(
     embedding_distance = compute_embedding_distance(image_embedding, reference_stats)
     if embedding_distance > reference_stats["embedding_distance_threshold"]:
         reasons.append(
-            f"embedding distance {embedding_distance:.2f} exceeds trained-data "
-            f"spread (threshold {reference_stats['embedding_distance_threshold']:.2f})"
+            "This image looks meaningfully different from the samples this model was "
+            "trained on (unusual magnification, sample prep, or camera setup). "
+            "Try recapturing with standard magnification and the in-app framing guide, "
+            "or treat this result as needing manual microscopic review."
         )
     return len(reasons) > 0, reasons
