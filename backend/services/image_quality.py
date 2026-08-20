@@ -106,23 +106,49 @@ def assess_image_quality(bgr_image: np.ndarray, detected_cell_count: int) -> Ima
     failure_reasons = []
 
     if blur_score < BLUR_VARIANCE_MINIMUM:
-        failure_reasons.append("Image is too blurry for reliable cell boundary detection")
+        failure_reasons.append(
+            "Image is too blurry for reliable cell boundary detection. "
+            "Hold the camera steady, let it auto-focus on the smear before capturing, "
+            "and retake the photo."
+        )
 
     brightness_minimum, brightness_maximum = BRIGHTNESS_ACCEPTABLE_RANGE
-    if not (brightness_minimum <= brightness_score <= brightness_maximum):
-        failure_reasons.append("Image brightness is outside the acceptable range")
+    if brightness_score < brightness_minimum:
+        failure_reasons.append(
+            "Image is too dark. Retake it in better lighting or move closer to a light source."
+        )
+    elif brightness_score > brightness_maximum:
+        failure_reasons.append(
+            "Image is overexposed. Reduce glare or direct light on the slide and retake the photo."
+        )
 
     if contrast_score < CONTRAST_MINIMUM:
-        failure_reasons.append("Image contrast is too low to distinguish cell features")
+        failure_reasons.append(
+            "Image contrast is too low to distinguish cell features. "
+            "Avoid flat, diffuse lighting and make sure the slide surface is clean, then retake the photo."
+        )
 
     if detected_cell_count < MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS:
         failure_reasons.append(
-            f"Only {detected_cell_count} cells detected, "
-            f"fewer than the {MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS} needed for reliable analysis"
+            f"Only {detected_cell_count} cells detected, fewer than the "
+            f"{MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS} needed for reliable analysis. "
+            "Recapture a denser field of the smear, or select a monolayer region with more cells in view."
         )
 
-    if staining_quality != "normal":
-        failure_reasons.append(f"Staining quality issue detected: {staining_quality}")
+    if staining_quality == "under_stained":
+        failure_reasons.append(
+            "Staining appears too light (under-stained). Increase stain contact time or re-stain the smear."
+        )
+    elif staining_quality == "over_stained":
+        failure_reasons.append(
+            "Staining appears too dark (over-stained). Reduce stain contact time or rinse the smear "
+            "more thoroughly and re-photograph."
+        )
+    elif staining_quality == "uneven":
+        failure_reasons.append(
+            "Staining is uneven across the field. Select a more evenly stained region of the smear, "
+            "or re-stain if the whole slide looks patchy."
+        )
 
     if len(failure_reasons) == 0:
         quality_score = "excellent"
