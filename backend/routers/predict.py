@@ -13,7 +13,11 @@ from services.preprocess import preprocess_image, PreprocessResult
 from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
 from services.morphology_explanations import build_explanation, classify_confidence, Explanation
 from services.audit_trail import build_prediction_record, persist_prediction_record
-from services.prediction_helpers import _extract_image_quality_fields, _build_morphology_findings
+from services.prediction_helpers import (
+    _extract_image_quality_fields,
+    _build_morphology_findings,
+    check_and_enforce_scan_limit,
+)
 from services.condition import resolve_condition
 
 log = logging.getLogger("aidepoint")
@@ -79,6 +83,11 @@ async def predict(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded yet. Try again in a few seconds.",
         )
+
+    # Authoritative daily scan-limit check (see scanStorage.js for the
+    # client-side pre-check this backs up). Runs before we even read the
+    # upload, so an over-limit request fails cheaply.
+    check_and_enforce_scan_limit(_supabase_client, user["id"])
 
     if not patient_sample_id.strip():
         raise HTTPException(
@@ -161,16 +170,29 @@ async def predict(
 
 
     result["image_quality_warning"] = quality_result.quality_score == "poor"
-    result["image_quality_reasons"] = (
-        list(quality_result.failure_reasons) if result["image_quality_warning"] else []
-    )
+
+    # Quality checks (blur/brightness/contrast/staining/cell-count) are a
+    # peer validation layer alongside cell-shape screening and the
+    # embedding/OOD reliability gate -- all three feed the same
+    # is_unreliable signal, not just the two that happened to be wired up
+    # first. A "poor" quality photo must not be able to produce a
+    # confident-looking anemic/healthy verdict; it degrades the result
+    # the same way an out-of-distribution or unscoreable-shape image
+    # already does.
+    if quality_result.quality_score == "poor":
+        result["is_unreliable"] = True
+        result["unreliable_reasons"] = [
+            *result["unreliable_reasons"],
+            *quality_result.failure_reasons,
+        ]
 
     # morphology_findings has to exist before condition is decided --
     # resolve_condition() needs it to know whether a non-anemia flag fired.
     morphology_findings = _build_morphology_findings(result["morphology_probs"])
 
     # The single canonical condition decision (services/condition.py),
-    # computed immediately after the model call so everything downstream
+    # computed immediately after the model call (and after the quality
+    # gate above is folded into is_unreliable) so everything downstream
     # -- the explanation, the audit record, and the response -- is built
     # from the same final condition rather than racing ahead of it.
     condition = resolve_condition(
