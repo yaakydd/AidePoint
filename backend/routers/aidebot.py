@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import cast
 
 import httpx
-from cachetools import TTLCache
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from postgrest import CountMethod
 from pydantic import BaseModel
@@ -14,6 +13,11 @@ from supabase import Client
 
 from auth import verify_supabase_token, get_supabase_client
 from services.condition import resolve_condition
+from services.subscription import (
+    CHAT_MESSAGE_LIMITS,
+    DEFAULT_CHAT_LIMIT,
+    get_subscription_tier,
+)
 
 log = logging.getLogger("aidepoint")
 router = APIRouter(prefix="/aidebot", tags=["aidebot"])
@@ -61,15 +65,7 @@ them on a phone at a lab bench, not a long clinical essay."""
 
 MAX_HISTORY_MESSAGES = 10
 
-CHAT_MESSAGE_LIMITS: dict[str, int] = {
-    "free": 5,
-    "monthly": 25,
-    "annual": 50,
-}
-DEFAULT_CHAT_LIMIT: int = CHAT_MESSAGE_LIMITS["free"]
 _gemini_client: httpx.AsyncClient = httpx.AsyncClient(timeout=30.0)
-
-_subscription_tier_cache: TTLCache = TTLCache(maxsize=10_000, ttl=300)
 
 
 class ChatMessage(BaseModel):
@@ -161,51 +157,19 @@ def _fetch_verified_report_context(
     )
 
 
-def _get_subscription_tier(supabase_client: Client, user_id: str) -> str:
-    """
-    Looks up the requesting user's subscription_tier from profiles --
-    the same column services/subscription.py's _update_subscription_tier
-    writes to after a verified Paystack payment. Defaults to "free" if
-    the profile row is missing or the column is unset, rather than
-    raising a lookup failure here should degrade to the free tier's
-    limit, not block the chat endpoint entirely.
-
-    Cached per user_id for _subscription_tier_cache's TTL, since this
-    was previously queried on every single chat message despite rarely
-    changing.
-    """
-    cached_tier: str | None = _subscription_tier_cache.get(user_id)
-    if cached_tier is not None:
-        return cached_tier
-
-    profile_lookup = (
-        supabase_client.table("profiles")
-        .select("subscription_tier")
-        .eq("id", user_id)
-        .execute()
-    )
-    tier: str = "free"
-    if profile_lookup.data:
-        profile_row = cast(dict, profile_lookup.data[0])
-        tier = profile_row["subscription_tier"] or "free"
-
-    _subscription_tier_cache[user_id] = tier
-    return tier
-
-
 def _check_and_record_rate_limit(supabase_client: Client, user_id: str) -> None:
     """
     Counts today's aidebot_messages rows for this user (UTC day) and
-    raises 429 if at or over that user's tier-specific daily limit. Same
-    "source of truth is the table itself, not a local counter" approach
-    scanStorage.js uses for daily scan limits  correct across
-    devices/restarts.
+    raises 429 if at or over that user's tier-specific daily limit.
+    NOTE: this is only ever a lower bound the client can also enforce for
+    UX purposes (see Chatbot.jsx), but this table count is the real,
+    authoritative limit -- it can't be reset by reinstalling the app.
     """
     start_of_today: str = datetime.now(timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0
     ).isoformat()
 
-    tier: str = _get_subscription_tier(supabase_client, user_id)
+    tier: str = get_subscription_tier(supabase_client, user_id)
     daily_limit: int = CHAT_MESSAGE_LIMITS.get(tier, DEFAULT_CHAT_LIMIT)
 
     count_result = (
