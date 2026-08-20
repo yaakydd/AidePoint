@@ -44,15 +44,6 @@ CBC_NORMALIZATION_RANGES: dict[str, tuple[float, float]] = {
     'MCHC': (20.0, 45.0),
 }
 
-CBC_CLINICAL_REFERENCE_RANGES: dict[str, tuple[float, float]] = {
-    'RBC': (4.0, 5.2),
-    'HAEMOGLOBIN': (11.5, 15.5),
-    'HAEMATOCRIT': (35.0, 45.0),
-    'MCV': (77.0, 95.0),
-    'MCH': (25.0, 33.0),
-    'MCHC': (31.0, 37.0),
-}
-
 EVAL_REPORT_PATH: str = os.getenv(
     "EVAL_REPORT_PATH",
     os.path.join(os.path.dirname(__file__), "..", "models", "eval_report.json"),
@@ -86,51 +77,17 @@ def _load_eval_report() -> dict:
 _EVAL_REPORT: dict = _load_eval_report()
 
 
-def build_cbc_confidence_labels() -> dict[str, str]:
-    """
-    Turns the per-field mean absolute error already measured in
-    eval_report.json (Cell 6 of the training notebook) into a simple
-    confidence label per CBC field, so the app can show "this number is
-    solid" versus "treat this one as a rough estimate" instead of
-    presenting all 6 values with equal apparent authority.
-
-    Falls back to "unknown" for every field if eval_report.json isn't
-    present, rather than failing startup over a non-critical feature.
-    """
-    cbc_mean_absolute_errors: dict[str, float] = _EVAL_REPORT.get("cbc_mae_per_field", {})
-    if not cbc_mean_absolute_errors:
-        return {key: "unknown" for key in CBC_KEYS}
-
-    confidence_labels: dict[str, str] = {}
-    for key in CBC_KEYS:
-        if key not in cbc_mean_absolute_errors:
-            confidence_labels[key] = "unknown"
-            continue
-        range_low, range_high = CBC_CLINICAL_REFERENCE_RANGES[key]
-        error_as_percent_of_range = (
-            100 * cbc_mean_absolute_errors[key] / (range_high - range_low)
-        )
-        if error_as_percent_of_range < 10:
-            confidence_labels[key] = "high"
-        elif error_as_percent_of_range < 20:
-            confidence_labels[key] = "moderate"
-        else:
-            confidence_labels[key] = "low"
-    return confidence_labels
-
-
 def build_morphology_reliability_flags() -> dict[str, bool]:
     """
-    Mirrors build_cbc_confidence_labels() for morphology: reads each
-    flag's held-out F1 score from eval_report.json's
+    Mirrors cbc_uncertainty.classify_field_reliability() for morphology:
+    reads each flag's held-out F1 score from eval_report.json's
     "morphology_f1_per_flag" and marks any flag below
     MORPHOLOGY_F1_SUPPRESSION_THRESHOLD as unreliable, so predict() can
     suppress it from the finding list regardless of what probability the
     model outputs for it on a given image.
 
     Falls back to treating every flag as reliable if eval_report.json is
-    missing, consistent with build_cbc_confidence_labels()'s "unknown"
-    fallback, this degrades to the old (less safe) behavior rather than
+    missing, this degrades to the old (less safe) behavior rather than
     failing startup over a non-critical file.
     """
     morphology_f1_scores: dict[str, float] = _EVAL_REPORT.get("morphology_f1_per_flag", {})
@@ -143,7 +100,6 @@ def build_morphology_reliability_flags() -> dict[str, bool]:
     }
 
 
-CBC_CONFIDENCE_LABELS: dict[str, str] = build_cbc_confidence_labels()
 MORPHOLOGY_FLAG_IS_RELIABLE: dict[str, bool] = build_morphology_reliability_flags()
 
 
@@ -189,19 +145,6 @@ def denormalize_cbc_values(normalized_values: np.ndarray) -> dict[str, float]:
         real_value = float(normalized_values[index]) * (range_high - range_low) + range_low
         real_values[key] = round(real_value, 3)
     return real_values
-
-
-def flag_cbc_values(cbc_values: dict[str, float]) -> dict[str, str]:
-    flags: dict[str, str] = {}
-    for key, value in cbc_values.items():
-        range_low, range_high = CBC_CLINICAL_REFERENCE_RANGES[key]
-        if value < range_low:
-            flags[key] = 'LOW'
-        elif value > range_high:
-            flags[key] = 'HIGH'
-        else:
-            flags[key] = 'NORMAL'
-    return flags
 
 
 def filter_unreliable_morphology_flags(morphology_result: dict[str, float]) -> dict[str, float]:
@@ -338,7 +281,6 @@ class AidePointONNX:
         is_anemic = anemia_probability >= ANEMIA_DECISION_THRESHOLD
 
         cbc_values = denormalize_cbc_values(cbc_normalized)
-        cbc_flags = flag_cbc_values(cbc_values)
 
         morphology_probabilities = apply_sigmoid(morphology_logits)
         morphology_result = {
@@ -418,4 +360,4 @@ class AidePointONNX:
             "cell_overlay": cell_overlay_dict,
             "scope_disclaimer": ANEMIA_SCOPE_DISCLAIMER,
             "cbc_scope_disclaimer": CBC_ACCURACY_DISCLAIMER,
-        }
+}
