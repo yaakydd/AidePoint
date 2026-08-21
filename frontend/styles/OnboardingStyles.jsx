@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: SPACING["2xl"],
-    paddingTop: SPACING.sm,
+    paddingTop: SPACING['2xl'],
     paddingBottom: SPACING.md,
   },
 
@@ -123,14 +123,15 @@ photo: {
     fontWeight: FONTS.medium,
   },
 
-  slideTitle: {
-    fontSize: FONTS["2xl"],
-    fontWeight: FONTS.bold,
-    textAlign: "left",
-    alignSelf: "flex-start",
-    marginBottom: SPACING.md,
-    color: COLORS.textPrimary,
-  },
+slideTitle: {
+  fontSize: FONTS["2xl"],
+  fontWeight: FONTS.bold,
+  textAlign: "left",
+  alignSelf: "flex-start",
+  marginTop: scale(10),      // pushes title (and description below it) down a bit
+  marginBottom: SPACING.xs,
+  color: COLORS.textPrimary,
+},
 
   slideDescription: {
     fontSize: FONTS.md,
