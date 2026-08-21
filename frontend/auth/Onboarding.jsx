@@ -31,7 +31,7 @@ const SLIDES = [
   },
   {
     id: "2",
-    image: require("../assets/onboarding/results.png"),
+    image: require("../assets/onboarding/reports.png"),
     accent: "#10B981",
     title: "Get results instantly",
     description: "Anemia risk and a full CBC read, in seconds.",
@@ -153,17 +153,15 @@ export default function Onboarding() {
         data={SLIDES}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
-            {item.type === "chat" ? (
-              <ChatPreview />
-            ) : (
-              <View style={styles.photoFrame}>
-                <Image
-                  source={item.image}
-                  style={styles.photo}
-                  resizeMode="contain"
-                />
-              </View>
-            )}
+<View style={styles.photoFrame}>
+  <View style={[styles.photoGlow, { backgroundColor: `${item.accent}22` }]}>
+    <Image
+      source={item.image}
+      style={styles.photo}
+      resizeMode="contain"
+    />
+  </View>
+</View>
 
             <Text style={styles.slideTitle}>{item.title}</Text>
             <Text style={styles.slideDescription}>{item.description}</Text>

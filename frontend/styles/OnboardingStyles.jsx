@@ -69,23 +69,26 @@ export const styles = StyleSheet.create({
   // neighbors shrink and fade slightly as you swipe past them.
 photoFrame: {
   width: "100%",
-  aspectRatio: 1,          // was 4/3 — taller frame, more room for the image
+  aspectRatio: 4 / 3,       // closer to the images' natural ~1.2–1.5 ratio
   alignItems: "center",
   justifyContent: "center",
   marginBottom: scale(20),
 },
 
-photo: {
-  width: "92%",            // was tied to the small inner placeholder box
-  height: "92%",
+photoGlow: {
+  width: "94%",
+  height: "94%",
+  borderRadius: RADIUS.xl,
+  overflow: "hidden",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: scale(16),       // breathing room so the image doesn't touch the frame edge
 },
 
-  photoGlow: {
-    position: "absolute",
-    width: "78%",
-    height: "78%",
-    borderRadius: 9999,
-  },
+photo: {
+  width: "100%",
+  height: "100%",
+},
 
   photoInner: {
     width: "58%",
