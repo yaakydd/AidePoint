@@ -85,19 +85,17 @@ const buildCbcSection = (cbcPatternSummary) => {
     <table>${rows}</table>`;
 };
 
-const buildReliabilitySection = (isUnreliable, unreliableReasons, imageQuality) => {
-  const reasons = [
-    ...(unreliableReasons ?? []),
-    ...(imageQuality?.failure_reasons ?? []),
-  ];
+const buildReliabilitySection = (isUnreliable, unreliableReasons) => {
+  if (!isUnreliable) return '';
 
-  if (!isUnreliable && imageQuality?.quality_score !== 'poor') return '';
-
-  const items = reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('');
+  const items = (unreliableReasons ?? [])
+    .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+    .join('');
 
   return `
     <div class="reliability-banner">
       <div class="reliability-title">Review Recommended</div>
+      <div class="note-text">This result should be manually reviewed before acting on it. Here's why, and what to do:</div>
       <ul class="finding-list">${items}</ul>
     </div>`;
 };
@@ -277,6 +275,8 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
       ${buildMorphologySection(report.morphologyFindings)}
 
       ${buildCbcSection(report.cbcPatternSummary)}
+
+      ${buildReliabilitySection(report.isUnreliable, report.unreliableReasons)}
 
       <div class="divider"></div>
 
