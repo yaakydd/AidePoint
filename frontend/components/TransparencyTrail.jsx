@@ -53,7 +53,7 @@ const shouldShowProbabilityAndConfidence = (conditionKey, anemiaProbability) =>
   (conditionKey === 'anemic' || conditionKey === 'healthy') &&
   typeof anemiaProbability === 'number';
 
-const getRecommendation = (conditionKey, isUnreliable, imageQualityWarning) => {
+const getRecommendation = (conditionKey, isUnreliable) => {
   if (conditionKey === 'unknown' && isUnreliable) {
     return {
       icon: 'account-search-outline',
@@ -84,11 +84,6 @@ const getRecommendation = (conditionKey, isUnreliable, imageQualityWarning) => {
       'No anemia pattern detected in this sample. No immediate action needed based on this screening alone; continue routine care and re-screen if the patient becomes symptomatic.',
   };
 };
-
-const getQualityCaveat = (imageQualityWarning) =>
-  imageQualityWarning
-    ? 'Image quality issues were detected during analysis (see warning above). If this result is borderline or unexpected, consider re-scanning with better lighting and focus before acting on it.'
-    : null;
 
 const severityToColor = (severityScore) => {
   let redValue, greenValue, blueValue;
@@ -176,12 +171,10 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const morphologyEntries = Object.entries(prediction.morphology_findings ?? {})
     .filter(([, probability]) => probability >= 0.5);
 
-  const imageQuality = prediction.image_quality ?? {};
   const isUnreliable = prediction.is_unreliable ?? false;
-  const imageQualityWarning = prediction.image_quality_warning ?? false;
+  const unreliableReasons = prediction.unreliable_reasons ?? [];
 
-  const recommendation = getRecommendation(conditionKey, isUnreliable, imageQualityWarning);
-  const qualityCaveat = getQualityCaveat(imageQualityWarning);
+  const recommendation = getRecommendation(conditionKey, isUnreliable);
 
   const dateTimeDisplay = [report?.dateDisplay, report?.timeDisplay]
     .filter(Boolean)
@@ -395,16 +388,16 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               </TouchableOpacity>
             </View>
 
-            {(isUnreliable || imageQuality.quality_score === 'poor') && (
+            {isUnreliable && (
               <View style={[styles.warningBanner, { marginBottom: SPACING.sm }]}>
                 <MaterialCommunityIcons name="alert-outline" size={20} color="#92400E" />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.warningTitle}>Review recommended</Text>
-                  {(prediction.unreliable_reasons ?? []).map((reason, index) => (
+                  <Text style={styles.warningText}>
+                    This result should be manually reviewed before acting on it. Here's why, and what to do:
+                  </Text>
+                  {unreliableReasons.map((reason, index) => (
                     <Text key={index} style={styles.warningText}>• {reason}</Text>
-                  ))}
-                  {(imageQuality.failure_reasons ?? []).map((reason, index) => (
-                    <Text key={`q-${index}`} style={styles.warningText}>• {reason}</Text>
                   ))}
                 </View>
               </View>
@@ -420,11 +413,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               <Text style={[styles.recommendationText, { color: sevStyle.text }]}>
                 {recommendation.text}
               </Text>
-              {qualityCaveat && (
-                <Text style={[styles.recommendationText, styles.recommendationCaveat, { color: sevStyle.text }]}>
-                  {qualityCaveat}
-                </Text>
-              )}
             </View>
 
             {bonusJustGranted && (
