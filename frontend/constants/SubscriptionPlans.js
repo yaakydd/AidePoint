@@ -5,8 +5,8 @@ export const PLANS = {
     price: 'Free',
     comingSoon: false,
     // AideBot
-    dailyChatLimit: 15,
-    chatHistoryDays: 7,
+    dailyChatLimit: 10,
+    chatHistoryDays: 5,
     reportHistoryDays: 14,
     scans: {
       dailyLimit: 5,

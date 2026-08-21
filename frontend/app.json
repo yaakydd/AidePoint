@@ -9,7 +9,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aidepoint.app"
+      "bundleIdentifier": "com.aidepoint.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "AidePoint uses your camera to capture blood smear images for AI-assisted anemia screening."
+      }
     },
     "android": {
       "package": "com.aidepoint.app",
@@ -20,9 +23,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "CAMERA"
       ]
     },
     "web": {
@@ -42,6 +43,12 @@
         }
       ]
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1300091e-e1a7-4407-87eb-a92b161e97be"
+    },
     "extra": {
       "eas": {
         "projectId": "1300091e-e1a7-4407-87eb-a92b161e97be"

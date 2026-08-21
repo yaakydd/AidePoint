@@ -169,7 +169,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
 
   const cbcPatternEntries = Object.entries(prediction.cbc_pattern_summary ?? {});
   const morphologyEntries = Object.entries(prediction.morphology_findings ?? {})
-    .filter(([, probability]) => probability >= 0.5);
+    .filter(([, finding]) => finding?.flagged === true);
 
   const isUnreliable = prediction.is_unreliable ?? false;
   const unreliableReasons = prediction.unreliable_reasons ?? [];
@@ -331,6 +331,19 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               )}
           
             </View>
+
+             {morphologyEntries.length > 0 && (
+              <View style={styles.sectionBlock}>
+                <Text style={styles.sectionHeading}>Morphology Findings</Text>
+                {morphologyEntries.map(([flagName]) => (
+                  <View key={flagName} style={styles.findingRow}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={14} color={COLORS.textSecondary} style={{ marginTop: 2 }} />
+                    <Text style={styles.findingText}>{flagName.replace(/_/g, ' ')}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
 
             {cbcPatternEntries.length > 0 && (
               <View style={styles.sectionBlock}>

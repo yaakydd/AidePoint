@@ -36,24 +36,36 @@ def has_flagged_morphology(morphology_findings: dict[str, dict] | None) -> bool:
 
 def resolve_condition(
     is_anemic: bool,
-    is_unreliable: bool,
+    is_off_scope: bool,
     morphology_findings: dict[str, dict] | None = None,
 ) -> str:
     """
     Returns "anemic" | "healthy" | "unknown".
 
     Rule, in order:
-      1. is_unreliable always wins -> "unknown", regardless of is_anemic.
-         An unreliable read is exactly as untrustworthy whether the model
-         leaned anemic or not; there is no clinical basis for trusting a
-         positive result more than a negative one on a bad segmentation.
+      1. is_off_scope always wins -> "unknown", regardless of is_anemic.
+         This is shape_screening_result.needs_review specifically -- a
+         signal that the sample itself doesn't look like a normal RBC
+         smear (e.g. sickle cells, malaria-distorted cells) -- NOT
+         ordinary image-quality unreliability (blur/brightness/OOD/poor
+         staining), which is surfaced separately via is_unreliable /
+         unreliable_reasons as a caveat, not a condition override.
+
+         NOTE: needs_review is a generic "too many non-round cells"
+         signal (flagged_fraction > 0.25 in shape_screening.py), not a
+         malaria/sickle-cell-specific classifier. It's a proxy for
+         off-scope samples, not ground truth -- a genuinely on-scope
+         sample with heavy artifactual cell distortion (e.g. bad smear
+         technique) can also trip it and get benched to "unknown" even
+         though it isn't truly off-scope.
       2. Otherwise, is_anemic decides "anemic" vs a provisional "healthy".
-      3. A provisional "healthy" is downgraded to "unknown" if a non-anemia
-         morphology flag fired (e.g. target cells, elliptocytosis) --
-         the read wasn't flagged as anemic, but something else was still
-         found that a clean "healthy" shouldn't paper over.
+      3. A provisional "healthy" is downgraded to "unknown" if a
+         non-anemia morphology flag fired (e.g. target cells,
+         elliptocytosis) -- the read wasn't flagged as anemic, but
+         something else was still found that a clean "healthy" shouldn't
+         paper over.
     """
-    if is_unreliable:
+    if is_off_scope:
         return "unknown"
     if is_anemic:
         return "anemic"

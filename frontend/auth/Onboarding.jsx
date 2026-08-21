@@ -152,20 +152,26 @@ export default function Onboarding() {
         ref={flatListRef}
         data={SLIDES}
         renderItem={({ item }) => (
-          <View style={[styles.slide, { width }]}>
-<View style={styles.photoFrame}>
-  <View style={[styles.photoGlow, { backgroundColor: `${item.accent}22` }]}>
-    <Image
-      source={item.image}
-      style={styles.photo}
-      resizeMode="contain"
-    />
-  </View>
-</View>
+
+            <View style={[styles.slide, { width }]}>
+            <View style={styles.photoFrame}>
+              <View style={[styles.photoGlow, { backgroundColor: `${item.accent}22` }]}>
+                {item.type === "chat" ? (
+                  <ChatPreview />
+                ) : (
+                  <Image
+                    source={item.image}
+                    style={styles.photo}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            </View>
 
             <Text style={styles.slideTitle}>{item.title}</Text>
             <Text style={styles.slideDescription}>{item.description}</Text>
           </View>
+
         )}
         keyExtractor={(item) => item.id}
         horizontal

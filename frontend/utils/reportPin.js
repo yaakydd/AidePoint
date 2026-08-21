@@ -31,6 +31,12 @@ export const clearPin = async (userId) => {
   await SecureStore.deleteItemAsync(getPinSetKey(userId));
 };
 
+export const isBiometricAvailable = async () => {
+  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  if (!hasHardware) return false;
+  const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+  return isEnrolled;
+};
 
 export const authenticateWithBiometrics = async () => {
   const result = await LocalAuthentication.authenticateAsync({

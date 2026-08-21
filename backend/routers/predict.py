@@ -197,10 +197,9 @@ async def predict(
     # from the same final condition rather than racing ahead of it.
     condition = resolve_condition(
         is_anemic=result["is_anemic"],
-        is_unreliable=result["is_unreliable"],
+        is_off_scope=shape_result.needs_review,
         morphology_findings=morphology_findings,
     )
-
     # Cell overlay/count are only meaningful for a determinate condition.
     # get_cell_overlay() in model.py runs unconditionally (by design, so a
     # failure there never blocks the core anemia prediction), so it must be

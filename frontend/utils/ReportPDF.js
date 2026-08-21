@@ -198,16 +198,7 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
         .note-text { font-size: 11px; color: #6B7C93; font-style: italic; margin-bottom: 8px; line-height: 1.4; }
         .finding-list { margin: 0 0 8px; padding-left: 18px; }
         .finding-list li { font-size: 12px; margin-bottom: 4px; text-transform: capitalize; }
-        .reliability-banner {
-          background: #FEF3C7; border-radius: 6px; padding: 14px 16px;
-          margin: 16px 0;
-        }
-        .reliability-title {
-          font-size: 11px; font-weight: 700; color: #92400E;
-          text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
-        }
-        .reliability-banner .finding-list li { color: #92400E; text-transform: none; }
-        .recommendation-text { font-size: 12px; line-height: 1.6; margin-bottom: 4px; }
+
         .footer {
           margin-top: 20px; padding-top: 12px; border-top: 1px solid #EDF2F7;
           font-size: 9px; color: #9CA3AF; line-height: 1.6;
@@ -275,8 +266,6 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
       ${buildMorphologySection(report.morphologyFindings)}
 
       ${buildCbcSection(report.cbcPatternSummary)}
-
-      ${buildReliabilitySection(report.isUnreliable, report.unreliableReasons)}
 
       <div class="divider"></div>
 

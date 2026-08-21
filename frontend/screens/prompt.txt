@@ -1,0 +1,59 @@
+PROMPT TO PASTE:
+
+I'm working on AidePoint, a React Native/Expo anemia-screening app with a FastAPI backend (routers/predict.py, services/) and Supabase. I have several bugs to debug and fix. Read this whole prompt before proposing fixes, and ask for any files you need before guessing.
+
+BUG 1 (main issue): condition is always "unknown" in the results modal, even for clearly anemic or healthy samples
+
+I ran three real test scans through /predict and captured the raw backend JSON plus the RESULT MODAL DATA log (built from { prediction, report, ... } in Scan.jsx and consumed by TransparencyTrail.jsx). All three show "condition": "unknown" in the backend response itself — this isn't a frontend display bug, the backend is returning "condition":"unknown" in the raw /predict payload every time:
+
+Test A (clearly anemic): anemia_probability: 0.9237, is_anemic: true, decision_threshold: 0.51 → backend still returned "condition":"unknown".
+Test B (looks like it should be healthy/low-risk): anemia_probability: 0.1516, is_anemic: false → "condition":"unknown". This is actually a healthy blood smear
+Test C (also should be healthy/low-risk): anemia_probability: 0.2889, is_anemic: false → "condition":"unknown".  This is actually a malaria blood smear so is_anemic should be bull instead of false.
+
+In all three, is_unreliable: true and unreliable_reasons is populated with image-quality complaints (overexposed, low contrast, under-stained, blurry, or unusual cell shape / shape_screening.needs_review). My working theory: the backend's condition-resolution logic (likely in a services/condition.py or similar, referenced in a comment in TransparencyTrail.jsx as "the backend is the single source of truth for this decision") is short-circuiting to "unknown" whenever is_unreliable is true or shape_screening.needs_review is true — regardless of what is_anemic/anemia_probability actually say. That's correct behavior for malaria/sickle-cell-type off-scope samples (genuinely unknown), but wrong for samples where the model has a confident, on-scope anemia/healthy read that just happens to have poor image quality — those should still show anemic/healthy, with the unreliability surfaced as a caveat, not as a full override to "unknown."
+
+I need you to:
+
+Find wherever condition is computed server-side (likely near resolve_condition/condition.py/prediction_helpers.py) and show me the exact logic that maps is_anemic + is_unreliable + shape_screening → condition.
+Identify precisely why an is_anemic: true, anemia_probability: 0.92 case and an is_anemic: false, anemia_probability: 0.15 case are both collapsing to "unknown".
+Propose a fix so that condition reflects is_anemic (anemic/healthy) whenever the anemia classification itself is on-scope and confident, and only falls back to "unknown" for genuinely out-of-scope samples (e.g. malaria, sickle cell, or cases where shape_screening.needs_review indicates the sample itself isn't a normal RBC smear) — separate from ordinary image-quality unreliability, which should NOT force condition to "unknown".
+Note: this is intentionally NOT true for malaria and sickle-cell test smears — those SHOULD show "unknown," since they're genuinely out of the model's classification scope. So the fix needs to distinguish "off-scope sample" from "on-scope sample with poor image quality."
+
+I'll paste the backend condition-resolution code once you ask for it.
+
+BUG 2: Remove the "Review recommended" banner from the reportPDF
+
+In components/TransparencyTrail.jsx, there's a banner block gated on isUnreliable:
+
+jsx
+{isUnreliable && (
+  <View style={[styles.warningBanner, { marginBottom: SPACING.sm }]}>
+    <MaterialCommunityIcons name="alert-outline" size={20} color="#92400E" />
+    <View style={{ flex: 1 }}>
+      <Text style={styles.warningTitle}>Review recommended</Text>
+      ...
+    </View>
+  </View>
+)}
+
+I want this whole banner removed. I'll paste the current full file.
+
+BUG 3: Verify morphology flags render correctly in the Report screen and Scan/TransparencyTrail
+
+Separately from the condition bug, I want you to check that morphology_findings (each entry has probability and flagged) is being read and displayed correctly wherever it's rendered — in TransparencyTrail.jsx and in the Report screen (I'll paste both). Specifically check whether the display logic uses the flagged boolean correctly vs. re-deriving flagged status from probability >= 0.5 inconsistently in different places (I noticed TransparencyTrail.jsx currently does Object.entries(prediction.morphology_findings ?? {}).filter(([, probability]) => probability >= 0.5) — note this destructures probability directly from the object entry, but each value is actually { probability, flagged }, not a raw number, so this filter is comparing an object to 0.5 and will always be false/broken). Flag this and fix it to use .flagged (or .probability >= 0.5 correctly destructured) consistently.
+
+BUG 4: cbc_flags / CBC_CONFIDENCE_LABELS removed from backend but frontend may still reference them
+
+I removed cbc_flags and CBC_CONFIDENCE_LABELS from the backend — they existed in model.py but were never present in cbc_uncertainty.py (looks like dead/inconsistent code). I need you to check the frontend (TransparencyTrail.jsx, Report screen, ReportUtils.js) for any remaining references to cbc_flags or a CBC_CONFIDENCE_LABELS frontend constant that would now break since the backend no longer sends that field, and confirm cbc_pattern_summary (which IS still sent, with direction/confidence/display_text per field) is the only CBC-related field actually being consumed.
+
+
+BUG 5: Onboarding — "Meet AideBot" (last slide) doesn't render its text
+
+In the onboarding carousel, the first 3 slides render their images fine, but the last slide ("Meet AideBot") is missing its text content (images/AideBot render, text doesn't). I'll paste the onboarding screen component — check for things like a missing key/index mismatch in a .map(), a conditional that assumes an array length off-by-one, or the last slide's text using a difference variable/prop name than the others.
+
+BUG 7: Runtime error — isBiometricAvailable is not a function
+ERROR [TypeError: 0, _utilsReportPin.isBiometricAvailable is not a function (it is undefined)]
+
+This means utils/reportPin.js doesn't export a function named isBiometricAvailable, but something is importing and calling it as isBiometricAvailable(...). I'll paste utils/reportPin.js and the caller — check for: (a) the function existing but under a different export name, (b) it not being exported at all (defined but missing from module.exports/named export), or (c) a default-vs-named import mismatch.
+
+For each bug, tell me what file(s) you need to see, then propose the fix with an explanation before I ask you to rewrite the full file.

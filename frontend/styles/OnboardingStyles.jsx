@@ -62,27 +62,22 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Photo frame: soft accent-tinted glow behind a smaller inset card
-  // holding the illustration, rather than one flat edge-to-edge box.
-  // Scale/opacity are animated per-slide from Onboarding.jsx based on
-  // scrollX, so the active slide's card sits at full size/opacity and
-  // neighbors shrink and fade slightly as you swipe past them.
 photoFrame: {
   width: "100%",
-  aspectRatio: 4 / 3,       // closer to the images' natural ~1.2–1.5 ratio
+  aspectRatio: 1.05,        // taller/bigger frame, still close to square so nothing crops
   alignItems: "center",
   justifyContent: "center",
   marginBottom: scale(20),
 },
 
 photoGlow: {
-  width: "94%",
-  height: "94%",
+  width: "100%",
+  height: "100%",
   borderRadius: RADIUS.xl,
   overflow: "hidden",
   alignItems: "center",
   justifyContent: "center",
-  padding: scale(16),       // breathing room so the image doesn't touch the frame edge
+  padding: scale(8),        // less inner padding so the image itself fills more of the frame
 },
 
 photo: {
@@ -175,13 +170,12 @@ slideTitle: {
     fontSize: FONTS.lg,
     fontWeight: FONTS.semibold,
   },
-  chatPreviewFrame: {
+chatPreviewFrame: {
   width: "100%",
-  aspectRatio: 4 / 3,
+  height: "100%",
   borderRadius: RADIUS.xl,
   overflow: "hidden",
   backgroundColor: COLORS.surfaceAlt,
-  marginBottom: scale(36),
   padding: SPACING.lg,
   justifyContent: "center",
   gap: SPACING.md,
