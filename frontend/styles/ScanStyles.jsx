@@ -736,4 +736,5 @@ usageBanner: {
     color:
       COLORS.textSecondary,
 
+  }
 });
