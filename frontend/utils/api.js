@@ -84,6 +84,22 @@ export async function analyzeBloodSmear(imageUri, patientSampleId, temperature, 
       if (response.status === 415) throw new Error('Only JPEG or PNG images are accepted.');
       if (response.status === 503) throw new Error('Analysis server is starting up. Wait a few seconds and try again.');
 
+      if (response.status === 429) {
+        // Server-side scan-limit rejection (see services/prediction_helpers.py
+        // check_and_enforce_scan_limit). This is the authoritative limit --
+        // the client-side pre-check in scanStorage.js before this call is
+        // only a best-effort UX shortcut and can be stale (e.g. another
+        // device used up the day's scans). Scan.jsx shows the same
+        // "Scan Limit Reached" upgrade prompt for both.
+        const limitError = new Error(
+          detail?.message ?? "You've reached your daily scan limit."
+        );
+        limitError.isScanLimitError = true;
+        limitError.tier = detail?.tier ?? null;
+        limitError.dailyLimit = detail?.daily_limit ?? null;
+        throw limitError;
+      }
+
       if (response.status === 422) {
         if (detail && typeof detail === 'object') {
           const qualityError = new Error(
