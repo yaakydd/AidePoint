@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const AIDEBOT_ENDPOINT = `${API_BASE_URL}/aidebot/chat`;
 
 const MAX_HISTORY_MESSAGES = 10;
@@ -27,7 +27,7 @@ async function getAuthToken() {
 export async function sendToGemini(history, predictionId = null) {
   if (!API_BASE_URL) {
     throw new Error(
-      'Missing EXPO_PUBLIC_API_BASE_URL. Add it to your .env file and restart the dev server.'
+      'Missing EXPO_PUBLIC_API_URL. Add it to your .env file and restart the dev server.'
     );
   }
 
@@ -68,6 +68,21 @@ export async function sendToGemini(history, predictionId = null) {
   }
 
   if (!response.ok) {
+    if (response.status === 429) {
+      // Authoritative server-side daily limit (aidebot.py's
+      // _check_and_record_rate_limit, backed by the aidebot_messages
+      // table). The client-side counter in chatstorage.js is a
+      // same-numbers UX shortcut and can drift (new device, reinstall,
+      // another session) -- this is the real limit.
+      let body = null;
+      try { body = await response.json(); } catch {}
+      const limitError = new Error(
+        (typeof body?.detail === 'string' ? body.detail : null)
+          ?? "You've reached your daily AideBot message limit."
+      );
+      limitError.isChatLimitError = true;
+      throw limitError;
+    }
     const errBody = await response.text().catch(() => '');
     throw new Error(`AideBot request failed (${response.status}): ${errBody}`);
   }
