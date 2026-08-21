@@ -67,6 +67,25 @@ async function handleToggle(newValue) {
   if (!result.success) {
     setStoreImages(prev);
     Alert.alert('Error', result.error || 'Could not save preference.');
+    return;
+  }
+
+  // Turning storeImages OFF should also clear out anything already
+  // stored, not just stop future uploads. Turning it ON needs no extra
+  // action -- uploadScanImage() already checks this flag going forward.
+  if (prev === true && newValue === false) {
+    try {
+      await deleteAllScanImages(user.id);
+    } catch (err) {
+      console.error('Failed to delete stored scan images:', err);
+      // Best-effort: the preference itself is already saved and honored
+      // even if cleanup fails. Let the user know so they aren't misled
+      // into thinking old images are gone when they might not be.
+      Alert.alert(
+        'Preference Saved',
+        "Your setting was saved, but we couldn't confirm your previously stored images were deleted. You can try toggling this off again later, or contact support if it persists."
+      );
+    }
   }
 }
 
