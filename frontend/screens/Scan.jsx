@@ -28,7 +28,11 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
-import { buildReport, resolveConditionKey, saveReport } from '../utils/ReportUtils';
+import {
+  buildReport,
+  resolveConditionKey,
+  saveReport,
+} from '../utils/ReportUtils';
 
 import { scanStyles as styles } from '../styles/ScanStyles';
 
@@ -36,7 +40,11 @@ import { analyzeBloodSmear } from '../utils/api';
 
 import { prepareImage, stabilizeImage } from '../utils/imageUtils';
 
-import { getRemainingScans, recordScan, uploadScanImage } from '../utils/scanStorage';
+import {
+  getRemainingScans,
+  recordScan,
+  uploadScanImage,
+} from '../utils/scanStorage';
 
 import { getPlan } from '../constants/SubscriptionPlans';
 
@@ -49,12 +57,15 @@ const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
 const GENDERS = ['Male', 'Female'];
 
-/* HELPERS */
+/* ============================================================
+   HELPERS
+============================================================ */
 
 function generateScanId() {
   const year = new Date().getFullYear();
   const timePart = Date.now().toString(36).toUpperCase().slice(4);
   const randomPart = Math.floor(100 + Math.random() * 900);
+
   return `AP${year}${timePart}${randomPart}`;
 }
 
@@ -62,39 +73,51 @@ function validateField(field, value) {
   switch (field) {
     case 'patientName': {
       const trimmed = value?.trim() ?? '';
+
       if (trimmed && trimmed.length < 2) {
         return 'Name looks too short';
       }
+
       return '';
     }
 
     case 'age': {
       if (!value) return '';
+
       const n = Number(value);
+
       if (!Number.isInteger(n) || n <= 0 || n > 120) {
         return 'Enter a valid age (1–120)';
       }
+
       return '';
     }
 
     case 'temperature': {
       if (!value) return '';
+
       const n = Number(value);
+
       if (!Number.isFinite(n) || n < 30 || n > 43) {
         return 'Enter a plausible temp (30–43°C)';
       }
+
       return '';
     }
 
     case 'bloodPressure': {
       if (!value) return '';
+
       const trimmed = value.trim();
       const match = trimmed.match(/^(\d{2,3})\/(\d{2,3})$/);
+
       if (!match) {
         return 'Format as systolic/diastolic, e.g. 120/80';
       }
+
       const systolic = Number(match[1]);
       const diastolic = Number(match[2]);
+
       if (
         systolic < 50 ||
         systolic > 250 ||
@@ -104,6 +127,7 @@ function validateField(field, value) {
       ) {
         return 'Enter a plausible blood pressure';
       }
+
       return '';
     }
 
@@ -144,7 +168,77 @@ function getSafeErrorMessage(error) {
   return 'Something went wrong.';
 }
 
-/* ANALYSIS MODAL */
+/*
+ * The API response is allowed to contain different optional fields.
+ *
+ * Most importantly, the result should still be displayable when the
+ * backend returns the core prediction:
+ *
+ * anemia_probability
+ * is_anemic
+ * decision_threshold
+ * cbc
+ *
+ * Do NOT reject a valid prediction merely because optional fields
+ * such as prediction_id are absent.
+ */
+function hasUsablePrediction(prediction) {
+  if (!prediction || typeof prediction !== 'object') {
+    return false;
+  }
+
+  const hasAnemiaProbability =
+    typeof prediction.anemia_probability === 'number';
+
+  const hasIsAnemic =
+    typeof prediction.is_anemic === 'boolean';
+
+  return hasAnemiaProbability || hasIsAnemic;
+}
+
+/*
+ * Normalise the prediction object without destroying any fields
+ * returned by the backend.
+ */
+function normalizePrediction(prediction) {
+  if (!prediction || typeof prediction !== 'object') {
+    return prediction;
+  }
+
+  return {
+    ...prediction,
+
+    anemia_probability:
+      typeof prediction.anemia_probability === 'number'
+        ? prediction.anemia_probability
+        : null,
+
+    is_anemic:
+      typeof prediction.is_anemic === 'boolean'
+        ? prediction.is_anemic
+        : null,
+
+    decision_threshold:
+      typeof prediction.decision_threshold === 'number'
+        ? prediction.decision_threshold
+        : null,
+
+    cbc:
+      prediction.cbc && typeof prediction.cbc === 'object'
+        ? prediction.cbc
+        : null,
+
+    morphology_findings:
+      prediction.morphology_findings ?? [],
+
+    unreliable_reasons:
+      prediction.unreliable_reasons ?? [],
+  };
+}
+
+/* ============================================================
+   ANALYSIS MODAL
+============================================================ */
 
 const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -156,18 +250,31 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
       rotateAnim.stopAnimation();
       pulseAnim.setValue(1);
       rotateAnim.setValue(0);
+
       return undefined;
     }
 
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
       ]),
     );
 
     const rotate = Animated.loop(
-      Animated.timing(rotateAnim, { toValue: 1, duration: 1800, useNativeDriver: true }),
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 1800,
+        useNativeDriver: true,
+      }),
     );
 
     pulse.start();
@@ -176,8 +283,10 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
     return () => {
       pulse.stop();
       rotate.stop();
+
       pulseAnim.stopAnimation();
       rotateAnim.stopAnimation();
+
       pulseAnim.setValue(1);
       rotateAnim.setValue(0);
     };
@@ -196,15 +305,29 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
       statusBarTranslucent
       presentationStyle="overFullScreen"
       onRequestClose={() => {
-        // Intentionally blocked.
-        // Analysis must finish before the user can leave.
+        // Analysis cannot be cancelled while running.
       }}
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Animated.View style={[styles.iconOuter, { transform: [{ scale: pulseAnim }] }]}>
-            <Animated.View style={{ transform: [{ rotate }] }}>
-              <MaterialCommunityIcons name="microscope" size={38} color={COLORS.primary} />
+          <Animated.View
+            style={[
+              styles.iconOuter,
+              {
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          >
+            <Animated.View
+              style={{
+                transform: [{ rotate }],
+              }}
+            >
+              <MaterialCommunityIcons
+                name="microscope"
+                size={38}
+                color={COLORS.primary}
+              />
             </Animated.View>
           </Animated.View>
 
@@ -215,15 +338,29 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
           </Text>
 
           <View style={styles.stageBox}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
-            <Text style={styles.stageText} numberOfLines={2}>
+            <ActivityIndicator
+              size="small"
+              color={COLORS.primary}
+            />
+
+            <Text
+              style={styles.stageText}
+              numberOfLines={2}
+            >
               {stage}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="shield-check-outline" size={17} color={COLORS.success} />
-            <Text style={styles.infoText}>Please keep this screen open</Text>
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={17}
+              color={COLORS.success}
+            />
+
+            <Text style={styles.infoText}>
+              Please keep this screen open
+            </Text>
           </View>
         </View>
       </View>
@@ -231,14 +368,20 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
   );
 };
 
-/* SCREEN */
+/* ============================================================
+   SCREEN
+============================================================ */
 
 const Scan = ({ navigation, route }) => {
   const { user } = useAuth();
 
   /* USER / PLAN */
 
-  const plan = useMemo(() => getPlan(user?.subscriptionTier), [user?.subscriptionTier]);
+  const plan = useMemo(
+    () => getPlan(user?.subscriptionTier),
+    [user?.subscriptionTier],
+  );
+
   const labTechName = user?.name ?? 'Lab Technician';
 
   /* FORM */
@@ -260,7 +403,8 @@ const Scan = ({ navigation, route }) => {
 
   const [scanId, setScanId] = useState(generateScanId);
   const [isAnalysing, setIsAnalysing] = useState(false);
-  const [analysisStage, setAnalysisStage] = useState('Preparing image...');
+  const [analysisStage, setAnalysisStage] =
+    useState('Preparing image...');
   const [remaining, setRemaining] = useState(null);
 
   /* RESULT */
@@ -270,15 +414,18 @@ const Scan = ({ navigation, route }) => {
   /* RESET TOOLTIP */
 
   const [showResetTip, setShowResetTip] = useState(false);
-  const tipOpacity = useRef(new Animated.Value(0)).current;
+
+  const tipOpacity = useRef(
+    new Animated.Value(0),
+  ).current;
 
   const analysisLock = useRef(false);
-
   const mountedRef = useRef(true);
-
   const analysisSessionRef = useRef(null);
 
-  /* LIFECYCLE */
+  /* ============================================================
+     LIFECYCLE
+  ============================================================ */
 
   useEffect(() => {
     mountedRef.current = true;
@@ -290,7 +437,9 @@ const Scan = ({ navigation, route }) => {
     };
   }, []);
 
-  /* LOAD SCAN LIMIT */
+  /* ============================================================
+     LOAD SCAN LIMIT
+  ============================================================ */
 
   const loadRemaining = useCallback(async () => {
     if (!user?.id || !plan) {
@@ -298,13 +447,19 @@ const Scan = ({ navigation, route }) => {
     }
 
     try {
-      const value = await getRemainingScans(user.id, plan);
+      const value = await getRemainingScans(
+        user.id,
+        plan,
+      );
 
       if (mountedRef.current) {
         setRemaining(value);
       }
     } catch (error) {
-      console.error('Failed to load remaining scans:', error);
+      console.error(
+        'Failed to load remaining scans:',
+        error,
+      );
     }
   }, [user?.id, plan]);
 
@@ -312,84 +467,113 @@ const Scan = ({ navigation, route }) => {
     loadRemaining();
   }, [loadRemaining]);
 
-  /* PREVENT NAVIGATION WHILE ANALYSING */
+  /* ============================================================
+     PREVENT NAVIGATION WHILE ANALYSING
+  ============================================================ */
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-      if (!analysisLock.current) {
-        return;
-      }
+    const unsubscribe = navigation.addListener(
+      'beforeRemove',
+      (event) => {
+        if (!analysisLock.current) {
+          return;
+        }
 
-      /*
-       * Prevent hardware back, header navigation,
-       * gestures and other navigation actions.
-       */
-      event.preventDefault();
-    });
+        event.preventDefault();
+      },
+    );
 
     return unsubscribe;
   }, [navigation]);
 
-  /* CAMERA RESULT */
+  /* ============================================================
+     CAMERA RESULT
+  ============================================================ */
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (analysisLock.current || isAnalysing) {
-        return;
-      }
-
-      const capturedPhoto = route.params?.capturedPhoto;
-
-      if (!capturedPhoto) {
-        return;
-      }
-
-      /*
-       * Clear the parameter immediately.
-       *
-       * This prevents the same camera image from
-       * being processed again if the screen focuses.
-       */
-      navigation.setParams({ capturedPhoto: undefined });
-
-      const processCameraImage = async () => {
-        try {
-          const safeUri = await stabilizeImage(capturedPhoto);
-
-          if (!mountedRef.current || analysisLock.current) {
-            return;
-          }
-
-          setImage(safeUri);
-          setImageSourceType('camera');
-
-          setErrors((prev) => ({ ...prev, image: '' }));
-        } catch (error) {
-          console.error('Camera image stabilize failed:', error);
-
-          if (mountedRef.current) {
-            Alert.alert('Image Error', 'Could not process the captured photo. Please try again.');
-          }
+    const unsubscribe = navigation.addListener(
+      'focus',
+      () => {
+        if (analysisLock.current || isAnalysing) {
+          return;
         }
-      };
 
-      processCameraImage();
-    });
+        const capturedPhoto =
+          route.params?.capturedPhoto;
+
+        if (!capturedPhoto) {
+          return;
+        }
+
+        navigation.setParams({
+          capturedPhoto: undefined,
+        });
+
+        const processCameraImage = async () => {
+          try {
+            const safeUri =
+              await stabilizeImage(capturedPhoto);
+
+            if (
+              !mountedRef.current ||
+              analysisLock.current
+            ) {
+              return;
+            }
+
+            setImage(safeUri);
+            setImageSourceType('camera');
+
+            setErrors((prev) => ({
+              ...prev,
+              image: '',
+            }));
+          } catch (error) {
+            console.error(
+              'Camera image stabilize failed:',
+              error,
+            );
+
+            if (mountedRef.current) {
+              Alert.alert(
+                'Image Error',
+                'Could not process the captured photo. Please try again.',
+              );
+            }
+          }
+        };
+
+        processCameraImage();
+      },
+    );
 
     return unsubscribe;
-  }, [navigation, route.params?.capturedPhoto, isAnalysing]);
+  }, [
+    navigation,
+    route.params?.capturedPhoto,
+    isAnalysing,
+  ]);
 
-  /* VALIDATION */
+  /* ============================================================
+     VALIDATION
+  ============================================================ */
 
-  const runValidation = useCallback((field, value) => {
-    const message = validateField(field, value);
+  const runValidation = useCallback(
+    (field, value) => {
+      const message = validateField(field, value);
 
-    setErrors((prev) => ({ ...prev, [field]: message }));
+      setErrors((prev) => ({
+        ...prev,
+        [field]: message,
+      }));
 
-    return message;
-  }, []);
+      return message;
+    },
+    [],
+  );
 
-  const hasFieldErrors = Object.values(errors).some(Boolean);
+  const hasFieldErrors =
+    Object.values(errors).some(Boolean);
 
   const isFormValid =
     patientName.trim().length > 0 &&
@@ -400,7 +584,9 @@ const Scan = ({ navigation, route }) => {
     !!image &&
     !hasFieldErrors;
 
-  /* IMAGE ACTIONS */
+  /* ============================================================
+     IMAGE ACTIONS
+  ============================================================ */
 
   const openCamera = () => {
     if (analysisLock.current || isAnalysing) {
@@ -408,7 +594,13 @@ const Scan = ({ navigation, route }) => {
     }
 
     navigation.navigate('Camera', {
-      existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
+      existingData: {
+        patientName,
+        patientAge,
+        patientGender,
+        temperature,
+        bloodPressure,
+      },
     });
   };
 
@@ -421,7 +613,13 @@ const Scan = ({ navigation, route }) => {
     setImageSourceType(null);
 
     navigation.navigate('Camera', {
-      existingData: { patientName, patientAge, patientGender, temperature, bloodPressure },
+      existingData: {
+        patientName,
+        patientAge,
+        patientGender,
+        temperature,
+        bloodPressure,
+      },
     });
   };
 
@@ -431,47 +629,72 @@ const Scan = ({ navigation, route }) => {
     }
 
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
-        Alert.alert('Permission Required', 'Please allow access to your gallery.');
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your gallery.',
+        );
+
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 1,
-        allowsEditing: false,
-        selectionLimit: 1,
-      });
+      const result =
+        await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          quality: 1,
+          allowsEditing: false,
+          selectionLimit: 1,
+        });
 
-      if (result.canceled || !result.assets?.length) {
+      if (
+        result.canceled ||
+        !result.assets?.length
+      ) {
         return;
       }
 
-      const pickedAsset = result.assets[0];
-      const pickedUri = pickedAsset.uri;
+      const pickedUri = result.assets[0].uri;
 
       if (!pickedUri) {
-        Alert.alert('Invalid Image', 'The selected file could not be read.');
+        Alert.alert(
+          'Invalid Image',
+          'The selected file could not be read.',
+        );
+
         return;
       }
 
-      const safeUri = await stabilizeImage(pickedUri);
+      const safeUri =
+        await stabilizeImage(pickedUri);
 
-      if (!mountedRef.current || analysisLock.current) {
+      if (
+        !mountedRef.current ||
+        analysisLock.current
+      ) {
         return;
       }
 
       setImage(safeUri);
       setImageSourceType('upload');
 
-      setErrors((prev) => ({ ...prev, image: '' }));
+      setErrors((prev) => ({
+        ...prev,
+        image: '',
+      }));
     } catch (error) {
-      console.error('Image picker error:', error);
+      console.error(
+        'Image picker error:',
+        error,
+      );
 
       if (mountedRef.current) {
-        Alert.alert('Upload Failed', 'Unable to select or process the image.');
+        Alert.alert(
+          'Upload Failed',
+          'Unable to select or process the image.',
+        );
       }
     }
   };
@@ -487,42 +710,53 @@ const Scan = ({ navigation, route }) => {
     handlePickFile();
   };
 
-  /* RESET */
+  /* ============================================================
+     RESET
+  ============================================================ */
 
   const triggerReset = () => {
     if (analysisLock.current || isAnalysing) {
       return;
     }
 
-    Alert.alert('Reset Form', 'Clear all entered data?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Reset',
-        style: 'destructive',
-        onPress: () => {
-          if (analysisLock.current) {
-            return;
-          }
-
-          setPatientName('');
-          setPatientAge('');
-          setPatientGender('');
-          setTemperature('');
-          setBloodPressure('');
-
-          setErrors({});
-
-          setImage(null);
-          setImageSourceType(null);
-
-          setImageViewerOpen(false);
-
-          setScanId(generateScanId());
-
-          setAnalysisStage('Preparing image...');
+    Alert.alert(
+      'Reset Form',
+      'Clear all entered data?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            if (analysisLock.current) {
+              return;
+            }
+
+            setPatientName('');
+            setPatientAge('');
+            setPatientGender('');
+            setTemperature('');
+            setBloodPressure('');
+
+            setErrors({});
+
+            setImage(null);
+            setImageSourceType(null);
+
+            setImageViewerOpen(false);
+
+            setScanId(generateScanId());
+
+            setAnalysisStage(
+              'Preparing image...',
+            );
+          },
+        },
+      ],
+    );
   };
 
   const handleResetPress = () => {
@@ -538,9 +772,17 @@ const Scan = ({ navigation, route }) => {
     setShowResetTip(true);
 
     Animated.sequence([
-      Animated.timing(tipOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(tipOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
       Animated.delay(2000),
-      Animated.timing(tipOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(tipOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       if (mountedRef.current) {
         setShowResetTip(false);
@@ -548,175 +790,230 @@ const Scan = ({ navigation, route }) => {
     });
   };
 
-  /* START ANALYSIS */
+  /* ============================================================
+     START ANALYSIS
+  ============================================================ */
 
   const handleStartAnalysis = async () => {
     /*
-     * ================================================================
      * 0. IMMEDIATE LOCK
-     * ================================================================
      */
 
-    if (analysisLock.current || isAnalysing) {
+    if (
+      analysisLock.current ||
+      isAnalysing
+    ) {
       return;
     }
 
     /*
-     * ================================================================
-     * 1. AUTHENTICATION CHECK
-     * ================================================================
+     * 1. AUTHENTICATION
      */
 
     if (!user?.id) {
-      Alert.alert('Session Required', 'Your session is unavailable. Please sign in again.');
+      Alert.alert(
+        'Session Required',
+        'Your session is unavailable. Please sign in again.',
+      );
+
       return;
     }
 
     /*
-     * ================================================================
-     * 2. PLAN CHECK
-     * ================================================================
+     * 2. PLAN
      */
 
     if (!plan) {
-      Alert.alert('Plan Error', 'Your subscription plan could not be determined. Please try again.');
+      Alert.alert(
+        'Plan Error',
+        'Your subscription plan could not be determined. Please try again.',
+      );
+
       return;
     }
 
     /*
-     * ================================================================
      * 3. VALIDATE FORM AGAIN
-     * ================================================================
      */
 
     const validationErrors = {};
 
     const fieldsToValidate = {
-      patientName: ['patientName', patientName],
+      patientName: [
+        'patientName',
+        patientName,
+      ],
       age: ['age', patientAge],
-      temperature: ['temperature', temperature],
-      bloodPressure: ['bloodPressure', bloodPressure],
+      temperature: [
+        'temperature',
+        temperature,
+      ],
+      bloodPressure: [
+        'bloodPressure',
+        bloodPressure,
+      ],
     };
 
-    Object.values(fieldsToValidate).forEach(([field, value]) => {
-      const error = validateField(field, value);
+    Object.values(
+      fieldsToValidate,
+    ).forEach(([field, value]) => {
+      const error = validateField(
+        field,
+        value,
+      );
 
       if (error) {
-        validationErrors[field] = error;
+        validationErrors[field] =
+          error;
       }
     });
 
     if (!patientName.trim()) {
-      validationErrors.patientName = 'Enter patient name';
+      validationErrors.patientName =
+        'Enter patient name';
     }
 
     if (!patientAge.trim()) {
-      validationErrors.age = 'Enter patient age';
+      validationErrors.age =
+        'Enter patient age';
     }
 
     if (!patientGender) {
-      validationErrors.patientGender = 'Select patient gender';
+      validationErrors.patientGender =
+        'Select patient gender';
     }
 
     if (!temperature.trim()) {
-      validationErrors.temperature = 'Enter temperature';
+      validationErrors.temperature =
+        'Enter temperature';
     }
 
     if (!bloodPressure.trim()) {
-      validationErrors.bloodPressure = 'Enter blood pressure';
+      validationErrors.bloodPressure =
+        'Enter blood pressure';
     }
 
     if (!image) {
-      validationErrors.image = 'Capture or upload a blood smear image';
+      validationErrors.image =
+        'Capture or upload a blood smear image';
     }
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (
+      Object.keys(validationErrors)
+        .length > 0
+    ) {
       setErrors(validationErrors);
       return;
     }
 
     /*
-     * ================================================================
      * 4. LOCK
-     * ================================================================
      */
 
     analysisLock.current = true;
 
-    const analysisSession = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const analysisSession =
+      `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
-    analysisSessionRef.current = analysisSession;
+    analysisSessionRef.current =
+      analysisSession;
 
     setIsAnalysing(true);
 
-    // Orphaned-record rollback tracking. If the pipeline fails after
-    // either row has been created, the catch block below does a
-    // best-effort delete of whatever was created so we don't leave
-    // orphaned patient/scan rows behind.
     let createdPatientId = null;
     let createdScanId = null;
 
-    /*
-     * ================================================================
-     * 5. CHECK SCAN LIMIT AGAIN
-     * ================================================================
-     *
-     * Important:
-     * The UI's displayed remaining count is not trusted.
-     * We check again immediately before processing.
-     *
-     * Backend/database must still enforce the actual limit.
-     */
-
     try {
-      setAnalysisStage('Checking scan availability...');
+      /*
+       * 5. CHECK SCAN LIMIT
+       */
 
-      const currentRemaining = await getRemainingScans(user.id, plan);
+      setAnalysisStage(
+        'Checking scan availability...',
+      );
 
-      if (!Number.isFinite(currentRemaining) && currentRemaining !== Infinity) {
-        throw new Error('Could not verify scan availability.');
+      const currentRemaining =
+        await getRemainingScans(
+          user.id,
+          plan,
+        );
+
+      if (
+        !Number.isFinite(
+          currentRemaining,
+        ) &&
+        currentRemaining !== Infinity
+      ) {
+        throw new Error(
+          'Could not verify scan availability.',
+        );
       }
 
-      if (currentRemaining !== Infinity && currentRemaining <= 0) {
+      if (
+        currentRemaining !== Infinity &&
+        currentRemaining <= 0
+      ) {
         if (mountedRef.current) {
-          Alert.alert('Daily Limit Reached', getUpgradeMessage(plan), [
-            { text: 'Maybe Later', style: 'cancel' },
-            { text: 'View Plans', onPress: () => navigation.navigate('Subscription') },
-          ]);
+          Alert.alert(
+            'Daily Limit Reached',
+            getUpgradeMessage(plan),
+            [
+              {
+                text: 'Maybe Later',
+                style: 'cancel',
+              },
+              {
+                text: 'View Plans',
+                onPress: () =>
+                  navigation.navigate(
+                    'Subscription',
+                  ),
+              },
+            ],
+          );
         }
 
         return;
       }
 
       /*
-       * ==============================================================
        * 6. PREPARE IMAGE
-       * ==============================================================
        */
 
-      setAnalysisStage('Preparing blood smear image...');
+      setAnalysisStage(
+        'Preparing blood smear image...',
+      );
 
-      const compressedUri = await prepareImage(image);
+      const compressedUri =
+        await prepareImage(image);
 
       if (!compressedUri) {
-        throw new Error('Image preparation failed.');
+        throw new Error(
+          'Image preparation failed.',
+        );
       }
 
       /*
-       * ==============================================================
        * 7. CREATE PATIENT
-       * ==============================================================
        */
 
-      setAnalysisStage('Creating patient record...');
+      setAnalysisStage(
+        'Creating patient record...',
+      );
 
-      const { data: patientRow, error: patientError } = await supabase
+      const {
+        data: patientRow,
+        error: patientError,
+      } = await supabase
         .from('patients')
         .insert({
           created_by: user.id,
           name: patientName.trim(),
           age: Number(patientAge),
-          gender: patientGender.toLowerCase(),
+          gender:
+            patientGender.toLowerCase(),
         })
         .select('id')
         .single();
@@ -726,122 +1023,220 @@ const Scan = ({ navigation, route }) => {
       }
 
       if (!patientRow?.id) {
-        throw new Error('Patient record could not be created.');
+        throw new Error(
+          'Patient record could not be created.',
+        );
       }
 
-      createdPatientId = patientRow.id;
+      createdPatientId =
+        patientRow.id;
 
       /*
-       * ==============================================================
        * 8. AI ANALYSIS
-       * ==============================================================
        */
 
-      setAnalysisStage('Analysing blood smear...');
-
-      const prediction = await analyzeBloodSmear(
-        compressedUri,
-        patientRow.id,
-        temperature.trim(),
-        bloodPressure.trim(),
+      setAnalysisStage(
+        'Analysing blood smear...',
       );
 
-      if (!prediction) {
-        throw new Error('No analysis result was returned.');
-      }
+      const rawPrediction =
+        await analyzeBloodSmear(
+          compressedUri,
+          patientRow.id,
+          temperature.trim(),
+          bloodPressure.trim(),
+        );
 
       /*
-       * ==============================================================
-       * 9. BASIC PREDICTION VALIDATION
-       * ==============================================================
+       * IMPORTANT CHANGE:
+       *
+       * Do not require prediction_id here.
+       *
+       * The current /predict endpoint can return a valid
+       * prediction containing anemia_probability,
+       * is_anemic, decision_threshold, cbc, etc.
        */
 
-      if (typeof prediction !== 'object') {
-        throw new Error('Invalid analysis response.');
-      }
+      if (
+        !hasUsablePrediction(
+          rawPrediction,
+        )
+      ) {
+        console.error(
+          'Invalid /predict response:',
+          rawPrediction,
+        );
 
-      if (prediction.prediction_id === undefined || prediction.prediction_id === null) {
-        throw new Error('Analysis response is missing its prediction ID.');
+        throw new Error(
+          'No usable analysis result was returned.',
+        );
       }
 
       /*
-       * ==============================================================
-       * 10. UPLOAD IMAGE
-       * ==============================================================
+       * Preserve the complete API response.
        */
 
-      setAnalysisStage('Securing scan image...');
-
-      const storedImagePath = await uploadScanImage(user.id, compressedUri, scanId);
-
-      if (!storedImagePath) {
-        throw new Error('Scan image could not be securely stored.');
-      }
+      const prediction =
+        normalizePrediction(
+          rawPrediction,
+        );
 
       /*
-       * ==============================================================
-       * 11. DETERMINE CONDITION
-       * ==============================================================
+       * 9. UPLOAD IMAGE
+       */
+
+      setAnalysisStage(
+        'Securing scan image...',
+      );
+
+      const storedImagePath =
+        await uploadScanImage(
+          user.id,
+          compressedUri,
+          scanId,
+        );
+
+      /*
+       * The upload can legitimately return null when image
+       * storage consent is not enabled.
+       *
+       * The AI result itself should still be displayable.
+       */
+
+      const imageUrl =
+        storedImagePath ?? null;
+
+      /*
+       * 10. DETERMINE CONDITION
        */
 
       const conditionKey =
         prediction.condition ??
-        resolveConditionKey(prediction.is_anemic, prediction.morphology_findings, prediction.is_unreliable);
-
-      if (!conditionKey) {
-        throw new Error('Analysis condition could not be determined.');
-      }
+        resolveConditionKey(
+          prediction.is_anemic,
+          prediction.morphology_findings,
+          prediction.is_unreliable,
+        );
 
       /*
-       * ==============================================================
-       * 12. BUILD REPORT
-       * ==============================================================
+       * A condition is useful for the report, but don't
+       * throw away an otherwise valid AI result just because
+       * an optional condition field is unavailable.
        */
 
-      setAnalysisStage('Preparing analysis report...');
+      const safeConditionKey =
+        conditionKey ??
+        (prediction.is_anemic === true
+          ? 'anemia'
+          : 'normal');
 
-      const report = buildReport({
-        patientName: patientName.trim(),
-        patientId: patientRow.id,
-        condition: conditionKey,
-        isAnemic: prediction.is_anemic,
-        confidence: prediction.anemia_probability,
-        confidenceLabel: prediction.explanation?.confidence ?? 'moderate',
-        labTechName,
-        image_url: storedImagePath,
-        temperature: temperature.trim(),
-        bloodPressure: bloodPressure.trim(),
-        morphologyFindings: prediction.morphology_findings,
-        cbcPatternSummary: prediction.cbc_pattern_summary,
-        isUnreliable: prediction.is_unreliable,
-        unreliableReasons: prediction.unreliable_reasons,
-        imageQuality: prediction.image_quality,
-        cellOverlay: prediction.cell_overlay,
-        scanId,
-      });
+      /*
+       * 11. BUILD REPORT
+       */
+
+      setAnalysisStage(
+        'Preparing analysis report...',
+      );
+
+      const report =
+        buildReport({
+          patientName:
+            patientName.trim(),
+
+          patientId:
+            patientRow.id,
+
+          condition:
+            safeConditionKey,
+
+          isAnemic:
+            prediction.is_anemic,
+
+          confidence:
+            prediction.anemia_probability,
+
+          confidenceLabel:
+            prediction.explanation
+              ?.confidence ??
+            'moderate',
+
+          labTechName,
+
+          image_url:
+            imageUrl,
+
+          temperature:
+            temperature.trim(),
+
+          bloodPressure:
+            bloodPressure.trim(),
+
+          morphologyFindings:
+            prediction.morphology_findings,
+
+          cbcPatternSummary:
+            prediction.cbc_pattern_summary,
+
+          isUnreliable:
+            prediction.is_unreliable,
+
+          unreliableReasons:
+            prediction.unreliable_reasons,
+
+          imageQuality:
+            prediction.image_quality,
+
+          cellOverlay:
+            prediction.cell_overlay,
+
+          scanId,
+        });
 
       if (!report) {
-        throw new Error('Report could not be generated.');
+        throw new Error(
+          'Report could not be generated.',
+        );
       }
 
       /*
-       * ==============================================================
-       * 13. SAVE SCAN
-       * ==============================================================
+       * 12. SAVE SCAN
+       *
+       * prediction_id is optional because the current
+       * /predict response may not provide one.
        */
 
-      setAnalysisStage('Saving scan record...');
+      setAnalysisStage(
+        'Saving scan record...',
+      );
 
-      const { data: scanRow, error: scanError } = await supabase
+      const scanInsert = {
+        patient_id: patientRow.id,
+        created_by: user.id,
+        image_url: imageUrl,
+        status: 'done',
+        condition: safeConditionKey,
+      };
+
+      /*
+       * Only include prediction_id when the API actually
+       * supplied it.
+       */
+      if (
+        prediction.prediction_id !==
+          undefined &&
+        prediction.prediction_id !==
+          null
+      ) {
+        scanInsert.prediction_id =
+          prediction.prediction_id;
+      }
+
+      const {
+        data: scanRow,
+        error: scanError,
+      } = await supabase
         .from('scans')
-        .insert({
-          patient_id: patientRow.id,
-          created_by: user.id,
-          image_url: storedImagePath,
-          status: 'done',
-          prediction_id: prediction.prediction_id,
-          condition: conditionKey,
-        })
+        .insert(scanInsert)
         .select('id')
         .single();
 
@@ -850,62 +1245,128 @@ const Scan = ({ navigation, route }) => {
       }
 
       if (!scanRow?.id) {
-        throw new Error('Scan record could not be saved.');
+        throw new Error(
+          'Scan record could not be saved.',
+        );
       }
 
-      createdScanId = scanRow.id;
+      createdScanId =
+        scanRow.id;
+
+      /*
+       * Attach the actual database scan ID to
+       * the report before saving/showing it.
+       */
 
       report.id = scanRow.id;
 
       /*
-       * ==============================================================
-       * 14. SAVE REPORT
-       * ==============================================================
+       * 13. SAVE REPORT
        */
 
-      setAnalysisStage('Finalising report...');
+      setAnalysisStage(
+        'Finalising report...',
+      );
 
-      await saveReport(report, user.id);
+      await saveReport(
+        report,
+        user.id,
+      );
 
       /*
-       * ==============================================================
-       * 15. RECORD USAGE
-       * ==============================================================
-       *
-       * IMPORTANT:
-       * recordScan() must enforce the limit server-side.
+       * 14. RECORD USAGE
        */
 
-      setAnalysisStage('Updating scan usage...');
+      setAnalysisStage(
+        'Updating scan usage...',
+      );
 
-      const usage = await recordScan(user.id, plan);
+      const usage =
+        await recordScan(
+          user.id,
+          plan,
+        );
 
       if (!usage) {
-        throw new Error('Scan usage could not be recorded.');
+        throw new Error(
+          'Scan usage could not be recorded.',
+        );
       }
 
       if (mountedRef.current) {
-        setRemaining(usage.remaining);
+        setRemaining(
+          usage.remaining,
+        );
       }
 
       /*
-       * ==============================================================
-       * 16. SHOW RESULT
-       * ==============================================================
+       * 15. SHOW RESULT
+       *
+       * IMPORTANT:
+       *
+       * Keep BOTH the raw/normalised prediction and the
+       * completed report inside resultModal.
+       *
+       * TransparencyTrail can therefore display the
+       * prediction immediately without having to refetch
+       * it from Supabase.
        */
 
       if (mountedRef.current) {
-        setResultModal({
+        const result = {
           prediction,
           report,
-          bonusJustGranted: usage.bonusJustGranted,
-          bonusRemaining: usage.bonusRemaining,
-          remaining: usage.remaining,
-        });
+          bonusJustGranted:
+            usage.bonusJustGranted,
+          bonusRemaining:
+            usage.bonusRemaining,
+          remaining:
+            usage.remaining,
+
+          /*
+           * These explicit fields make the result object
+           * easier for TransparencyTrail to consume.
+           */
+          is_anemic:
+            prediction.is_anemic,
+
+          anemia_probability:
+            prediction.anemia_probability,
+
+          decision_threshold:
+            prediction.decision_threshold,
+
+          cbc:
+            prediction.cbc,
+
+          morphology_findings:
+            prediction.morphology_findings,
+
+          cbc_pattern_summary:
+            prediction.cbc_pattern_summary,
+
+          image_quality:
+            prediction.image_quality,
+
+          is_unreliable:
+            prediction.is_unreliable,
+
+          unreliable_reasons:
+            prediction.unreliable_reasons,
+
+          scanId,
+        };
+
+        console.log(
+          '>>> RESULT MODAL DATA:',
+          result,
+        );
+
+        setResultModal(result);
 
         /*
-         * Clear the form only after the
-         * complete pipeline succeeded.
+         * Clear the form only after the complete
+         * pipeline has succeeded.
          */
 
         setPatientName('');
@@ -919,52 +1380,97 @@ const Scan = ({ navigation, route }) => {
         setImage(null);
         setImageSourceType(null);
 
-        setScanId(generateScanId());
+        setScanId(
+          generateScanId(),
+        );
       }
     } catch (error) {
-      console.error('Analysis failed:', error);
+      console.error(
+        'Analysis failed:',
+        error,
+      );
 
-      // Best-effort cleanup of any orphaned rows created before the
-      // failure. Scan is deleted before patient since scans.patient_id
-      // is a foreign key into patients.id. Failures here are logged
-      // and swallowed -- they must never replace or block the
-      // error-type handling below.
+      /*
+       * Best-effort rollback.
+       */
+
       if (createdScanId) {
         try {
-          await supabase.from('scans').delete().eq('id', createdScanId);
+          await supabase
+            .from('scans')
+            .delete()
+            .eq('id', createdScanId);
         } catch (cleanupError) {
-          console.error('Failed to roll back orphaned scan row:', cleanupError);
+          console.error(
+            'Failed to roll back orphaned scan row:',
+            cleanupError,
+          );
         }
       }
 
       if (createdPatientId) {
         try {
-          await supabase.from('patients').delete().eq('id', createdPatientId);
+          await supabase
+            .from('patients')
+            .delete()
+            .eq(
+              'id',
+              createdPatientId,
+            );
         } catch (cleanupError) {
-          console.error('Failed to roll back orphaned patient row:', cleanupError);
+          console.error(
+            'Failed to roll back orphaned patient row:',
+            cleanupError,
+          );
         }
       }
 
       if (!mountedRef.current) {
-        // Screen unmounted mid-analysis -- nothing to show.
-      } else if (error?.isScanLimitError) {
+        return;
+      }
+
+      if (error?.isScanLimitError) {
         Alert.alert(
           'Scan Limit Reached',
-          error.message || getUpgradeMessage(plan),
+          error.message ||
+            getUpgradeMessage(plan),
           [
-            { text: 'Maybe Later', style: 'cancel' },
-            { text: 'View Plans', onPress: () => navigation.navigate('Subscription') },
+            {
+              text: 'Maybe Later',
+              style: 'cancel',
+            },
+            {
+              text: 'View Plans',
+              onPress: () =>
+                navigation.navigate(
+                  'Subscription',
+                ),
+            },
           ],
         );
-      } else if (error?.isImageQualityError) {
-        const reasons = error.imageQuality?.failure_reasons;
+      } else if (
+        error?.isImageQualityError
+      ) {
+        const reasons =
+          error.imageQuality
+            ?.failure_reasons;
+
         const body =
-          Array.isArray(reasons) && reasons.length > 0
-            ? `${error.message}\n\n${reasons.join('\n')}`
+          Array.isArray(reasons) &&
+          reasons.length > 0
+            ? `${error.message}\n\n${reasons.join(
+                '\n',
+              )}`
             : `${error.message}`;
 
-        Alert.alert('Image Could Not Be Analysed', body);
-      } else if (error?.message === 'IMAGE_EXPIRED') {
+        Alert.alert(
+          'Image Could Not Be Analysed',
+          body,
+        );
+      } else if (
+        error?.message ===
+        'IMAGE_EXPIRED'
+      ) {
         Alert.alert(
           'Image Expired',
           'This photo is no longer available. Please retake or re-select the photo before starting analysis again.',
@@ -972,26 +1478,36 @@ const Scan = ({ navigation, route }) => {
       } else {
         Alert.alert(
           'Analysis Failed',
-          'Something went wrong while analysing the blood smear. Please try again.',
+          getSafeErrorMessage(
+            error,
+          ) ||
+            'Something went wrong while analysing the blood smear. Please try again.',
         );
       }
     } finally {
-      /*
-       * Only clear the current session.
-       */
-      if (analysisSessionRef.current === analysisSession) {
-        analysisSessionRef.current = null;
-        analysisLock.current = false;
+      if (
+        analysisSessionRef.current ===
+        analysisSession
+      ) {
+        analysisSessionRef.current =
+          null;
+
+        analysisLock.current =
+          false;
 
         if (mountedRef.current) {
           setIsAnalysing(false);
-          setAnalysisStage('Preparing image...');
+          setAnalysisStage(
+            'Preparing image...',
+          );
         }
       }
     }
   };
 
-  /* VALIDATION HINT */
+  /* ============================================================
+     VALIDATION HINT
+  ============================================================ */
 
   const getValidationHint = () => {
     if (!patientName.trim()) {
@@ -1025,54 +1541,118 @@ const Scan = ({ navigation, route }) => {
     return '';
   };
 
-  /* SCAN LIMIT */
+  /* ============================================================
+     SCAN LIMIT
+  ============================================================ */
 
   const scanLimitLabel =
     remaining === null
       ? ''
       : remaining === Infinity
         ? 'Unlimited scans'
-        : `${remaining} scan${remaining !== 1 ? 's' : ''} remaining today`;
+        : `${remaining} scan${
+            remaining !== 1 ? 's' : ''
+          } remaining today`;
 
-  /* RENDER */
+  /* ============================================================
+     RENDER
+  ============================================================ */
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView
+      style={styles.container}
+      edges={['left', 'right', 'bottom']}
+    >
       {/* HEADER */}
 
       <Header
         left={
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() =>
+              navigation.goBack()
+            }
             disabled={isAnalysing}
           >
-            <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
+            <MaterialIcons
+              name="arrow-back-ios-new"
+              size={HEADER.iconSize}
+              color={
+                COLORS.textPrimary
+              }
+            />
           </TouchableOpacity>
         }
-        center={<Text style={styles.headerTitle}>Scan</Text>}
+        center={
+          <Text
+            style={
+              styles.headerTitle
+            }
+          >
+            Scan
+          </Text>
+        }
         right={
-          <View style={styles.resetWrapper}>
+          <View
+            style={
+              styles.resetWrapper
+            }
+          >
             <TouchableOpacity
-              style={styles.resetIconBtn}
-              onPress={handleResetPress}
-              disabled={isAnalysing}
+              style={
+                styles.resetIconBtn
+              }
+              onPress={
+                handleResetPress
+              }
+              disabled={
+                isAnalysing
+              }
             >
-              <MaterialIcons name="restart-alt" size={22} color={COLORS.danger} />
+              <MaterialIcons
+                name="restart-alt"
+                size={22}
+                color={
+                  COLORS.danger
+                }
+              />
             </TouchableOpacity>
 
             {showResetTip && (
-              <Animated.View style={[styles.resetTooltip, { opacity: tipOpacity }]}>
-                <View style={styles.resetTooltipCaret} />
+              <Animated.View
+                style={[
+                  styles.resetTooltip,
+                  {
+                    opacity:
+                      tipOpacity,
+                  },
+                ]}
+              >
+                <View
+                  style={
+                    styles.resetTooltipCaret
+                  }
+                />
 
                 <MaterialIcons
                   name="info-outline"
                   size={12}
-                  color={COLORS.white}
-                  style={{ marginRight: SPACING.xs }}
+                  color={
+                    COLORS.white
+                  }
+                  style={{
+                    marginRight:
+                      SPACING.xs,
+                  }}
                 />
 
-                <Text style={styles.resetTooltipText}>Tap again to reset</Text>
+                <Text
+                  style={
+                    styles.resetTooltipText
+                  }
+                >
+                  Tap again to reset
+                </Text>
               </Animated.View>
             )}
           </View>
@@ -1082,236 +1662,656 @@ const Scan = ({ navigation, route }) => {
       {/* CONTENT */}
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={
+          false
+        }
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_CLEARANCE }]}
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingBottom:
+              TAB_BAR_CLEARANCE,
+          },
+        ]}
       >
         {/* SCAN USAGE */}
 
-        <View style={styles.usageBanner}>
-          <Text style={styles.usageBannerLabel}>SCANS TODAY</Text>
+        <View
+          style={
+            styles.usageBanner
+          }
+        >
+          <Text
+            style={
+              styles.usageBannerLabel
+            }
+          >
+            SCANS TODAY
+          </Text>
 
-          <Text style={[styles.usageBannerValue, remaining === 0 && styles.usageBannerValueWarning]}>
-            {scanLimitLabel || '—'}
+          <Text
+            style={[
+              styles.usageBannerValue,
+              remaining === 0 &&
+                styles.usageBannerValueWarning,
+            ]}
+          >
+            {scanLimitLabel ||
+              '—'}
           </Text>
         </View>
 
         {/* SCAN ID */}
 
-        <View style={styles.scanIdCard}>
-          <View style={styles.scanIdLeft}>
-            <MaterialCommunityIcons name="fingerprint" size={18} color={COLORS.textMuted} />
-            <Text style={styles.scanIdLabel}>SCAN ID</Text>
+        <View
+          style={
+            styles.scanIdCard
+          }
+        >
+          <View
+            style={
+              styles.scanIdLeft
+            }
+          >
+            <MaterialCommunityIcons
+              name="fingerprint"
+              size={18}
+              color={
+                COLORS.textMuted
+              }
+            />
+
+            <Text
+              style={
+                styles.scanIdLabel
+              }
+            >
+              SCAN ID
+            </Text>
           </View>
 
-          <View style={styles.scanIdRight}>
-            <Text style={styles.scanIdValue}>{scanId}</Text>
+          <View
+            style={
+              styles.scanIdRight
+            }
+          >
+            <Text
+              style={
+                styles.scanIdValue
+              }
+            >
+              {scanId}
+            </Text>
           </View>
         </View>
 
         {/* PATIENT INFORMATION */}
 
-        <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="account-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.sectionTitle}>Patient Information</Text>
+        <View
+          style={
+            styles.sectionHeader
+          }
+        >
+          <MaterialCommunityIcons
+            name="account-outline"
+            size={20}
+            color={
+              COLORS.primary
+            }
+          />
+
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Patient Information
+          </Text>
         </View>
 
         {/* NAME */}
 
-        <Text style={styles.inputLabel}>Patient Name</Text>
+        <Text
+          style={
+            styles.inputLabel
+          }
+        >
+          Patient Name
+        </Text>
 
         <TextInput
           placeholder="e.g. John Doe"
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={
+            COLORS.textMuted
+          }
           value={patientName}
           onChangeText={(text) => {
             setPatientName(text);
-            runValidation('patientName', text);
+            runValidation(
+              'patientName',
+              text,
+            );
           }}
-          onBlur={() => runValidation('patientName', patientName)}
-          style={[styles.input, errors.patientName && styles.inputError]}
+          onBlur={() =>
+            runValidation(
+              'patientName',
+              patientName,
+            )
+          }
+          style={[
+            styles.input,
+            errors.patientName &&
+              styles.inputError,
+          ]}
           editable={!isAnalysing}
           autoCapitalize="words"
           autoCorrect={false}
         />
 
-        {!!errors.patientName && <Text style={styles.fieldErrorText}>{errors.patientName}</Text>}
+        {!!errors.patientName && (
+          <Text
+            style={
+              styles.fieldErrorText
+            }
+          >
+            {errors.patientName}
+          </Text>
+        )}
 
         {/* AGE + GENDER */}
 
         <View style={styles.row}>
-          <View style={styles.rowItem}>
-            <Text style={styles.inputLabel}>Age</Text>
+          <View
+            style={
+              styles.rowItem
+            }
+          >
+            <Text
+              style={
+                styles.inputLabel
+              }
+            >
+              Age
+            </Text>
 
             <TextInput
               placeholder="e.g. 34"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={
+                COLORS.textMuted
+              }
               value={patientAge}
               onChangeText={(text) => {
-                const value = text.replace(/\D/g, '');
-                setPatientAge(value);
-                runValidation('age', value);
+                const value =
+                  text.replace(
+                    /\D/g,
+                    '',
+                  );
+
+                setPatientAge(
+                  value,
+                );
+
+                runValidation(
+                  'age',
+                  value,
+                );
               }}
-              onBlur={() => runValidation('age', patientAge)}
+              onBlur={() =>
+                runValidation(
+                  'age',
+                  patientAge,
+                )
+              }
               keyboardType="number-pad"
               maxLength={3}
-              style={[styles.input, styles.half, errors.age && styles.inputError]}
+              style={[
+                styles.input,
+                styles.half,
+                errors.age &&
+                  styles.inputError,
+              ]}
               editable={!isAnalysing}
             />
 
-            {!!errors.age && <Text style={styles.fieldErrorText}>{errors.age}</Text>}
+            {!!errors.age && (
+              <Text
+                style={
+                  styles.fieldErrorText
+                }
+              >
+                {errors.age}
+              </Text>
+            )}
           </View>
 
-          <View style={styles.rowItem}>
-            <Text style={styles.inputLabel}>Gender</Text>
+          <View
+            style={
+              styles.rowItem
+            }
+          >
+            <Text
+              style={
+                styles.inputLabel
+              }
+            >
+              Gender
+            </Text>
 
-            <View style={styles.genderPillRow}>
-              {GENDERS.map((gender) => (
-                <TouchableOpacity
-                  key={gender}
-                  style={[styles.genderPill, patientGender === gender && styles.genderPillActive]}
-                  onPress={() => {
-                    if (isAnalysing) {
-                      return;
-                    }
-
-                    setPatientGender(gender);
-
-                    setErrors((prev) => ({ ...prev, patientGender: '' }));
-                  }}
-                  activeOpacity={0.8}
-                  disabled={isAnalysing}
-                >
-                  <MaterialCommunityIcons
-                    name={gender === 'Male' ? 'gender-male' : 'gender-female'}
-                    size={15}
-                    color={patientGender === gender ? COLORS.white : COLORS.textMuted}
-                    style={{ marginRight: SPACING.xs }}
-                  />
-
-                  <Text
+            <View
+              style={
+                styles.genderPillRow
+              }
+            >
+              {GENDERS.map(
+                (gender) => (
+                  <TouchableOpacity
+                    key={gender}
                     style={[
-                      styles.genderPillText,
-                      patientGender === gender && styles.genderPillTextActive,
+                      styles.genderPill,
+                      patientGender ===
+                        gender &&
+                        styles.genderPillActive,
                     ]}
+                    onPress={() => {
+                      if (
+                        isAnalysing
+                      ) {
+                        return;
+                      }
+
+                      setPatientGender(
+                        gender,
+                      );
+
+                      setErrors(
+                        (prev) => ({
+                          ...prev,
+                          patientGender:
+                            '',
+                        }),
+                      );
+                    }}
+                    activeOpacity={
+                      0.8
+                    }
+                    disabled={
+                      isAnalysing
+                    }
                   >
-                    {gender}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <MaterialCommunityIcons
+                      name={
+                        gender ===
+                        'Male'
+                          ? 'gender-male'
+                          : 'gender-female'
+                      }
+                      size={15}
+                      color={
+                        patientGender ===
+                        gender
+                          ? COLORS.white
+                          : COLORS.textMuted
+                      }
+                      style={{
+                        marginRight:
+                          SPACING.xs,
+                      }}
+                    />
+
+                    <Text
+                      style={[
+                        styles.genderPillText,
+                        patientGender ===
+                          gender &&
+                          styles.genderPillTextActive,
+                      ]}
+                    >
+                      {gender}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              )}
             </View>
 
-            {!!errors.patientGender && <Text style={styles.fieldErrorText}>{errors.patientGender}</Text>}
+            {!!errors.patientGender && (
+              <Text
+                style={
+                  styles.fieldErrorText
+                }
+              >
+                {
+                  errors.patientGender
+                }
+              </Text>
+            )}
           </View>
         </View>
 
         {/* TEMPERATURE + BP */}
 
         <View style={styles.row}>
-          <View style={styles.rowItem}>
-            <Text style={styles.inputLabel}>Temperature (°C)</Text>
+          <View
+            style={
+              styles.rowItem
+            }
+          >
+            <Text
+              style={
+                styles.inputLabel
+              }
+            >
+              Temperature (°C)
+            </Text>
 
             <TextInput
               placeholder="e.g. 36.5"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={
+                COLORS.textMuted
+              }
               value={temperature}
               onChangeText={(text) => {
-                setTemperature(text);
-                runValidation('temperature', text);
+                setTemperature(
+                  text,
+                );
+
+                runValidation(
+                  'temperature',
+                  text,
+                );
               }}
-              onBlur={() => runValidation('temperature', temperature)}
+              onBlur={() =>
+                runValidation(
+                  'temperature',
+                  temperature,
+                )
+              }
               keyboardType="decimal-pad"
-              style={[styles.input, styles.half, errors.temperature && styles.inputError]}
+              style={[
+                styles.input,
+                styles.half,
+                errors.temperature &&
+                  styles.inputError,
+              ]}
               editable={!isAnalysing}
             />
 
-            {!!errors.temperature && <Text style={styles.fieldErrorText}>{errors.temperature}</Text>}
+            {!!errors.temperature && (
+              <Text
+                style={
+                  styles.fieldErrorText
+                }
+              >
+                {
+                  errors.temperature
+                }
+              </Text>
+            )}
           </View>
 
-          <View style={styles.rowItem}>
-            <Text style={styles.inputLabel}>Blood Pressure</Text>
+          <View
+            style={
+              styles.rowItem
+            }
+          >
+            <Text
+              style={
+                styles.inputLabel
+              }
+            >
+              Blood Pressure
+            </Text>
 
             <TextInput
               placeholder="120/80"
-              placeholderTextColor={COLORS.textMuted}
-              value={bloodPressure}
+              placeholderTextColor={
+                COLORS.textMuted
+              }
+              value={
+                bloodPressure
+              }
               onChangeText={(text) => {
-                setBloodPressure(text);
-                runValidation('bloodPressure', text);
+                setBloodPressure(
+                  text,
+                );
+
+                runValidation(
+                  'bloodPressure',
+                  text,
+                );
               }}
-              onBlur={() => runValidation('bloodPressure', bloodPressure)}
+              onBlur={() =>
+                runValidation(
+                  'bloodPressure',
+                  bloodPressure,
+                )
+              }
               keyboardType="numbers-and-punctuation"
-              style={[styles.input, styles.half, errors.bloodPressure && styles.inputError]}
+              style={[
+                styles.input,
+                styles.half,
+                errors.bloodPressure &&
+                  styles.inputError,
+              ]}
               editable={!isAnalysing}
             />
 
-            {!!errors.bloodPressure && <Text style={styles.fieldErrorText}>{errors.bloodPressure}</Text>}
+            {!!errors.bloodPressure && (
+              <Text
+                style={
+                  styles.fieldErrorText
+                }
+              >
+                {
+                  errors.bloodPressure
+                }
+              </Text>
+            )}
           </View>
         </View>
 
         {/* BLOOD SMEAR */}
 
-        <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="image-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.sectionTitle}>Blood Smear Sample</Text>
+        <View
+          style={
+            styles.sectionHeader
+          }
+        >
+          <MaterialCommunityIcons
+            name="image-outline"
+            size={20}
+            color={
+              COLORS.primary
+            }
+          />
+
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Blood Smear Sample
+          </Text>
         </View>
 
         {!image && (
-          <TouchableOpacity style={styles.takePictureBtn} onPress={openCamera} disabled={isAnalysing}>
-            <MaterialIcons name="photo-camera" size={22} color={COLORS.primary} />
-            <Text style={styles.takePictureText}>Take Picture</Text>
+          <TouchableOpacity
+            style={
+              styles.takePictureBtn
+            }
+            onPress={
+              openCamera
+            }
+            disabled={
+              isAnalysing
+            }
+          >
+            <MaterialIcons
+              name="photo-camera"
+              size={22}
+              color={
+                COLORS.primary
+              }
+            />
+
+            <Text
+              style={
+                styles.takePictureText
+              }
+            >
+              Take Picture
+            </Text>
           </TouchableOpacity>
         )}
 
         {image && (
-          <View style={styles.previewWrapper}>
+          <View
+            style={
+              styles.previewWrapper
+            }
+          >
             <TouchableOpacity
               activeOpacity={0.9}
-              style={styles.previewBox}
+              style={
+                styles.previewBox
+              }
               onPress={() => {
-                if (!isAnalysing) {
-                  setImageViewerOpen(true);
+                if (
+                  !isAnalysing
+                ) {
+                  setImageViewerOpen(
+                    true,
+                  );
                 }
               }}
             >
-              <Image source={{ uri: image }} style={styles.previewImage} />
+              <Image
+                source={{
+                  uri: image,
+                }}
+                style={
+                  styles.previewImage
+                }
+              />
 
-              <View style={styles.previewZoomHint}>
-                <MaterialIcons name="zoom-in" size={16} color={COLORS.white} />
-                <Text style={styles.previewZoomText}>Tap to enlarge</Text>
+              <View
+                style={
+                  styles.previewZoomHint
+                }
+              >
+                <MaterialIcons
+                  name="zoom-in"
+                  size={16}
+                  color={
+                    COLORS.white
+                  }
+                />
+
+                <Text
+                  style={
+                    styles.previewZoomText
+                  }
+                >
+                  Tap to enlarge
+                </Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={imageSourceType === 'upload' ? reuploadPhoto : retakePhoto}
-              style={styles.retakeBtn}
-              disabled={isAnalysing}
+              onPress={
+                imageSourceType ===
+                'upload'
+                  ? reuploadPhoto
+                  : retakePhoto
+              }
+              style={
+                styles.retakeBtn
+              }
+              disabled={
+                isAnalysing
+              }
             >
               <MaterialIcons
-                name={imageSourceType === 'upload' ? 'file-upload' : 'refresh'}
+                name={
+                  imageSourceType ===
+                  'upload'
+                    ? 'file-upload'
+                    : 'refresh'
+                }
                 size={16}
-                color={COLORS.primary}
+                color={
+                  COLORS.primary
+                }
               />
 
-              <Text style={styles.retakeText}>
-                {imageSourceType === 'upload' ? 'Reupload Image' : 'Retake Photo'}
+              <Text
+                style={
+                  styles.retakeText
+                }
+              >
+                {imageSourceType ===
+                'upload'
+                  ? 'Reupload Image'
+                  : 'Retake Photo'}
               </Text>
             </TouchableOpacity>
           </View>
         )}
 
         {!imageSourceType && (
-          <View style={styles.uploadCard}>
-            <View style={styles.uploadIconCircle}>
-              <MaterialCommunityIcons name="cloud-upload-outline" size={34} color={COLORS.primary} />
+          <View
+            style={
+              styles.uploadCard
+            }
+          >
+            <View
+              style={
+                styles.uploadIconCircle
+              }
+            >
+              <MaterialCommunityIcons
+                name="cloud-upload-outline"
+                size={34}
+                color={
+                  COLORS.primary
+                }
+              />
             </View>
 
-            <Text style={styles.uploadTitle}>Upload Blood Smear File</Text>
+            <Text
+              style={
+                styles.uploadTitle
+              }
+            >
+              Upload Blood Smear File
+            </Text>
 
-            <Text style={styles.uploadSub}>PNG or JPG images supported</Text>
+            <Text
+              style={
+                styles.uploadSub
+              }
+            >
+              PNG or JPG images
+              supported
+            </Text>
 
-            <TouchableOpacity style={styles.browseBtn} onPress={handlePickFile} disabled={isAnalysing}>
-              <Text style={styles.browseBtnText}>Browse Files</Text>
+            <TouchableOpacity
+              style={
+                styles.browseBtn
+              }
+              onPress={
+                handlePickFile
+              }
+              disabled={
+                isAnalysing
+              }
+            >
+              <Text
+                style={
+                  styles.browseBtnText
+                }
+              >
+                Browse Files
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1319,58 +2319,155 @@ const Scan = ({ navigation, route }) => {
         {/* VALIDATION */}
 
         {!isFormValid && (
-          <View style={styles.validationContainer}>
-            <MaterialIcons name="error-outline" size={16} color={COLORS.danger} />
-            <Text style={styles.validationHint}>{getValidationHint()}</Text>
+          <View
+            style={
+              styles.validationContainer
+            }
+          >
+            <MaterialIcons
+              name="error-outline"
+              size={16}
+              color={
+                COLORS.danger
+              }
+            />
+
+            <Text
+              style={
+                styles.validationHint
+              }
+            >
+              {getValidationHint()}
+            </Text>
           </View>
         )}
 
         {/* START ANALYSIS */}
 
         <TouchableOpacity
-          style={[styles.button, (!isFormValid || isAnalysing) && styles.disabledButton]}
-          disabled={!isFormValid || isAnalysing}
-          onPress={handleStartAnalysis}
+          style={[
+            styles.button,
+            (!isFormValid ||
+              isAnalysing) &&
+              styles.disabledButton,
+          ]}
+          disabled={
+            !isFormValid ||
+            isAnalysing
+          }
+          onPress={
+            handleStartAnalysis
+          }
           activeOpacity={0.85}
         >
           {isAnalysing ? (
             <>
-              <ActivityIndicator size="small" color={COLORS.white} />
-              <Text style={styles.buttonText}>Analysing…</Text>
+              <ActivityIndicator
+                size="small"
+                color={
+                  COLORS.white
+                }
+              />
+
+              <Text
+                style={
+                  styles.buttonText
+                }
+              >
+                Analysing…
+              </Text>
             </>
           ) : (
             <>
-              <MaterialIcons name="analytics" size={20} color={COLORS.white} />
-              <Text style={styles.buttonText}>Start Analysis</Text>
+              <MaterialIcons
+                name="analytics"
+                size={20}
+                color={
+                  COLORS.white
+                }
+              />
+
+              <Text
+                style={
+                  styles.buttonText
+                }
+              >
+                Start Analysis
+              </Text>
             </>
           )}
         </TouchableOpacity>
 
-        <Text style={styles.hipaaText}>
-          By starting analysis, you agree to processing of medical data in accordance with GHS standards.
+        <Text
+          style={
+            styles.hipaaText
+          }
+        >
+          By starting analysis,
+          you agree to processing
+          of medical data in
+          accordance with GHS
+          standards.
         </Text>
       </ScrollView>
 
       {/* IMAGE VIEWER */}
 
       <Modal
-        visible={imageViewerOpen}
+        visible={
+          imageViewerOpen
+        }
         transparent
         animationType="fade"
         statusBarTranslucent
         presentationStyle="overFullScreen"
-        onRequestClose={() => setImageViewerOpen(false)}
+        onRequestClose={() =>
+          setImageViewerOpen(
+            false,
+          )
+        }
       >
-        <View style={styles.imageModalOverlay}>
-          <TouchableOpacity style={styles.closeViewer} onPress={() => setImageViewerOpen(false)}>
-            <MaterialIcons name="close" size={28} color={COLORS.white} />
+        <View
+          style={
+            styles.imageModalOverlay
+          }
+        >
+          <TouchableOpacity
+            style={
+              styles.closeViewer
+            }
+            onPress={() =>
+              setImageViewerOpen(
+                false,
+              )
+            }
+          >
+            <MaterialIcons
+              name="close"
+              size={28}
+              color={
+                COLORS.white
+              }
+            />
           </TouchableOpacity>
 
-          {image && <Image source={{ uri: image }} style={styles.fullImage} resizeMode="contain" />}
+          {image && (
+            <Image
+              source={{
+                uri: image,
+              }}
+              style={
+                styles.fullImage
+              }
+              resizeMode="contain"
+            />
+          )}
         </View>
       </Modal>
 
-      {/* RESULT */}
+      {/* ========================================================
+          RESULT
+      ======================================================== */}
 
       {resultModal && (
         <TransparencyTrail
@@ -1378,21 +2475,34 @@ const Scan = ({ navigation, route }) => {
           userId={user.id}
           onClose={() => {
             setResultModal(null);
-            navigation.navigate('Report');
+            navigation.navigate(
+              'Report',
+            );
           }}
           onViewReport={() => {
-            const reportId = resultModal?.report?.id;
+            const reportId =
+              resultModal?.report
+                ?.id;
 
             setResultModal(null);
 
-            navigation.navigate('Report', { scanId: reportId });
+            navigation.navigate(
+              'Report',
+              {
+                scanId:
+                  reportId,
+              },
+            );
           }}
         />
       )}
 
       {/* ANALYSIS MODAL */}
 
-      <AnalysisModal visible={isAnalysing} stage={analysisStage} />
+      <AnalysisModal
+        visible={isAnalysing}
+        stage={analysisStage}
+      />
     </SafeAreaView>
   );
 };

@@ -32,12 +32,6 @@ export const clearPin = async (userId) => {
 };
 
 
-export const isBiometricAvailable = async () => {
-  const compatible = await LocalAuthentication.hasHardwareAsync();
-  const enrolled   = await LocalAuthentication.isEnrolledAsync();
-  return compatible && enrolled;
-};
-
 export const authenticateWithBiometrics = async () => {
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage:         'Verify your identity to access patient reports',

@@ -282,13 +282,6 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
 
       ${buildTechnicianNotesSection(report)}
 
-      <div class="section-bar">Recommendation</div>
-      <div class="recommendation-text">
-        This is an AI-assisted screening result, not a laboratory diagnostic report. If the result is
-        unexpected given the patient's symptoms or history, arrange confirmatory laboratory testing
-        before making a final clinical decision.
-      </div>
-
       <div class="footer">
         <strong>Important Note:</strong> This is an AI-assisted screening result, not a laboratory
         diagnostic report. It reflects anemia risk only, based on hemoglobin-related patterns in red

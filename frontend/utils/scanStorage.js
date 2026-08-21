@@ -1,9 +1,15 @@
-import { supabase } from './supabase'; // adjust path to wherever your client lives
-import * as FileSystem from 'expo-file-system';
+import { supabase } from './supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BUCKET = 'scan-images';
 
+/**
+ * Check whether the user has explicitly consented
+ * to storing scan images.
+ *
+ * Fails closed:
+ * if consent cannot be confirmed, images are not uploaded.
+ */
 export async function hasImageConsent(userId) {
   const { data, error } = await supabase
     .from('profiles')
@@ -12,163 +18,471 @@ export async function hasImageConsent(userId) {
     .single();
 
   if (error) {
-    console.error('scanStorage: failed to check consent', error);
-    // fail closed - if we can't confirm consent, don't upload
+    console.error(
+      'scanStorage: failed to check consent:',
+      error
+    );
+
+    // Fail closed.
     return false;
   }
 
   return !!data?.store_images;
 }
 
+/**
+ * Upload a scan image only when the user has consented.
+ *
+ * IMPORTANT:
+ * A failed image upload must NOT prevent the
+ * already-successful AI analysis from being displayed.
+ *
+ * Returns:
+ * {
+ *   success: boolean,
+ *   skipped: boolean,
+ *   reason: string | null,
+ *   path: string | null
+ * }
+ */
+export async function uploadScanImage(
+  userId,
+  imageUri,
+  scanId
+) {
+  if (!userId || !imageUri || !scanId) {
+    console.error(
+      'scanStorage: invalid upload parameters',
+      {
+        hasUserId: !!userId,
+        imageUri,
+        scanId,
+      }
+    );
 
-export async function uploadScanImage(userId, imageUri, scanId) {
+    return {
+      success: false,
+      skipped: true,
+      reason: 'invalid_parameters',
+      path: null,
+    };
+  }
+
   const consented = await hasImageConsent(userId);
+
+  /**
+   * No consent means:
+   * - do not upload
+   * - do not treat it as an error
+   * - allow the scan result to continue displaying
+   */
   if (!consented) {
-    return null;
+    console.log(
+      'scanStorage: image upload skipped - user has not consented'
+    );
+
+    return {
+      success: false,
+      skipped: true,
+      reason: 'no_consent',
+      path: null,
+    };
   }
 
   try {
-    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    console.log(
+      'scanStorage: starting image upload'
+    );
 
+    console.log(
+      'scanStorage: imageUri:',
+      imageUri
+    );
+
+    console.log(
+      'scanStorage: userId:',
+      userId
+    );
+
+    console.log(
+      'scanStorage: scanId:',
+      scanId
+    );
+
+    /**
+     * Read the local Expo file directly as binary data.
+     *
+     * This avoids:
+     *
+     * image
+     * -> base64
+     * -> atob()
+     * -> Uint8Array
+     * -> ArrayBuffer
+     *
+     * and instead gives Supabase the ArrayBuffer directly.
+     */
+    const response = await fetch(imageUri);
+
+    if (!response.ok) {
+      throw new Error(
+        `Unable to read local image: HTTP ${response.status}`
+      );
+    }
+
+    const arrayBuffer =
+      await response.arrayBuffer();
+
+    if (
+      !arrayBuffer ||
+      arrayBuffer.byteLength === 0
+    ) {
+      throw new Error(
+        'Image file is empty.'
+      );
+    }
+
+    console.log(
+      'scanStorage: image size:',
+      arrayBuffer.byteLength,
+      'bytes'
+    );
+
+    /**
+     * Keep your existing storage structure:
+     *
+     * userId/scanId.jpg
+     */
     const path = `${userId}/${scanId}.jpg`;
 
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, decode(base64), {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
+    const { data, error } =
+      await supabase.storage
+        .from(BUCKET)
+        .upload(
+          path,
+          arrayBuffer,
+          {
+            contentType: 'image/jpeg',
+            upsert: true,
+          }
+        );
 
-    if (error) throw error;
+    if (error) {
+      console.error(
+        'scanStorage: Supabase upload error:',
+        {
+          message: error.message,
+          name: error.name,
+          details: error,
+        }
+      );
 
-    return path;
+      throw error;
+    }
+
+    const uploadedPath =
+      data?.path ?? path;
+
+    console.log(
+      'scanStorage: upload successful:',
+      uploadedPath
+    );
+
+    return {
+      success: true,
+      skipped: false,
+      reason: null,
+      path: uploadedPath,
+    };
   } catch (err) {
-    console.error('scanStorage: upload failed', err);
-    // don't block the scan flow just because image upload failed -
-    // the CBC/analysis result still matters even if we couldn't save the photo
-    return null;
+    /**
+     * IMPORTANT:
+     * Do NOT throw here.
+     *
+     * The /predict request has already succeeded.
+     * An image-storage failure should not destroy
+     * the prediction result.
+     */
+    console.error(
+      'scanStorage: upload failed:',
+      {
+        message: err?.message,
+        name: err?.name,
+        stack: err?.stack,
+        error: err,
+      }
+    );
+
+    return {
+      success: false,
+      skipped: false,
+      reason:
+        err?.message ||
+        'image_upload_failed',
+      path: null,
+    };
   }
 }
 
-// if someone toggles consent OFF in ProfileScreen, wipe what's already stored.
-// not wired up anywhere yet - ProfileScreen needs to call this on toggle-off.
-export async function deleteAllScanImages(userId) {
-  const { data: files, error: listError } = await supabase.storage
-    .from(BUCKET)
-    .list(userId);
+/**
+ * Delete all scan images belonging to a user.
+ *
+ * Used when image-storage consent is turned off.
+ */
+export async function deleteAllScanImages(
+  userId
+) {
+  const { data: files, error: listError } =
+    await supabase.storage
+      .from(BUCKET)
+      .list(userId);
 
   if (listError) {
-    console.error('scanStorage: failed to list images for deletion', listError);
+    console.error(
+      'scanStorage: failed to list images for deletion:',
+      listError
+    );
+
     return false;
   }
-  if (!files?.length) return true;
 
-  const paths = files.map((f) => `${userId}/${f.name}`);
-  const { error: deleteError } = await supabase.storage.from(BUCKET).remove(paths);
+  if (!files?.length) {
+    return true;
+  }
+
+  const paths = files.map(
+    (file) =>
+      `${userId}/${file.name}`
+  );
+
+  const {
+    error: deleteError,
+  } = await supabase.storage
+    .from(BUCKET)
+    .remove(paths);
 
   if (deleteError) {
-    console.error('scanStorage: failed to delete images', deleteError);
+    console.error(
+      'scanStorage: failed to delete images:',
+      deleteError
+    );
+
     return false;
   }
 
   return true;
 }
 
-// base64 -> ArrayBuffer, supabase-js wants raw bytes not a base64 string
-function decode(base64) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
+/**
+ * Storage key for today's bonus state.
+ */
 function todayKeyForUser(userId) {
-  const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, local device date
+  const day = new Date()
+    .toISOString()
+    .slice(0, 10);
+
   return `aidepoint:bonus_granted:${userId}:${day}`;
 }
 
+/**
+ * Start of today's date.
+ */
 function startOfTodayISO() {
   const d = new Date();
+
   d.setHours(0, 0, 0, 0);
+
   return d.toISOString();
 }
 
-async function getTodayScanCount(userId) {
-  const { count, error } = await supabase
+/**
+ * Get today's number of scans for the user.
+ */
+async function getTodayScanCount(
+  userId
+) {
+  const {
+    count,
+    error,
+  } = await supabase
     .from('scans')
-    .select('id', { count: 'exact', head: true })
+    .select('id', {
+      count: 'exact',
+      head: true,
+    })
     .eq('created_by', userId)
-    .gte('created_at', startOfTodayISO());
+    .gte(
+      'created_at',
+      startOfTodayISO()
+    );
 
   if (error) {
-    console.error('scanStorage: failed to count today\'s scans', error);
-    // fail safe: assume 0 rather than blocking the tech from scanning
+    console.error(
+      "scanStorage: failed to count today's scans:",
+      error
+    );
+
+    // Preserve your original fail-safe behavior.
     return 0;
   }
+
   return count ?? 0;
 }
 
-async function isBonusGrantedToday(userId) {
+/**
+ * Check whether today's bonus has already been granted.
+ */
+async function isBonusGrantedToday(
+  userId
+) {
   try {
-    const val = await AsyncStorage.getItem(todayKeyForUser(userId));
+    const val =
+      await AsyncStorage.getItem(
+        todayKeyForUser(userId)
+      );
+
     return val === 'true';
-  } catch {
+  } catch (err) {
+    console.error(
+      'scanStorage: failed to read bonus flag:',
+      err
+    );
+
     return false;
   }
 }
 
-async function setBonusGrantedToday(userId) {
+/**
+ * Persist today's bonus state.
+ */
+async function setBonusGrantedToday(
+  userId
+) {
   try {
-    await AsyncStorage.setItem(todayKeyForUser(userId), 'true');
+    await AsyncStorage.setItem(
+      todayKeyForUser(userId),
+      'true'
+    );
   } catch (err) {
-    console.error('scanStorage: failed to persist bonus flag', err);
+    console.error(
+      'scanStorage: failed to persist bonus flag:',
+      err
+    );
   }
 }
 
-export async function getRemainingScans(userId, plan) {
-  const baseLimit = plan?.scans?.dailyLimit ?? 0;
-  if (baseLimit === Infinity) return Infinity;
-
-  const count = await getTodayScanCount(userId);
-  const bonusGranted = await isBonusGrantedToday(userId);
-  const consented = await hasImageConsent(userId);
-  const bonusScans = (bonusGranted && consented) ? (plan?.scans?.bonusScans ?? 0) : 0;
-
-  const effectiveLimit = baseLimit + bonusScans;
-  return Math.max(effectiveLimit - count, 0);
-}
-
-export async function recordScan(userId, plan) {
-  const baseLimit = plan?.scans?.dailyLimit ?? 0;
+/**
+ * Calculate remaining scans.
+ */
+export async function getRemainingScans(
+  userId,
+  plan
+) {
+  const baseLimit =
+    plan?.scans?.dailyLimit ?? 0;
 
   if (baseLimit === Infinity) {
-    return { remaining: Infinity, bonusJustGranted: false, bonusRemaining: 0 };
+    return Infinity;
   }
 
-  const count = await getTodayScanCount(userId); // includes the scan just inserted
-  const saveGoal = plan?.scans?.saveGoal ?? Infinity;
-  const bonusScans = plan?.scans?.bonusScans ?? 0;
-  const consented = await hasImageConsent(userId);
+  const count =
+    await getTodayScanCount(userId);
 
-  const alreadyGranted = await isBonusGrantedToday(userId);
+  const bonusGranted =
+    await isBonusGrantedToday(userId);
+
+  const consented =
+    await hasImageConsent(userId);
+
+  const bonusScans =
+    bonusGranted && consented
+      ? plan?.scans?.bonusScans ?? 0
+      : 0;
+
+  const effectiveLimit =
+    baseLimit + bonusScans;
+
+  return Math.max(
+    effectiveLimit - count,
+    0
+  );
+}
+
+/**
+ * Record a scan and handle the daily bonus.
+ */
+export async function recordScan(
+  userId,
+  plan
+) {
+  const baseLimit =
+    plan?.scans?.dailyLimit ?? 0;
+
+  if (baseLimit === Infinity) {
+    return {
+      remaining: Infinity,
+      bonusJustGranted: false,
+      bonusRemaining: 0,
+    };
+  }
+
+  /**
+   * This count includes the scan that was
+   * just inserted into the scans table.
+   */
+  const count =
+    await getTodayScanCount(userId);
+
+  const saveGoal =
+    plan?.scans?.saveGoal ?? Infinity;
+
+  const bonusScans =
+    plan?.scans?.bonusScans ?? 0;
+
+  const consented =
+    await hasImageConsent(userId);
+
+  const alreadyGranted =
+    await isBonusGrantedToday(userId);
+
   let bonusJustGranted = false;
 
-  if (!alreadyGranted && consented && count >= saveGoal && bonusScans > 0) {
+  if (
+    !alreadyGranted &&
+    consented &&
+    count >= saveGoal &&
+    bonusScans > 0
+  ) {
     await setBonusGrantedToday(userId);
+
     bonusJustGranted = true;
   }
 
-  const bonusActive = (alreadyGranted || bonusJustGranted) && consented;
-  const effectiveLimit = baseLimit + (bonusActive ? bonusScans : 0);
-  const remaining = Math.max(effectiveLimit - count, 0);
+  const bonusActive =
+    (
+      alreadyGranted ||
+      bonusJustGranted
+    ) &&
+    consented;
+
+  const effectiveLimit =
+    baseLimit +
+    (bonusActive
+      ? bonusScans
+      : 0);
+
+  const remaining =
+    Math.max(
+      effectiveLimit - count,
+      0
+    );
 
   return {
     remaining,
     bonusJustGranted,
-    bonusRemaining: bonusJustGranted ? bonusScans : 0,
+    bonusRemaining:
+      bonusJustGranted
+        ? bonusScans
+        : 0,
   };
 }
