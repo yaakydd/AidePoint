@@ -157,9 +157,11 @@ export default function Onboarding() {
               <ChatPreview />
             ) : (
               <View style={styles.photoFrame}>
-                {/* Placeholder tinted block instead of <Image /> */}
-                <View style={[styles.photo, { backgroundColor: `${item.accent}22` }]} />
-                <View style={[styles.photoAccentBar, { backgroundColor: item.accent }]} />
+                <Image
+                  source={item.image}
+                  style={styles.photo}
+                  resizeMode="contain"
+                />
               </View>
             )}
 

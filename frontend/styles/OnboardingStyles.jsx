@@ -67,13 +67,18 @@ export const styles = StyleSheet.create({
   // Scale/opacity are animated per-slide from Onboarding.jsx based on
   // scrollX, so the active slide's card sits at full size/opacity and
   // neighbors shrink and fade slightly as you swipe past them.
-  photoFrame: {
-    width: "100%",
-    aspectRatio: 4 / 3,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: scale(20),
-  },
+photoFrame: {
+  width: "100%",
+  aspectRatio: 1,          // was 4/3 — taller frame, more room for the image
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: scale(20),
+},
+
+photo: {
+  width: "92%",            // was tied to the small inner placeholder box
+  height: "92%",
+},
 
   photoGlow: {
     position: "absolute",
@@ -95,10 +100,6 @@ export const styles = StyleSheet.create({
     ...SHADOWS.md,
   },
 
-  photo: {
-    width: "70%",
-    height: "70%",
-  },
 
   // Small pill badge above the title, replacing the old flat accent bar.
   // Ties the slide's accent color to a meaning (step + action) instead
