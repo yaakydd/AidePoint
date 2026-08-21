@@ -272,27 +272,10 @@ const Scan = ({ navigation, route }) => {
   const [showResetTip, setShowResetTip] = useState(false);
   const tipOpacity = useRef(new Animated.Value(0)).current;
 
-  /* HARDENING REFS */
-
-  /*
-   * Immediate synchronous lock.
-   *
-   * React state updates are asynchronous.
-   * This ref prevents multiple calls to
-   * handleStartAnalysis() before React rerenders.
-   */
   const analysisLock = useRef(false);
 
-  /*
-   * Tracks whether this screen is still mounted.
-   */
   const mountedRef = useRef(true);
 
-  /*
-   * Identifies the currently running analysis.
-   * Useful for preventing stale async operations
-   * from updating a newer scan.
-   */
   const analysisSessionRef = useRef(null);
 
   /* LIFECYCLE */

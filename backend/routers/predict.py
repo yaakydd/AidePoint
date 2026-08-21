@@ -160,8 +160,8 @@ async def predict(
             shape_screening_result=shape_result,
             contours=contours,
         )
-    except Exception as exc:
-        log.error("Inference error for user %s: %s", user.get("id"), exc)
+    except Exception:
+        log.exception("Inference error for user %s", user.get("id"))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Inference failed. Please try again.",

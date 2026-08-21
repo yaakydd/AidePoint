@@ -111,6 +111,28 @@ const getStrength = (password) => {
   };
 };
 
+/*
+ * Duplicate-account detection is intentionally specific.
+ *
+ * We no longer perform a separate "is_email_taken" RPC check.
+ * Supabase Auth is the source of truth.
+ *
+ * Only messages that clearly indicate an existing Auth account
+ * should be treated as duplicate-email errors.
+ */
+function isDuplicateAccountError(message) {
+  if (!message) return false;
+
+  const text = String(message).toLowerCase();
+
+  return (
+    text.includes('user already registered') ||
+    text.includes('email already registered') ||
+    text.includes('user already exists') ||
+    text.includes('email already exists')
+  );
+}
+
 const getTypePillStyle = (type) => {
   const map = {
     teaching: {
@@ -146,18 +168,6 @@ const getTypePillStyle = (type) => {
     }
   );
 };
-
-function isDuplicateAccountError(message) {
-  if (!message) return false;
-
-  const text = String(message).toLowerCase();
-
-  return (
-    text.includes('already registered') ||
-    text.includes('already exists') ||
-    text.includes('user already')
-  );
-}
 
 /*
  * Supabase .or() uses PostgREST syntax.
@@ -255,7 +265,6 @@ const SignUp = () => {
   /* HOSPITAL SEARCH                                                          */
   /* ------------------------------------------------------------------------ */
 
-  
   useEffect(() => {
     if (!modalVisible) return;
 
@@ -289,7 +298,9 @@ const SignUp = () => {
         }
 
         if (error) {
-          if (__DEV__) { console.error('Hospital search error:', error); }
+          if (__DEV__) {
+            console.error('Hospital search error:', error);
+          }
 
           setFilteredList([]);
           setHospitalSearchError(
@@ -313,7 +324,9 @@ const SignUp = () => {
           setFilteredList(hospitals);
         }
       } catch (error) {
-        if (__DEV__) { console.error('Unexpected hospital search error:', error); }
+        if (__DEV__) {
+          console.error('Unexpected hospital search error:', error);
+        }
 
         if (requestId !== searchRequestId.current) {
           return;
@@ -344,6 +357,7 @@ const SignUp = () => {
 
     setModalVisible(true);
   };
+
   const closeModal = () => {
     Keyboard.dismiss();
 
@@ -357,7 +371,6 @@ const SignUp = () => {
      */
     setHospitalQuery('');
   };
-
 
   const handleSelectHospital = (hospital) => {
     if (!hospital) return;
@@ -548,26 +561,9 @@ const SignUp = () => {
 
   const nextEnabled = isFormValid();
 
-  const checkEmailAvailable = async (emailAddress) => {
-    const normalizedEmail = emailAddress.trim().toLowerCase();
-
-    try {
-      const { data, error } = await supabase.rpc('is_email_taken', {
-        email_to_check: normalizedEmail,
-      });
-
-      if (error) {
-        if (__DEV__) { console.error('checkEmailAvailable:', error.message); }
-        return true; // fail open; register() remains the final authority
-      }
-
-      return !data;
-    } catch (error) {
-      if (__DEV__) { console.error('Unexpected email availability error:', error); }
-      return true;
-    }
-  };
-
+  /* ------------------------------------------------------------------------ */
+  /* NAVIGATION                                                               */
+  /* ------------------------------------------------------------------------ */
 
   const handleBack = () => {
     if (loading) return;
@@ -588,42 +584,39 @@ const SignUp = () => {
     setStepIndex((current) => current - 1);
   };
 
-   const handleNext = async () => {
+  const handleNext = async () => {
     if (loading) return;
 
     Keyboard.dismiss();
+
+    /* ---------------------------------------------------------------------- */
+    /* STEP 1 - BASIC INFO                                                    */
+    /* ---------------------------------------------------------------------- */
 
     if (step === 'start') {
       if (!validateStart()) {
         return;
       }
 
+      /*
+       * Supabase Auth is now the source of truth for whether this email
+       * already belongs to an account.
+       *
+       * We intentionally do NOT call is_email_taken() or maintain a
+       * separate email_lookup table.
+       */
       const normalizedEmail = email.trim().toLowerCase();
 
-      setLoading(true);
-      clearError?.();
-
-      try {
-        const available = await checkEmailAvailable(normalizedEmail);
-
-        if (!available) {
-          setErrors({
-            email:
-              'An account with this email already exists. Try signing in instead.',
-          });
-
-          return;
-        }
-
-        setEmail(normalizedEmail);
-        setErrors({});
-        setStepIndex(1);
-      } finally {
-        setLoading(false);
-      }
+      setEmail(normalizedEmail);
+      setErrors({});
+      setStepIndex(1);
 
       return;
     }
+
+    /* ---------------------------------------------------------------------- */
+    /* STEP 2 - HOSPITAL                                                      */
+    /* ---------------------------------------------------------------------- */
 
     if (step === 'hospital') {
       if (!validateHospital()) {
@@ -636,6 +629,10 @@ const SignUp = () => {
       return;
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* STEP 3 - PASSWORD / CREATE ACCOUNT                                     */
+    /* ---------------------------------------------------------------------- */
+
     if (step === 'password') {
       if (!validatePassword()) {
         return;
@@ -647,6 +644,10 @@ const SignUp = () => {
       clearError?.();
 
       try {
+        /*
+         * Supabase Auth is the final authority.
+         * There is no separate email availability lookup.
+         */
         const result = await register({
           name: name.trim(),
           email: email.trim().toLowerCase(),
@@ -681,18 +682,37 @@ const SignUp = () => {
           return;
         }
       } catch (error) {
-        if (__DEV__) { console.error('Sign up error:', error); }
+        if (__DEV__) {
+          console.error('Sign up error:', error);
+        }
 
-        setErrors({
-          password:
-            error?.message ||
-            'Something went wrong while creating your account.',
-        });
+        /*
+         * Only classify the error as a duplicate account when the actual
+         * Auth error clearly indicates an existing account.
+         */
+        if (isDuplicateAccountError(error?.message)) {
+          setErrors({
+            email:
+              'An account with this email already exists. Try signing in instead.',
+          });
+
+          setStepIndex(0);
+        } else {
+          setErrors({
+            password:
+              error?.message ||
+              'Something went wrong while creating your account.',
+          });
+        }
       } finally {
         setLoading(false);
       }
     }
   };
+
+  /* ------------------------------------------------------------------------ */
+  /* HOSPITAL LIST ITEM                                                       */
+  /* ------------------------------------------------------------------------ */
 
   const renderHospitalItem = ({ item }) => {
     const isOther = item?.isOther || item?.name === 'Other';
@@ -1106,23 +1126,6 @@ const SignUp = () => {
                 Hospital / Lab
               </Text>
 
-              {/*
-               * IMPORTANT:
-               *
-               * This is NOT displaying hospitalsLoading anymore.
-               *
-               * Once a hospital has been selected, hospitalSelected is
-               * always what appears here.
-               *
-               * Therefore the user will see:
-               *
-               * "Korle Bu Teaching Hospital"
-               *
-               * instead of:
-               *
-               * "Loading hospitals..."
-               */}
-
               <TouchableOpacity
                 style={[
                   styles.inputWrapper,
@@ -1189,14 +1192,7 @@ const SignUp = () => {
                 statusBarTranslucent
                 onRequestClose={closeModal}
               >
-                <KeyboardAvoidingView
-                  style={{ flex: 1 }}
-                  behavior={
-                    Platform.OS === 'ios'
-                      ? 'padding'
-                      : undefined
-                  }
-                >
+                <View style={{ flex: 1 }}>
                   {/* BACKDROP */}
 
                   <TouchableWithoutFeedback
@@ -1505,7 +1501,7 @@ const SignUp = () => {
                       }
                     />
                   </View>
-                </KeyboardAvoidingView>
+                </View>
               </Modal>
             </>
           )}
