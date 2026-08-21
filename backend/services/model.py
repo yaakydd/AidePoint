@@ -350,8 +350,6 @@ class AidePointONNX:
             "is_anemic": is_anemic,
             "decision_threshold": ANEMIA_DECISION_THRESHOLD,
             "cbc": cbc_values,
-            "cbc_flags": cbc_flags,
-            "cbc_confidence": CBC_CONFIDENCE_LABELS,
             "morphology_probs": morphology_result,
             "morphology_flag_reliability": MORPHOLOGY_FLAG_IS_RELIABLE,
             "is_unreliable": is_unreliable,
