@@ -41,11 +41,14 @@ EVAL_REPORT_PATH = os.getenv(
 _model: AidePointONNX | None = None
 
 # CBC per-field mean absolute error, loaded once at startup from the same
-# eval_report.json model.py reads. model.py only exposes the *derived*
-# confidence labels (CBC_CONFIDENCE_LABELS), not this raw MAE dict, and
-# build_cbc_pattern_summary needs the raw numbers to compute its own
-# per-field reliability tier , so this is read independently here rather
-# than importing a private value out of model.py.
+# eval_report.json model.py reads. This raw MAE dict is only consumed by
+# cbc_uncertainty.build_cbc_pattern_summary(), which is now the single
+# place CBC reference ranges and per-field confidence are computed
+# (model.py previously had its own, separate CBC_CLINICAL_REFERENCE_RANGES
+# and CBC_CONFIDENCE_LABELS on different thresholds -- that duplicate
+# system produced a cbc_flags/cbc_confidence pair that could silently
+# disagree with cbc_pattern_summary for the same field; it has been
+# removed rather than kept in sync by hand).
 _cbc_mean_absolute_errors: dict[str, float] = {}
 
 # Supabase client for writes that need to bypass row-level security
