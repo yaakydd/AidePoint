@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,15 @@ import { signInStyles as styles } from '../styles/SignInStyles';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Lightweight client-side brute-force throttle. This is defense in depth,
+// not the real protection (Supabase Auth already rate-limits
+// signInWithPassword server-side regardless of what this screen does) --
+// it just stops this screen itself from being able to hammer the auth
+// endpoint with rapid repeated submissions, and gives a clear "slow down"
+// message instead of an opaque server rate-limit error surfacing later.
+const MAX_ATTEMPTS_BEFORE_LOCKOUT = 5;
+const LOCKOUT_BASE_SECONDS = 30;
+
 const SignIn = () => {
   const navigation = useNavigation();
   const { login, authError, clearError } = useAuth();
@@ -35,6 +44,28 @@ const SignIn = () => {
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Consecutive failed attempts and an epoch-ms timestamp the user is
+  // locked out until (0 = not locked). Escalates: 5th failure locks for
+  // 30s, 6th for 60s, 7th for 90s, etc. -- annoying enough to blunt rapid
+  // guessing without permanently locking out someone who just mistyped
+  // their password a few times.
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [nowTick, setNowTick] = useState(Date.now());
+
+  const lockRemainingSeconds = Math.max(0, Math.ceil((lockedUntil - nowTick) / 1000));
+  const isLockedOut = lockRemainingSeconds > 0;
+
+  // Ticks once a second only while actually locked out, so the countdown
+  // in the button/error text updates and the button re-enables itself
+  // the moment the lockout expires, without a stray interval running for
+  // the rest of the time someone sits on this screen.
+  useEffect(() => {
+    if (!isLockedOut) return undefined;
+    const interval = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [isLockedOut]);
 
   /*
    * Clear stale authentication errors every time this screen receives focus.
@@ -119,6 +150,14 @@ const SignIn = () => {
      */
     if (loading) return;
 
+    if (isLockedOut) {
+      setErrors({
+        email: `Too many attempts. Try again in ${lockRemainingSeconds}s.`,
+        password: null,
+      });
+      return;
+    }
+
     /*
      * Validate before making any network request.
      */
@@ -152,8 +191,21 @@ const SignIn = () => {
           password: null,
         });
 
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
+        if (nextAttempts >= MAX_ATTEMPTS_BEFORE_LOCKOUT) {
+          const extraFailures = nextAttempts - MAX_ATTEMPTS_BEFORE_LOCKOUT;
+          const lockSeconds = LOCKOUT_BASE_SECONDS * (extraFailures + 1);
+          const until = Date.now() + lockSeconds * 1000;
+          setLockedUntil(until);
+          setNowTick(Date.now());
+        }
+
         return;
       }
+
+      setFailedAttempts(0);
+      setLockedUntil(0);
 
       /*
        * Successful authentication is normally handled by AuthContext/
@@ -165,7 +217,9 @@ const SignIn = () => {
        * Never allow an unexpected exception to leave the button permanently
        * disabled/loading.
        */
-      console.error('[SignIn] login error:', error);
+      if (__DEV__) {
+        console.error('[SignIn] login error:', error);
+      }
 
       setErrors({
         email: 'Unable to sign in right now. Please try again.',
@@ -417,22 +471,27 @@ const SignIn = () => {
                 /*
                  * Disabled visually when:
                  * - the form isn't valid, OR
-                 * - a request is currently running.
+                 * - a request is currently running, OR
+                 * - the client-side lockout is active.
                  */
-                (!isFormValid || loading) &&
+                (!isFormValid || loading || isLockedOut) &&
                   styles.signInBtnDisabled,
               ]}
-              disabled={!isFormValid || loading}
+              disabled={!isFormValid || loading || isLockedOut}
               onPress={handleSignIn}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityState={{
-                disabled: !isFormValid || loading,
+                disabled: !isFormValid || loading || isLockedOut,
                 busy: loading,
               }}
             >
               {loading ? (
                 <ActivityIndicator color={COLORS.white} />
+              ) : isLockedOut ? (
+                <Text style={[styles.signInBtnText, styles.signInBtnTextDisabled]}>
+                  Try again in {lockRemainingSeconds}s
+                </Text>
               ) : (
                 <>
                   <Text
