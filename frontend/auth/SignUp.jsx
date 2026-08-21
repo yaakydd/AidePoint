@@ -255,6 +255,7 @@ const SignUp = () => {
   /* HOSPITAL SEARCH                                                          */
   /* ------------------------------------------------------------------------ */
 
+  
   useEffect(() => {
     if (!modalVisible) return;
 
@@ -283,15 +284,12 @@ const SignUp = () => {
 
         const { data, error } = await request;
 
-        /*
-         * Ignore this response if a newer search has already been started.
-         */
         if (requestId !== searchRequestId.current) {
           return;
         }
 
         if (error) {
-          console.error('Hospital search error:', error);
+          if (__DEV__) { console.error('Hospital search error:', error); }
 
           setFilteredList([]);
           setHospitalSearchError(
@@ -303,15 +301,6 @@ const SignUp = () => {
 
         const hospitals = Array.isArray(data) ? data : [];
 
-        /*
-         * IMPORTANT:
-         *
-         * "Other" is always available when:
-         * 1. the user searched and nothing was found, OR
-         * 2. the user is searching and we want to allow a custom hospital.
-         *
-         * We do not add "Other" to the database.
-         */
         const hasOther = hospitals.some(
           (hospital) => hospital?.name?.toLowerCase() === 'other'
         );
@@ -324,7 +313,7 @@ const SignUp = () => {
           setFilteredList(hospitals);
         }
       } catch (error) {
-        console.error('Unexpected hospital search error:', error);
+        if (__DEV__) { console.error('Unexpected hospital search error:', error); }
 
         if (requestId !== searchRequestId.current) {
           return;
@@ -344,10 +333,6 @@ const SignUp = () => {
     return () => clearTimeout(timeout);
   }, [hospitalQuery, modalVisible]);
 
-  /* ------------------------------------------------------------------------ */
-  /* OPEN HOSPITAL PICKER                                                     */
-  /* ------------------------------------------------------------------------ */
-
   const openModal = () => {
     Keyboard.dismiss();
 
@@ -355,19 +340,10 @@ const SignUp = () => {
     setShowCustomInput(false);
     setCustomHospital('');
 
-    /*
-     * Start the search with the currently selected hospital.
-     * This means the search field and selected value stay consistent.
-     */
     setHospitalQuery('');
 
     setModalVisible(true);
   };
-
-  /* ------------------------------------------------------------------------ */
-  /* CLOSE HOSPITAL PICKER                                                    */
-  /* ------------------------------------------------------------------------ */
-
   const closeModal = () => {
     Keyboard.dismiss();
 
@@ -382,9 +358,6 @@ const SignUp = () => {
     setHospitalQuery('');
   };
 
-  /* ------------------------------------------------------------------------ */
-  /* SELECT HOSPITAL                                                          */
-  /* ------------------------------------------------------------------------ */
 
   const handleSelectHospital = (hospital) => {
     if (!hospital) return;
@@ -575,41 +548,26 @@ const SignUp = () => {
 
   const nextEnabled = isFormValid();
 
-  /* ------------------------------------------------------------------------ */
-  /* CHECK EMAIL                                                              */
-  /* ------------------------------------------------------------------------ */
-
   const checkEmailAvailable = async (emailAddress) => {
     const normalizedEmail = emailAddress.trim().toLowerCase();
 
     try {
-      const { data, error } = await supabase
-        .from('email_lookup')
-        .select('email')
-        .ilike('email', normalizedEmail)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('is_email_taken', {
+        email_to_check: normalizedEmail,
+      });
 
       if (error) {
-        console.error('checkEmailAvailable:', error.message);
-
-        /*
-         * Fail open here.
-         * register() remains the final authority.
-         */
-        return true;
+        if (__DEV__) { console.error('checkEmailAvailable:', error.message); }
+        return true; // fail open; register() remains the final authority
       }
 
       return !data;
     } catch (error) {
-      console.error('Unexpected email availability error:', error);
-
+      if (__DEV__) { console.error('Unexpected email availability error:', error); }
       return true;
     }
   };
 
-  /* ------------------------------------------------------------------------ */
-  /* BACK                                                                     */
-  /* ------------------------------------------------------------------------ */
 
   const handleBack = () => {
     if (loading) return;
@@ -630,16 +588,10 @@ const SignUp = () => {
     setStepIndex((current) => current - 1);
   };
 
-  /* ------------------------------------------------------------------------ */
-  /* NEXT                                                                      */
-  /* ------------------------------------------------------------------------ */
-
-  const handleNext = async () => {
+   const handleNext = async () => {
     if (loading) return;
 
     Keyboard.dismiss();
-
-    /* ------------------------------ STEP 1 ------------------------------- */
 
     if (step === 'start') {
       if (!validateStart()) {
@@ -673,8 +625,6 @@ const SignUp = () => {
       return;
     }
 
-    /* ------------------------------ STEP 2 ------------------------------- */
-
     if (step === 'hospital') {
       if (!validateHospital()) {
         return;
@@ -685,8 +635,6 @@ const SignUp = () => {
 
       return;
     }
-
-    /* ------------------------------ STEP 3 ------------------------------- */
 
     if (step === 'password') {
       if (!validatePassword()) {
@@ -732,13 +680,8 @@ const SignUp = () => {
 
           return;
         }
-
-        /*
-         * If your AuthContext navigates automatically after registration,
-         * nothing else is required here.
-         */
       } catch (error) {
-        console.error('Sign up error:', error);
+        if (__DEV__) { console.error('Sign up error:', error); }
 
         setErrors({
           password:
@@ -750,10 +693,6 @@ const SignUp = () => {
       }
     }
   };
-
-  /* ------------------------------------------------------------------------ */
-  /* MODAL LIST ITEM                                                          */
-  /* ------------------------------------------------------------------------ */
 
   const renderHospitalItem = ({ item }) => {
     const isOther = item?.isOther || item?.name === 'Other';
