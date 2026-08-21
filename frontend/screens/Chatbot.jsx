@@ -153,6 +153,20 @@ const Chatbot = () => {
 
         } catch (err) {
             console.error('Chatbot handleSend (Gemini):', err.message);
+
+            if (err.isChatLimitError) {
+                // The server is the authoritative limit -- this fires when
+                // the on-device counter (chatstorage.js) has drifted behind
+                // the real count (new device, reinstall, another session).
+                // Snap the local counter forward so the UI reflects reality
+                // and the "limit reached" state below takes over instead of
+                // silently re-hitting the server on every keystroke.
+                setUsageCount(plan.dailyChatLimit);
+                Alert.alert('Daily chat limit reached', err.message, [{ text: 'OK' }]);
+                setActiveSession(updatedSession);
+                return;
+            }
+
             const errorResponse = {
                 id: (Date.now() + 1).toString(),
                 type: 'bot',

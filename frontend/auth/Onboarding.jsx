@@ -52,9 +52,7 @@ const SLIDES = [
   },
 ];
 
-// Static mock of the real Chatbot screen (see screens/Chatbot.jsx + ChatStyles)
-// — no live AI call here, just a preview so the user recognizes the feature
-// once they're signed in and it's actually wired up to Gemini.
+
 function ChatPreview() {
   return (
     <View style={styles.chatPreviewFrame}>
