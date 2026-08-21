@@ -28,7 +28,7 @@ const CAPTURE_TIPS = [
 // in the same pipeline that scores anemia confidence , see ScanHome / backend.
 const MIN_BRIGHTNESS = 40;
 
-const CameraScreen = ({ navigation }) => {
+const CameraScreen = ({ navigation, route }) => {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing,      setFacing]      = useState('back');
@@ -39,6 +39,10 @@ const CameraScreen = ({ navigation }) => {
   const [pictureSize, setPictureSize] = useState(undefined);
 
   const cameraRef = useRef(null);
+
+
+  const existingData =
+    route.params?.existingData ?? {};
 
   // Request the highest resolution the device's camera actually supports.
   // getAvailablePictureSizesAsync is a standard CameraView method, stable
@@ -145,7 +149,11 @@ const CameraScreen = ({ navigation }) => {
       // Server performs the authoritative quality check (sharpness/blur)
       // as part of the same pipeline that scores anemia confidence.
       // ScanStackNavigator registers Scan.js under the name "ScanHome".
-      navigation.navigate('ScanHome', { capturedPhoto: photo.uri });
+      navigation.navigate('ScanHome', {
+  capturedPhoto: photo.uri,
+
+  existingData,
+});
     } catch (err) {
       console.error('CameraScreen takePicture:', err.message);
       Alert.alert('Capture Failed', 'Could not take photo. Please try again.');

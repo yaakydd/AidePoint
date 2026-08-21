@@ -36,10 +36,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/brand/icon-white.png",
+          "image": "./assets/brand/icon-teal.png",
           "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#00CFE8"
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],
@@ -47,12 +47,13 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/1300091e-e1a7-4407-87eb-a92b161e97be"
+      "url": "https://u.expo.dev/0a9cf15a-a9f5-48a3-8d01-e91fe318a055"
     },
     "extra": {
       "eas": {
-        "projectId": "1300091e-e1a7-4407-87eb-a92b161e97be"
+        "projectId": "0a9cf15a-a9f5-48a3-8d01-e91fe318a055"
       }
-    }
+    },
+    "owner": "yaantwi"
   }
 }

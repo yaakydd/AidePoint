@@ -483,7 +483,7 @@ const Scan = ({ navigation, route }) => {
     return unsubscribe;
   }, [navigation]);
 
-  /* ============================================================
+   /* ============================================================
      CAMERA RESULT
   ============================================================ */
 
@@ -495,21 +495,89 @@ const Scan = ({ navigation, route }) => {
           return;
         }
 
+        const params = route.params;
+
         const capturedPhoto =
-          route.params?.capturedPhoto;
+          params?.capturedPhoto;
+
+        /*
+         * Restore the form data that was entered before
+         * opening the camera.
+         *
+         * This is intentionally done before processing
+         * the captured image.
+         */
+        const existingData =
+          params?.existingData;
+
+        if (existingData) {
+          if (
+            typeof existingData.patientName ===
+            'string'
+          ) {
+            setPatientName(
+              existingData.patientName,
+            );
+          }
+
+          if (
+            typeof existingData.patientAge ===
+            'string'
+          ) {
+            setPatientAge(
+              existingData.patientAge,
+            );
+          }
+
+          if (
+            typeof existingData.patientGender ===
+            'string'
+          ) {
+            setPatientGender(
+              existingData.patientGender,
+            );
+          }
+
+          if (
+            typeof existingData.temperature ===
+            'string'
+          ) {
+            setTemperature(
+              existingData.temperature,
+            );
+          }
+
+          if (
+            typeof existingData.bloodPressure ===
+            'string'
+          ) {
+            setBloodPressure(
+              existingData.bloodPressure,
+            );
+          }
+        }
 
         if (!capturedPhoto) {
           return;
         }
 
+        /*
+         * Clear the navigation params after reading them.
+         *
+         * This prevents the same camera result from being
+         * processed again if the screen receives focus later.
+         */
         navigation.setParams({
           capturedPhoto: undefined,
+          existingData: undefined,
         });
 
         const processCameraImage = async () => {
           try {
             const safeUri =
-              await stabilizeImage(capturedPhoto);
+              await stabilizeImage(
+                capturedPhoto,
+              );
 
             if (
               !mountedRef.current ||
@@ -548,9 +616,9 @@ const Scan = ({ navigation, route }) => {
   }, [
     navigation,
     route.params?.capturedPhoto,
+    route.params?.existingData,
     isAnalysing,
   ]);
-
   /* ============================================================
      VALIDATION
   ============================================================ */
@@ -581,12 +649,11 @@ const Scan = ({ navigation, route }) => {
     !!image &&
     !hasFieldErrors;
 
-  /* ============================================================
-     IMAGE ACTIONS
-  ============================================================ */
-
   const openCamera = () => {
-    if (analysisLock.current || isAnalysing) {
+    if (
+      analysisLock.current ||
+      isAnalysing
+    ) {
       return;
     }
 
@@ -602,7 +669,10 @@ const Scan = ({ navigation, route }) => {
   };
 
   const retakePhoto = () => {
-    if (analysisLock.current || isAnalysing) {
+    if (
+      analysisLock.current ||
+      isAnalysing
+    ) {
       return;
     }
 
