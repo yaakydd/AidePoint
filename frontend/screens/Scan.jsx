@@ -57,16 +57,13 @@ const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
 
 const GENDERS = ['Male', 'Female'];
 
-/* ============================================================
-   HELPERS
-============================================================ */
 
 function generateScanId() {
   const year = new Date().getFullYear();
   const timePart = Date.now().toString(36).toUpperCase().slice(4);
   const randomPart = Math.floor(100 + Math.random() * 900);
 
-  return `AP${year}${timePart}${randomPart}`;
+  return `AP-${year}-${timePart}-${randomPart}`;
 }
 
 function validateField(field, value) {
