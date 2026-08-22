@@ -172,26 +172,22 @@ const SignIn = () => {
 
     try {
       const result = await login(normalizedEmail, password);
+            if (!result?.success) {
+        if (result?.needsVerification) {
+          navigation.navigate('VerifyEmail', { email: result.email });
+          return;
+        }
 
-      /*
-       * AuthContext should normally return an object.
-       * Still protect against an unexpected/undefined result.
-       */
-      if (!result?.success) {
         const message =
           result?.error || 'Unable to sign in. Please check your details and try again.';
 
-        /*
-         * Keep authentication errors generic.
-         *
-         * We don't want to reveal whether an email exists in the system.
-         */
         setErrors({
           email: message,
           password: null,
         });
 
         const nextAttempts = failedAttempts + 1;
+        // ... unchanged from here
         setFailedAttempts(nextAttempts);
         if (nextAttempts >= MAX_ATTEMPTS_BEFORE_LOCKOUT) {
           const extraFailures = nextAttempts - MAX_ATTEMPTS_BEFORE_LOCKOUT;

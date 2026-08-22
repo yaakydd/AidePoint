@@ -8,7 +8,12 @@ from pydantic import BaseModel
 
 from auth import verify_supabase_token
 from services.image_quality import assess_image_quality, should_block_inference
-from services.shape_screening import run_shape_screening, detect_cell_contours, ShapeScreeningResult
+from services.shape_screening import (
+    run_shape_screening,
+    detect_cell_contours,
+    count_measurable_cells,
+    ShapeScreeningResult,
+)
 from services.preprocess import preprocess_image, PreprocessResult
 from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
 from services.morphology_explanations import build_explanation, classify_confidence, Explanation
@@ -120,6 +125,7 @@ async def predict(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty file received.",
         )
+
     try:
         preprocessed: PreprocessResult = preprocess_image(image_bytes)
     except Exception as exc:
@@ -127,14 +133,24 @@ async def predict(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Could not read image. Ensure it is a valid JPEG or PNG.",
-        )
+        ) from exc
 
     contours = detect_cell_contours(preprocessed.raw_resized_image)
-    shape_result: ShapeScreeningResult = run_shape_screening(
-        preprocessed.raw_resized_image, contours=contours
-    )
+
+    # cells_detected must use the same filtered-contour definition
+    # shape_screening.py itself uses (not a raw contour count) --
+    # assess_image_quality's MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS check
+    # directly drives quality_score, so a mismatched definition here
+    # would silently change quality_score / is_unreliable.
+    measurable_cell_count = count_measurable_cells(contours)
     quality_result = assess_image_quality(
-        preprocessed.raw_resized_image, shape_result.cells_detected
+        preprocessed.raw_resized_image, measurable_cell_count
+    )
+
+    shape_result: ShapeScreeningResult = run_shape_screening(
+        preprocessed.raw_resized_image,
+        contours=contours,
+        image_quality_is_poor=(quality_result.quality_score == "poor"),
     )
 
     if should_block_inference(quality_result):
@@ -258,6 +274,7 @@ async def predict(
                     "unreliable_reasons": result["unreliable_reasons"],
                     "morphology_findings": morphology_findings,
                     "cbc_pattern_summary": cbc_pattern_summary,
+                    "condition": condition,
                 },
                 explanation=explanation_dict,
                 temperature=temperature,

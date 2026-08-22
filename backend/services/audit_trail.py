@@ -34,11 +34,11 @@ class PredictionRecord:
     morphology_findings: dict[str, Any]
     cbc_pattern_summary: dict[str, Any]
     explanation: dict[str, Any]
+    condition: str
     temperature: str | None = None
     blood_pressure: str | None = None
     lab_tech_notes: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-
 
 def hash_image_bytes(image_bytes: bytes) -> str:
     """Content hash of an image, used so a prediction record can be tied
@@ -89,10 +89,10 @@ def build_prediction_record(
         morphology_findings=prediction_result["morphology_findings"],
         cbc_pattern_summary=prediction_result["cbc_pattern_summary"],
         explanation=explanation,
+        condition=prediction_result["condition"],
         temperature=temperature,
         blood_pressure=blood_pressure,
     )
-
 
 def persist_prediction_record(supabase_client: Client, record: PredictionRecord) -> str:
     """
@@ -118,12 +118,12 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
         "morphology_findings": record.morphology_findings,
         "cbc_pattern_summary": record.cbc_pattern_summary,
         "explanation": record.explanation,
+        "condition": record.condition,
         "temperature": record.temperature,
         "blood_pressure": record.blood_pressure,
         "lab_tech_notes": record.lab_tech_notes,
         "created_at": record.created_at.isoformat(),
     }
-
     response = supabase_client.table("prediction_records").insert(row).execute()
 
     if not response.data:

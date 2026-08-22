@@ -30,9 +30,22 @@ export function AuthProvider({ children }) {
 
 
   const initialized = useRef(false);
-
-
   const suppressHydration = useRef(false);
+
+  // Lets a caller specify which screen AuthNavigator should open on the
+  // next time it mounts into the 'AUTH' state, instead of always falling
+  // back to SignIn. Currently only used by account deletion (-> SignUp),
+  // since signOut()/logout() should keep landing on SignIn as normal.
+  // A ref, not state: this needs to be readable by AuthNavigator the
+  // moment it mounts (during the same render pass authState flips to
+  // 'AUTH'), before any effect could set state and cause a second render.
+  const pendingAuthScreen = useRef(null);
+
+  function consumePendingAuthScreen() {
+    const screen = pendingAuthScreen.current;
+    pendingAuthScreen.current = null;
+    return screen;
+  }
 
   //  STARTUP 
   useEffect(() => {
@@ -220,6 +233,48 @@ export function AuthProvider({ children }) {
     } catch { /* ignore */ }
   }
 
+    function isNetworkError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return (
+      message.includes('network request failed') ||
+      message.includes('failed to fetch') ||
+      message.includes('network error') ||
+      error?.name === 'AuthRetryableFetchError'
+    );
+  }
+
+  function looksLikeRawErrorBlob(message) {
+    if (!message) return false;
+    const trimmed = String(message).trim();
+    // Raw Supabase error bodies come back as JSON text, e.g.
+    // {"code":500,"error_code":"unexpected_failure","msg":"..."}.
+    // A normal human-readable Auth error message never looks like this.
+    return trimmed.startsWith('{') && trimmed.endsWith('}');
+  }
+
+  function sanitizeAuthError(error) {
+    if (__DEV__) console.log('Auth error:', error?.status, error?.name, error?.message);
+
+    if (isNetworkError(error)) {
+      return "You're offline. Please check your internet connection and try again.";
+    }
+
+    const message = error?.message;
+
+    if (looksLikeRawErrorBlob(message)) {
+      // Something server-side failed in a way that returned its raw
+      // error body as the message (e.g. a 500 / unexpected_failure)
+      // instead of a human string -- never show that verbatim.
+      return 'Something went wrong on our end. Please try again in a moment.';
+    }
+
+    if (typeof error?.status === 'number' && error.status >= 500) {
+      return 'Something went wrong on our end. Please try again in a moment.';
+    }
+
+    return message || 'Something went wrong. Please try again.';
+  }
+
   //  REGISTER 
   async function register({ name, email, password, hospitalLab }) {
     setAuthError(null);
@@ -247,8 +302,9 @@ export function AuthProvider({ children }) {
 
       //  Handle signup error
       if (error) {
-        setAuthError(error.message);
-        return { success: false, error: error.message };
+        const friendly = sanitizeAuthError(error);
+        setAuthError(friendly);
+        return { success: false, error: friendly };
       }
 
       //  Email verification logic (cleaned + unified)
@@ -299,7 +355,7 @@ export function AuthProvider({ children }) {
     return { success: true };
   }
 
-  //  LOGIN 
+    //  LOGIN 
   async function login(email, password) {
     setAuthError(null);
 
@@ -309,22 +365,65 @@ export function AuthProvider({ children }) {
       return { success: false, error: msg };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email:    email.trim().toLowerCase(),
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-    if (error) {
-      setAuthError(error.message);
-      return { success: false, error: error.message };
+      if (error) {
+        // Supabase's own "Confirm email" setting (if enabled project-side)
+        // returns this as an ordinary error rather than a thrown
+        // exception -- route it the same way as our own explicit check
+        // below, rather than showing it as a generic auth failure.
+        if (/email not confirmed/i.test(error.message || '')) {
+          const msg = 'Please verify your email before signing in.';
+          setAuthError(msg);
+          return {
+            success: false,
+            error: msg,
+            needsVerification: true,
+            email: email.trim().toLowerCase(),
+          };
+        }
+
+        const friendly = sanitizeAuthError(error);
+        setAuthError(friendly);
+        return { success: false, error: friendly };
+      }
+
+      // Defense in depth: don't rely solely on the Supabase project's
+      // "Confirm email" setting to block an unverified account from
+      // signing in -- confirm it explicitly here too. If this ever
+      // returns a session for an unconfirmed user (misconfigured
+      // setting, edge case, or stale test data), sign it back out
+      // immediately rather than letting hydrateUser() treat it as a
+      // real login.
+      const emailConfirmedAt =
+        data?.user?.email_confirmed_at ?? data?.session?.user?.email_confirmed_at;
+
+      if (!emailConfirmedAt) {
+        await supabase.auth.signOut();
+        const msg = 'Please verify your email before signing in.';
+        setAuthError(msg);
+        return {
+          success: false,
+          error: msg,
+          needsVerification: true,
+          email: email.trim().toLowerCase(),
+        };
+      }
+
+      // On success: onAuthStateChange listener fires -> hydrateUser runs
+      // -> authState changes to 'CONSENT', 'PIN_SETUP', or 'APP'.
+      return { success: true };
+    } catch (err) {
+      const friendly = sanitizeAuthError(err);
+      setAuthError(friendly);
+      return { success: false, error: friendly };
     }
-
-    // On success: onAuthStateChange listener fires : hydrateUser runs :
-    // authState changes to 'CONSENT', 'PIN_SETUP', or 'APP'. No navigate() needed here.
-    return { success: true };
   }
-
-  //  CONSENT 
+  
   async function completeConsent(storeImages) {
     if (!user) return { success: false, error: 'Not logged in' };
 
@@ -408,6 +507,20 @@ export function AuthProvider({ children }) {
     setAuthError(null);
   }
 
+  //  DELETE-ACCOUNT SIGN OUT 
+  // Same teardown as logout(), except it tells AuthNavigator to open on
+  // SignUp instead of SignIn once it mounts -- deleting an account isn't
+  // the same as signing out of one, and "sign back in" doesn't make
+  // sense when there's no account left to sign into.
+  async function deleteAccountSignOut() {
+    pendingAuthScreen.current = 'SignUp';
+    await supabase.auth.signOut();
+    await clearUserCache();
+    setUser(null);
+    setAuthState('AUTH');
+    setAuthError(null);
+  }
+
   //  CLEAR ERROR 
   function clearError() {
     setAuthError(null);
@@ -430,22 +543,24 @@ export function AuthProvider({ children }) {
 
   // PROVIDE 
   return (
-    <AuthContext.Provider value={{
-      authState,          // 'BOOTING' : 'AUTH' : 'CONSENT' : 'PIN_SETUP' : 'APP'
-      user,               // { id, email, name, role, storeImages, consentDone }
-      authError,          // string or null
-      isOnline,           // boolean
+        <AuthContext.Provider value={{
+      authState,
+      user,
+      authError,
+      isOnline,
       register,
       verifyEmail,
       resendVerification,
       updateProfile,
       login,
       logout,
+      deleteAccountSignOut,
       completeConsent,
       completePinSetup,
       clearError,
       beginPasswordRecovery,
       endPasswordRecovery,
+      consumePendingAuthScreen,
     }}>
       {children}
     </AuthContext.Provider>

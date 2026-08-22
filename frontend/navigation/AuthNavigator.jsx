@@ -9,12 +9,13 @@ import VerifyEmail      from '../auth/VerifyEmail';
 import ForgotPassword   from '../auth/ForgotPassword';
 import SplashScreen from "../screens/SplashScreen";
 import PrivacyPolicyScreen from "../screens/PrivacyPolicy";
+import { useAuth } from '../context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 const LAUNCHED_KEY = 'aidepoint_has_launched';
 
 export default function AuthNavigator() {
-
+  const { consumePendingAuthScreen } = useAuth();
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
 
   useEffect(() => {
@@ -22,49 +23,40 @@ export default function AuthNavigator() {
       try {
         const val = await AsyncStorage.getItem(LAUNCHED_KEY);
         if (val === null) {
-          // First ever launch, show onboarding then mark as seen
           await AsyncStorage.setItem(LAUNCHED_KEY, 'true');
           setIsFirstLaunch(true);
         } else {
           setIsFirstLaunch(false);
         }
       } catch {
-        setIsFirstLaunch(false); // fail safe: skip onboarding
+        setIsFirstLaunch(false);
       }
     }
     check();
   }, []);
 
-  // Don't render the navigator until we know which screen to start on.
-  // This avoids a flash of the wrong screen.
-if (isFirstLaunch === null) {
+  if (isFirstLaunch === null) {
     return <SplashScreen />;
-}
+  }
+
+  // Consumed once, here, at the same point initialRouteName is computed
+  // -- not in an effect -- so it's read exactly when this navigator
+  // mounts into an 'AUTH' authState, and reset immediately so a later
+  // unrelated remount (e.g. plain sign-out afterward) doesn't reuse a
+  // stale value.
+  const pendingScreen = consumePendingAuthScreen();
+  const initialRoute = pendingScreen || (isFirstLaunch ? 'Onboarding' : 'SignIn');
 
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
-      initialRouteName={isFirstLaunch ? 'Onboarding' : 'SignIn'}
+      initialRouteName={initialRoute}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="SignIn" component={SignIn} />
       <Stack.Screen name="SignUp" component={SignUp} />
-
-      {/*
-        VerifyEmail sits inside the Auth stack so it's reachable right after
-        SignUp, before the user has a session. Once verifyOtp() succeeds,
-        onAuthStateChange then authState moves to CONSENT or APP after
-        RootRouter in App.js swaps the entire navigator automatically.
-      */}
       <Stack.Screen name="VerifyEmail" component={VerifyEmail} />
       <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-
-      {/*
-        Static legal screen with no auth dependency, so it's registered
-        here too (in addition to RootNavigator's APP-gated copy) so
-        SignUp/Onboarding's "Privacy Policy" link resolves before the
-        user has a session.
-      */}
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );

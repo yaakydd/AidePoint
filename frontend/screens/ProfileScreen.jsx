@@ -41,7 +41,7 @@ function getInitials(name = '') {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { user, logout, updateProfile } = useAuth();
+    const { user, logout, updateProfile, deleteAccountSignOut } = useAuth();
 
   const [storeImages, setStoreImages] = useState(user?.storeImages ?? false);
   const [saving, setSaving] = useState(false);
@@ -197,18 +197,11 @@ async function handleToggle(newValue) {
               {
                 text: 'Delete My Account',
                 style: 'destructive',
-          onPress: async () => {
+                    onPress: async () => {
   try {
     const { error } = await supabase.functions.invoke('delete-account');
     if (error) throw error;
 
-    // The confirmation dialog promises this deletes "your profile,
-    // saved reports, and chat history" -- all of it lives in
-    // device-local storage keyed by user.id (SecureStore for the PIN,
-    // AsyncStorage for reports/chat), so it has to be wiped explicitly
-    // here. The Supabase function only deletes the server-side row;
-    // it has no way to reach into this device's local storage.
-    // Must run before logout() clears user.id out of context.
     await Promise.all([
       clearReports(user.id),
       clearAllSessions(user.id),
@@ -216,7 +209,7 @@ async function handleToggle(newValue) {
       deleteAllScanImages(user.id),
     ]);
 
-    await logout();
+    await deleteAccountSignOut();
   } catch (err) {
     Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
   }

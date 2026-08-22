@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 ECCENTRICITY_LIMIT = 0.55
 CIRCULARITY_FLOOR = 0.55
 FLAGGED_FRACTION_THRESHOLD = 0.25
-MINIMUM_CONTOUR_AREA = 40  # square pixels at 260x260 , filters out noise/debris specks
+FLAGGED_FRACTION_THRESHOLD_WHEN_QUALITY_POOR = 0.5
+MINIMUM_CONTOUR_AREA = 40
 MINIMUM_CELLS_FOR_SHAPE_VERDICT = 15
 
 
@@ -252,9 +253,24 @@ def compute_severity_color(eccentricity: float, circularity: float) -> SeverityI
     return SeverityInfo(severity=round(severity, 3), color=color)
 
 
+def count_measurable_cells(contours: list[np.ndarray]) -> int:
+    """
+    Returns the count of contours that survive measure_contour_shape's
+    filtering (min area, valid perimeter, >=5 points, nonzero major
+    axis) -- i.e. the same "cells_detected" number run_shape_screening
+    itself uses, exposed separately so callers that need this count
+    before shape screening runs (image_quality.py's own cells_detected
+    check) don't have to duplicate the filtering logic or diverge from
+    it over time.
+    """
+    return sum(
+        1 for contour in contours if measure_contour_shape(contour) is not None
+    )
+
 def run_shape_screening(
     image_bgr: np.ndarray,
     contours: list[np.ndarray] | None = None,
+    image_quality_is_poor: bool = False,
 ) -> ShapeScreeningResult:
     """
     The reliability check that decides whether an anemia result should be
@@ -277,6 +293,22 @@ def run_shape_screening(
     abnormally shaped. Below this bar, the function reports that shape
     could not be assessed, rather than asserting a specific , and
     likely wrong , shape verdict built on broken segmentation.
+
+    CHANGED: now accepts `image_quality_is_poor`. The same segmentation
+    corruption that motivates the 15-cell floor above doesn't vanish
+    just because 15+ contours were found , overall poor image quality
+    (blur/contrast/staining/exposure, see image_quality.py) can still
+    inflate flagged_fraction on an image with plenty of contours, just
+    less severely than a near-total segmentation failure would. Rather
+    than distrusting the shape signal completely in that case (which
+    would blind the app to genuinely off-scope samples -- e.g. malaria
+    or sickle-cell smears -- that happen to also be poorly photographed,
+    and off-scope samples often are), a poor-quality image needs a
+    substantially stronger flagged_fraction
+    (FLAGGED_FRACTION_THRESHOLD_WHEN_QUALITY_POOR, not the ordinary
+    FLAGGED_FRACTION_THRESHOLD) before needs_review fires. A borderline
+    flagged_fraction on a poor-quality image is plausibly just noise;
+    a strongly elevated one is not.
     """
     if contours is None:
         contours = detect_cell_contours(image_bgr)
@@ -310,8 +342,15 @@ def run_shape_screening(
         np.mean([measurement.eccentricity for measurement in cell_measurements])
     )
 
+    active_threshold = (
+        FLAGGED_FRACTION_THRESHOLD_WHEN_QUALITY_POOR
+        if image_quality_is_poor
+        else FLAGGED_FRACTION_THRESHOLD
+    )
+    shape_finding_present = flagged_fraction > active_threshold
+
     return ShapeScreeningResult(
-        needs_review=flagged_fraction > FLAGGED_FRACTION_THRESHOLD,
+        needs_review=shape_finding_present,
         flagged_fraction=round(flagged_fraction, 3),
         mean_eccentricity=round(mean_eccentricity, 3),
         cells_detected=len(cell_measurements),
@@ -320,10 +359,9 @@ def run_shape_screening(
             f"non-round for a typical smear. This can be a genuine morphology finding, or "
             f"an artefact of smear technique (e.g. a thick smear or drying too fast) -- "
             f"manual microscopic review is recommended before acting on this result."
-            if flagged_fraction > FLAGGED_FRACTION_THRESHOLD else None
+            if shape_finding_present else None
         ),
     )
-
 
 def get_cell_overlay(
     image_bgr: np.ndarray,

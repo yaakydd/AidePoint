@@ -1847,7 +1847,7 @@ const Scan = ({ navigation, route }) => {
         </Text>
 
         <TextInput
-          placeholder="e.g. John Doe"
+          placeholder="e.g. Joshua Antwi"
           placeholderTextColor={
             COLORS.textMuted
           }
@@ -2536,34 +2536,15 @@ const Scan = ({ navigation, route }) => {
           RESULT
       ======================================================== */}
 
-      {resultModal && (
-        <TransparencyTrail
-          data={resultModal}
-          userId={user.id}
-          onClose={() => {
-            setResultModal(null);
-            navigation.navigate(
-              'Report',
-            );
-          }}
-          onViewReport={() => {
-            const reportId =
-              resultModal?.report
-                ?.id;
-
-            setResultModal(null);
-
-            navigation.navigate(
-              'Report',
-              {
-                scanId:
-                  reportId,
-              },
-            );
-          }}
-        />
-      )}
-
+      onClose={() => {
+  setResultModal(null);
+  navigation.navigate('Report');   // ← "New Scan" button navigates to Report
+}}
+onViewReport={() => {
+  const reportId = resultModal?.report?.id;
+  setResultModal(null);
+  navigation.navigate('Report', { scanId: reportId });   // ← so does this
+}}
       {/* ANALYSIS MODAL */}
 
       <AnalysisModal

@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from supabase import Client
 
 from auth import verify_supabase_token, get_supabase_client
-from services.condition import resolve_condition
 from services.subscription import (
     CHAT_MESSAGE_LIMITS,
     DEFAULT_CHAT_LIMIT,
@@ -121,7 +120,7 @@ def _fetch_verified_report_context(
         .select(
             "prediction_id, technician_id, anemia_probability, is_anemic, "
             "prediction_confidence, is_unreliable, unreliable_reasons, "
-            "morphology_findings, cbc_pattern_summary, explanation"
+            "morphology_findings, cbc_pattern_summary, explanation, condition"
         )
         .eq("prediction_id", prediction_id)
         .execute()
@@ -138,11 +137,13 @@ def _fetch_verified_report_context(
 
     # Same canonical decision /predict uses, not left for Gemini to infer
     # from raw is_anemic/is_unreliable on its own -- see services/condition.py.
-    condition = resolve_condition(
-        is_anemic=bool(record["is_anemic"]),
-        is_unreliable=bool(record["is_unreliable"]),
-        morphology_findings=record["morphology_findings"],
-    )
+    # Same canonical decision /predict already computed and persisted --
+    # not re-derived here, since resolve_condition needs is_off_scope
+    # (shape_screening's needs_review), which isn't stored on this row
+    # and is a different signal from is_unreliable. Re-deriving it a
+    # second time is exactly the drift services/condition.py's own
+    # docstring warns about; reading the stored value avoids it.
+    condition = record["condition"]
 
     return ReportContext(
         condition=condition,
