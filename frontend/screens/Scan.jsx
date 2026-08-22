@@ -23,7 +23,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import {
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from '@expo/vector-icons';
 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -38,7 +41,10 @@ import { scanStyles as styles } from '../styles/ScanStyles';
 
 import { analyzeBloodSmear } from '../utils/api';
 
-import { prepareImage, stabilizeImage } from '../utils/imageUtils';
+import {
+  prepareImage,
+  stabilizeImage,
+} from '../utils/imageUtils';
 
 import {
   getRemainingScans,
@@ -51,17 +57,31 @@ import { getPlan } from '../constants/SubscriptionPlans';
 import TransparencyTrail from '../components/TransparencyTrail';
 import Header from '../components/Header';
 
-import { COLORS, HEADER, SPACING } from '../assets/theme';
+import {
+  COLORS,
+  HEADER,
+  SPACING,
+} from '../assets/theme';
 
-const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
+const TAB_BAR_CLEARANCE =
+  Platform.OS === 'ios' ? 105 : 90;
 
 const GENDERS = ['Male', 'Female'];
 
+/* ============================================================
+   HELPERS
+============================================================ */
 
 function generateScanId() {
   const year = new Date().getFullYear();
-  const timePart = Date.now().toString(36).toUpperCase().slice(4);
-  const randomPart = Math.floor(100 + Math.random() * 900);
+  const timePart = Date.now()
+    .toString(36)
+    .toUpperCase()
+    .slice(4);
+
+  const randomPart = Math.floor(
+    100 + Math.random() * 900,
+  );
 
   return `AP-${year}-${timePart}-${randomPart}`;
 }
@@ -79,11 +99,17 @@ function validateField(field, value) {
     }
 
     case 'age': {
-      if (!value) return '';
+      if (!value) {
+        return '';
+      }
 
       const n = Number(value);
 
-      if (!Number.isInteger(n) || n <= 0 || n > 120) {
+      if (
+        !Number.isInteger(n) ||
+        n <= 0 ||
+        n > 120
+      ) {
         return 'Enter a valid age (1–120)';
       }
 
@@ -91,11 +117,17 @@ function validateField(field, value) {
     }
 
     case 'temperature': {
-      if (!value) return '';
+      if (!value) {
+        return '';
+      }
 
       const n = Number(value);
 
-      if (!Number.isFinite(n) || n < 30 || n > 43) {
+      if (
+        !Number.isFinite(n) ||
+        n < 30 ||
+        n > 43
+      ) {
         return 'Enter a plausible temp (30–43°C)';
       }
 
@@ -103,10 +135,15 @@ function validateField(field, value) {
     }
 
     case 'bloodPressure': {
-      if (!value) return '';
+      if (!value) {
+        return '';
+      }
 
       const trimmed = value.trim();
-      const match = trimmed.match(/^(\d{2,3})\/(\d{2,3})$/);
+
+      const match = trimmed.match(
+        /^(\d{2,3})\/(\d{2,3})$/,
+      );
 
       if (!match) {
         return 'Format as systolic/diastolic, e.g. 120/80';
@@ -154,7 +191,10 @@ function getSafeErrorMessage(error) {
     return 'Something went wrong.';
   }
 
-  if (typeof error === 'object' && error.message) {
+  if (
+    typeof error === 'object' &&
+    error.message
+  ) {
     return error.message;
   }
 
@@ -165,40 +205,52 @@ function getSafeErrorMessage(error) {
   return 'Something went wrong.';
 }
 
+/* ============================================================
+   PREDICTION HELPERS
+============================================================ */
+
 /*
- * The API response is allowed to contain different optional fields.
+ * The /predict endpoint does NOT need to return prediction_id
+ * for the prediction to be considered valid.
  *
- * Most importantly, the result should still be displayable when the
- * backend returns the core prediction:
+ * The minimum usable prediction is:
  *
- * anemia_probability
- * is_anemic
- * decision_threshold
- * cbc
+ *   anemia_probability
+ *   OR
+ *   is_anemic
  *
- * Do NOT reject a valid prediction merely because optional fields
- * such as prediction_id are absent.
+ * Other fields are optional.
  */
 function hasUsablePrediction(prediction) {
-  if (!prediction || typeof prediction !== 'object') {
+  if (
+    !prediction ||
+    typeof prediction !== 'object'
+  ) {
     return false;
   }
 
   const hasAnemiaProbability =
-    typeof prediction.anemia_probability === 'number';
+    typeof prediction.anemia_probability ===
+    'number';
 
   const hasIsAnemic =
     typeof prediction.is_anemic === 'boolean';
 
-  return hasAnemiaProbability || hasIsAnemic;
+  return (
+    hasAnemiaProbability ||
+    hasIsAnemic
+  );
 }
 
 /*
- * Normalise the prediction object without destroying any fields
+ * Normalize the prediction without removing any fields
  * returned by the backend.
  */
 function normalizePrediction(prediction) {
-  if (!prediction || typeof prediction !== 'object') {
+  if (
+    !prediction ||
+    typeof prediction !== 'object'
+  ) {
     return prediction;
   }
 
@@ -206,7 +258,8 @@ function normalizePrediction(prediction) {
     ...prediction,
 
     anemia_probability:
-      typeof prediction.anemia_probability === 'number'
+      typeof prediction.anemia_probability ===
+      'number'
         ? prediction.anemia_probability
         : null,
 
@@ -216,12 +269,14 @@ function normalizePrediction(prediction) {
         : null,
 
     decision_threshold:
-      typeof prediction.decision_threshold === 'number'
+      typeof prediction.decision_threshold ===
+      'number'
         ? prediction.decision_threshold
         : null,
 
     cbc:
-      prediction.cbc && typeof prediction.cbc === 'object'
+      prediction.cbc &&
+      typeof prediction.cbc === 'object'
         ? prediction.cbc
         : null,
 
@@ -237,14 +292,23 @@ function normalizePrediction(prediction) {
    ANALYSIS MODAL
 ============================================================ */
 
-const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+const AnalysisModal = ({
+  visible,
+  stage = 'Preparing image...',
+}) => {
+  const pulseAnim = useRef(
+    new Animated.Value(1),
+  ).current;
+
+  const rotateAnim = useRef(
+    new Animated.Value(0),
+  ).current;
 
   useEffect(() => {
     if (!visible) {
       pulseAnim.stopAnimation();
       rotateAnim.stopAnimation();
+
       pulseAnim.setValue(1);
       rotateAnim.setValue(0);
 
@@ -258,6 +322,7 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
           duration: 900,
           useNativeDriver: true,
         }),
+
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 900,
@@ -287,12 +352,20 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
       pulseAnim.setValue(1);
       rotateAnim.setValue(0);
     };
-  }, [visible, pulseAnim, rotateAnim]);
+  }, [
+    visible,
+    pulseAnim,
+    rotateAnim,
+  ]);
 
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  const rotate =
+    rotateAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [
+        '0deg',
+        '360deg',
+      ],
+    });
 
   return (
     <Modal
@@ -311,33 +384,55 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
             style={[
               styles.iconOuter,
               {
-                transform: [{ scale: pulseAnim }],
+                transform: [
+                  {
+                    scale: pulseAnim,
+                  },
+                ],
               },
             ]}
           >
             <Animated.View
               style={{
-                transform: [{ rotate }],
+                transform: [
+                  {
+                    rotate,
+                  },
+                ],
               }}
             >
               <MaterialCommunityIcons
                 name="microscope"
                 size={38}
-                color={COLORS.primary}
+                color={
+                  COLORS.primary
+                }
               />
             </Animated.View>
           </Animated.View>
 
-          <Text style={styles.title}>Analysing Blood Smear</Text>
-
-          <Text style={styles.description}>
-            Please wait while AidePoint processes the blood smear image.
+          <Text style={styles.title}>
+            Analysing Blood Smear
           </Text>
 
-          <View style={styles.stageBox}>
+          <Text
+            style={
+              styles.description
+            }
+          >
+            Please wait while AidePoint
+            processes the blood smear
+            image.
+          </Text>
+
+          <View
+            style={styles.stageBox}
+          >
             <ActivityIndicator
               size="small"
-              color={COLORS.primary}
+              color={
+                COLORS.primary
+              }
             />
 
             <Text
@@ -348,14 +443,20 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
             </Text>
           </View>
 
-          <View style={styles.infoRow}>
+          <View
+            style={styles.infoRow}
+          >
             <MaterialCommunityIcons
               name="shield-check-outline"
               size={17}
-              color={COLORS.success}
+              color={
+                COLORS.success
+              }
             />
 
-            <Text style={styles.infoText}>
+            <Text
+              style={styles.infoText}
+            >
               Please keep this screen open
             </Text>
           </View>
@@ -369,56 +470,106 @@ const AnalysisModal = ({ visible, stage = 'Preparing image...' }) => {
    SCREEN
 ============================================================ */
 
-const Scan = ({ navigation, route }) => {
+const Scan = ({
+  navigation,
+  route,
+}) => {
   const { user } = useAuth();
 
-  /* USER / PLAN */
+  /* ============================================================
+     USER / PLAN
+  ============================================================ */
 
   const plan = useMemo(
-    () => getPlan(user?.subscriptionTier),
+    () =>
+      getPlan(
+        user?.subscriptionTier,
+      ),
     [user?.subscriptionTier],
   );
 
-  const labTechName = user?.name ?? 'Lab Technician';
+  const labTechName =
+    user?.name ?? 'Lab Technician';
 
-  /* FORM */
+  /* ============================================================
+     FORM
+  ============================================================ */
 
-  const [patientName, setPatientName] = useState('');
-  const [patientAge, setPatientAge] = useState('');
-  const [patientGender, setPatientGender] = useState('');
-  const [temperature, setTemperature] = useState('');
-  const [bloodPressure, setBloodPressure] = useState('');
-  const [errors, setErrors] = useState({});
+  const [patientName, setPatientName] =
+    useState('');
 
-  /* IMAGE */
+  const [patientAge, setPatientAge] =
+    useState('');
 
-  const [image, setImage] = useState(null);
-  const [imageSourceType, setImageSourceType] = useState(null);
-  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [patientGender, setPatientGender] =
+    useState('');
 
-  /* ANALYSIS */
+  const [temperature, setTemperature] =
+    useState('');
 
-  const [scanId, setScanId] = useState(generateScanId);
-  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [bloodPressure, setBloodPressure] =
+    useState('');
+
+  const [errors, setErrors] =
+    useState({});
+
+  /* ============================================================
+     IMAGE
+  ============================================================ */
+
+  const [image, setImage] =
+    useState(null);
+
+  const [imageSourceType, setImageSourceType] =
+    useState(null);
+
+  const [imageViewerOpen, setImageViewerOpen] =
+    useState(false);
+
+  /* ============================================================
+     ANALYSIS
+  ============================================================ */
+
+  const [scanId, setScanId] =
+    useState(generateScanId);
+
+  const [isAnalysing, setIsAnalysing] =
+    useState(false);
+
   const [analysisStage, setAnalysisStage] =
     useState('Preparing image...');
-  const [remaining, setRemaining] = useState(null);
 
-  /* RESULT */
+  const [remaining, setRemaining] =
+    useState(null);
 
-  const [resultModal, setResultModal] = useState(null);
+  /* ============================================================
+     RESULT
+  ============================================================ */
 
-  /* RESET TOOLTIP */
+  const [resultModal, setResultModal] =
+    useState(null);
 
-  const [showResetTip, setShowResetTip] = useState(false);
+  /* ============================================================
+     RESET TOOLTIP
+  ============================================================ */
+
+  const [showResetTip, setShowResetTip] =
+    useState(false);
 
   const tipOpacity = useRef(
     new Animated.Value(0),
   ).current;
 
+  /* ============================================================
+     ANALYSIS LOCKS
+  ============================================================ */
+
   const analysisLock = useRef(false);
+
   const mountedRef = useRef(true);
-  const analysisSessionRef = useRef(null);
+
+  const analysisSessionRef =
+    useRef(null);
 
   /* ============================================================
      LIFECYCLE
@@ -429,8 +580,11 @@ const Scan = ({ navigation, route }) => {
 
     return () => {
       mountedRef.current = false;
+
       analysisLock.current = false;
-      analysisSessionRef.current = null;
+
+      analysisSessionRef.current =
+        null;
     };
   }, []);
 
@@ -438,27 +592,32 @@ const Scan = ({ navigation, route }) => {
      LOAD SCAN LIMIT
   ============================================================ */
 
-  const loadRemaining = useCallback(async () => {
-    if (!user?.id || !plan) {
-      return;
-    }
-
-    try {
-      const value = await getRemainingScans(
-        user.id,
-        plan,
-      );
-
-      if (mountedRef.current) {
-        setRemaining(value);
+  const loadRemaining =
+    useCallback(async () => {
+      if (!user?.id || !plan) {
+        return;
       }
-    } catch (error) {
-      console.error(
-        'Failed to load remaining scans:',
-        error,
-      );
-    }
-  }, [user?.id, plan]);
+
+      try {
+        const value =
+          await getRemainingScans(
+            user.id,
+            plan,
+          );
+
+        if (mountedRef.current) {
+          setRemaining(value);
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load remaining scans:',
+          error,
+        );
+      }
+    }, [
+      user?.id,
+      plan,
+    ]);
 
   useEffect(() => {
     loadRemaining();
@@ -469,148 +628,163 @@ const Scan = ({ navigation, route }) => {
   ============================================================ */
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener(
-      'beforeRemove',
-      (event) => {
-        if (!analysisLock.current) {
-          return;
-        }
+    const unsubscribe =
+      navigation.addListener(
+        'beforeRemove',
+        (event) => {
+          if (
+            !analysisLock.current
+          ) {
+            return;
+          }
 
-        event.preventDefault();
-      },
-    );
+          event.preventDefault();
+        },
+      );
 
     return unsubscribe;
   }, [navigation]);
 
-   /* ============================================================
+  /* ============================================================
      CAMERA RESULT
   ============================================================ */
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener(
-      'focus',
-      () => {
-        if (analysisLock.current || isAnalysing) {
-          return;
-        }
-
-        const params = route.params;
-
-        const capturedPhoto =
-          params?.capturedPhoto;
-
-        /*
-         * Restore the form data that was entered before
-         * opening the camera.
-         *
-         * This is intentionally done before processing
-         * the captured image.
-         */
-        const existingData =
-          params?.existingData;
-
-        if (existingData) {
+    const unsubscribe =
+      navigation.addListener(
+        'focus',
+        () => {
           if (
-            typeof existingData.patientName ===
-            'string'
+            analysisLock.current ||
+            isAnalysing
           ) {
-            setPatientName(
-              existingData.patientName,
-            );
+            return;
           }
 
-          if (
-            typeof existingData.patientAge ===
-            'string'
-          ) {
-            setPatientAge(
-              existingData.patientAge,
-            );
-          }
+          const params =
+            route.params;
 
-          if (
-            typeof existingData.patientGender ===
-            'string'
-          ) {
-            setPatientGender(
-              existingData.patientGender,
-            );
-          }
+          const capturedPhoto =
+            params?.capturedPhoto;
 
-          if (
-            typeof existingData.temperature ===
-            'string'
-          ) {
-            setTemperature(
-              existingData.temperature,
-            );
-          }
+          /*
+           * Restore form information after
+           * returning from Camera.
+           */
+          const existingData =
+            params?.existingData;
 
-          if (
-            typeof existingData.bloodPressure ===
-            'string'
-          ) {
-            setBloodPressure(
-              existingData.bloodPressure,
-            );
-          }
-        }
-
-        if (!capturedPhoto) {
-          return;
-        }
-
-        /*
-         * Clear the navigation params after reading them.
-         *
-         * This prevents the same camera result from being
-         * processed again if the screen receives focus later.
-         */
-        navigation.setParams({
-          capturedPhoto: undefined,
-          existingData: undefined,
-        });
-
-        const processCameraImage = async () => {
-          try {
-            const safeUri =
-              await stabilizeImage(
-                capturedPhoto,
+          if (existingData) {
+            if (
+              typeof existingData.patientName ===
+              'string'
+            ) {
+              setPatientName(
+                existingData.patientName,
               );
+            }
 
             if (
-              !mountedRef.current ||
-              analysisLock.current
+              typeof existingData.patientAge ===
+              'string'
             ) {
-              return;
+              setPatientAge(
+                existingData.patientAge,
+              );
             }
 
-            setImage(safeUri);
-            setImageSourceType('camera');
+            if (
+              typeof existingData.patientGender ===
+              'string'
+            ) {
+              setPatientGender(
+                existingData.patientGender,
+              );
+            }
 
-            setErrors((prev) => ({
-              ...prev,
-              image: '',
-            }));
-          } catch (error) {
-            console.error(
-              'Camera image stabilize failed:',
-              error,
-            );
+            if (
+              typeof existingData.temperature ===
+              'string'
+            ) {
+              setTemperature(
+                existingData.temperature,
+              );
+            }
 
-            if (mountedRef.current) {
-              Alert.alert(
-                'Image Error',
-                'Could not process the captured photo. Please try again.',
+            if (
+              typeof existingData.bloodPressure ===
+              'string'
+            ) {
+              setBloodPressure(
+                existingData.bloodPressure,
               );
             }
           }
-        };
 
-        processCameraImage();
-      },
-    );
+          if (!capturedPhoto) {
+            return;
+          }
+
+          /*
+           * Immediately clear navigation params
+           * so the same image is not processed again.
+           */
+          navigation.setParams({
+            capturedPhoto:
+              undefined,
+            existingData:
+              undefined,
+          });
+
+          const processCameraImage =
+            async () => {
+              try {
+                const safeUri =
+                  await stabilizeImage(
+                    capturedPhoto,
+                  );
+
+                if (
+                  !mountedRef.current ||
+                  analysisLock.current
+                ) {
+                  return;
+                }
+
+                setImage(
+                  safeUri,
+                );
+
+                setImageSourceType(
+                  'camera',
+                );
+
+                setErrors(
+                  (prev) => ({
+                    ...prev,
+                    image: '',
+                  }),
+                );
+              } catch (error) {
+                console.error(
+                  'Camera image stabilize failed:',
+                  error,
+                );
+
+                if (
+                  mountedRef.current
+                ) {
+                  Alert.alert(
+                    'Image Error',
+                    'Could not process the captured photo. Please try again.',
+                  );
+                }
+              }
+            };
+
+          processCameraImage();
+        },
+      );
 
     return unsubscribe;
   }, [
@@ -619,35 +793,53 @@ const Scan = ({ navigation, route }) => {
     route.params?.existingData,
     isAnalysing,
   ]);
+
   /* ============================================================
      VALIDATION
   ============================================================ */
 
-  const runValidation = useCallback(
-    (field, value) => {
-      const message = validateField(field, value);
+  const runValidation =
+    useCallback(
+      (field, value) => {
+        const message =
+          validateField(
+            field,
+            value,
+          );
 
-      setErrors((prev) => ({
-        ...prev,
-        [field]: message,
-      }));
+        setErrors(
+          (prev) => ({
+            ...prev,
+            [field]: message,
+          }),
+        );
 
-      return message;
-    },
-    [],
-  );
+        return message;
+      },
+      [],
+    );
 
   const hasFieldErrors =
-    Object.values(errors).some(Boolean);
+    Object.values(errors).some(
+      Boolean,
+    );
 
   const isFormValid =
-    patientName.trim().length > 0 &&
-    patientAge.trim().length > 0 &&
+    patientName.trim().length >
+      0 &&
+    patientAge.trim().length >
+      0 &&
     patientGender.length > 0 &&
-    temperature.trim().length > 0 &&
-    bloodPressure.trim().length > 0 &&
+    temperature.trim().length >
+      0 &&
+    bloodPressure.trim().length >
+      0 &&
     !!image &&
     !hasFieldErrors;
+
+  /* ============================================================
+     CAMERA
+  ============================================================ */
 
   const openCamera = () => {
     if (
@@ -657,15 +849,18 @@ const Scan = ({ navigation, route }) => {
       return;
     }
 
-    navigation.navigate('Camera', {
-      existingData: {
-        patientName,
-        patientAge,
-        patientGender,
-        temperature,
-        bloodPressure,
+    navigation.navigate(
+      'Camera',
+      {
+        existingData: {
+          patientName,
+          patientAge,
+          patientGender,
+          temperature,
+          bloodPressure,
+        },
       },
-    });
+    );
   };
 
   const retakePhoto = () => {
@@ -679,95 +874,123 @@ const Scan = ({ navigation, route }) => {
     setImage(null);
     setImageSourceType(null);
 
-    navigation.navigate('Camera', {
-      existingData: {
-        patientName,
-        patientAge,
-        patientGender,
-        temperature,
-        bloodPressure,
+    navigation.navigate(
+      'Camera',
+      {
+        existingData: {
+          patientName,
+          patientAge,
+          patientGender,
+          temperature,
+          bloodPressure,
+        },
       },
-    });
+    );
   };
 
-  const handlePickFile = async () => {
-    if (analysisLock.current || isAnalysing) {
-      return;
-    }
+  /* ============================================================
+     IMAGE PICKER
+  ============================================================ */
 
-    try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert(
-          'Permission Required',
-          'Please allow access to your gallery.',
-        );
-
-        return;
-      }
-
-      const result =
-        await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          quality: 1,
-          allowsEditing: false,
-          selectionLimit: 1,
-        });
-
+  const handlePickFile =
+    async () => {
       if (
-        result.canceled ||
-        !result.assets?.length
+        analysisLock.current ||
+        isAnalysing
       ) {
         return;
       }
 
-      const pickedUri = result.assets[0].uri;
+      try {
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (!pickedUri) {
-        Alert.alert(
-          'Invalid Image',
-          'The selected file could not be read.',
+        if (
+          !permission.granted
+        ) {
+          Alert.alert(
+            'Permission Required',
+            'Please allow access to your gallery.',
+          );
+
+          return;
+        }
+
+        const result =
+          await ImagePicker.launchImageLibraryAsync(
+            {
+              mediaTypes: ['images'],
+              quality: 1,
+              allowsEditing: false,
+              selectionLimit: 1,
+            },
+          );
+
+        if (
+          result.canceled ||
+          !result.assets?.length
+        ) {
+          return;
+        }
+
+        const pickedUri =
+          result.assets[0].uri;
+
+        if (!pickedUri) {
+          Alert.alert(
+            'Invalid Image',
+            'The selected file could not be read.',
+          );
+
+          return;
+        }
+
+        const safeUri =
+          await stabilizeImage(
+            pickedUri,
+          );
+
+        if (
+          !mountedRef.current ||
+          analysisLock.current
+        ) {
+          return;
+        }
+
+        setImage(safeUri);
+
+        setImageSourceType(
+          'upload',
         );
 
-        return;
-      }
-
-      const safeUri =
-        await stabilizeImage(pickedUri);
-
-      if (
-        !mountedRef.current ||
-        analysisLock.current
-      ) {
-        return;
-      }
-
-      setImage(safeUri);
-      setImageSourceType('upload');
-
-      setErrors((prev) => ({
-        ...prev,
-        image: '',
-      }));
-    } catch (error) {
-      console.error(
-        'Image picker error:',
-        error,
-      );
-
-      if (mountedRef.current) {
-        Alert.alert(
-          'Upload Failed',
-          'Unable to select or process the image.',
+        setErrors(
+          (prev) => ({
+            ...prev,
+            image: '',
+          }),
         );
+      } catch (error) {
+        console.error(
+          'Image picker error:',
+          error,
+        );
+
+        if (
+          mountedRef.current
+        ) {
+          Alert.alert(
+            'Upload Failed',
+            'Unable to select or process the image.',
+          );
+        }
       }
-    }
-  };
+    };
 
   const reuploadPhoto = () => {
-    if (analysisLock.current || isAnalysing) {
+    if (
+      analysisLock.current ||
+      isAnalysing
+    ) {
       return;
     }
 
@@ -782,7 +1005,10 @@ const Scan = ({ navigation, route }) => {
   ============================================================ */
 
   const triggerReset = () => {
-    if (analysisLock.current || isAnalysing) {
+    if (
+      analysisLock.current ||
+      isAnalysing
+    ) {
       return;
     }
 
@@ -794,11 +1020,15 @@ const Scan = ({ navigation, route }) => {
           text: 'Cancel',
           style: 'cancel',
         },
+
         {
           text: 'Reset',
           style: 'destructive',
+
           onPress: () => {
-            if (analysisLock.current) {
+            if (
+              analysisLock.current
+            ) {
               return;
             }
 
@@ -811,11 +1041,17 @@ const Scan = ({ navigation, route }) => {
             setErrors({});
 
             setImage(null);
-            setImageSourceType(null);
+            setImageSourceType(
+              null,
+            );
 
-            setImageViewerOpen(false);
+            setImageViewerOpen(
+              false,
+            );
 
-            setScanId(generateScanId());
+            setScanId(
+              generateScanId(),
+            );
 
             setAnalysisStage(
               'Preparing image...',
@@ -826,213 +1062,795 @@ const Scan = ({ navigation, route }) => {
     );
   };
 
-  const handleResetPress = () => {
-    if (analysisLock.current || isAnalysing) {
-      return;
-    }
-
-    if (showResetTip) {
-      triggerReset();
-      return;
-    }
-
-    setShowResetTip(true);
-
-    Animated.sequence([
-      Animated.timing(tipOpacity, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.delay(2000),
-      Animated.timing(tipOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      if (mountedRef.current) {
-        setShowResetTip(false);
+  const handleResetPress =
+    () => {
+      if (
+        analysisLock.current ||
+        isAnalysing
+      ) {
+        return;
       }
-    });
-  };
+
+      if (showResetTip) {
+        triggerReset();
+        return;
+      }
+
+      setShowResetTip(true);
+
+      Animated.sequence([
+        Animated.timing(
+          tipOpacity,
+          {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          },
+        ),
+
+        Animated.delay(2000),
+
+        Animated.timing(
+          tipOpacity,
+          {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          },
+        ),
+      ]).start(() => {
+        if (
+          mountedRef.current
+        ) {
+          setShowResetTip(
+            false,
+          );
+        }
+      });
+    };
 
   /* ============================================================
      START ANALYSIS
   ============================================================ */
 
-  const handleStartAnalysis = async () => {
-    /*
-     * 0. IMMEDIATE LOCK
-     */
-
-    if (
-      analysisLock.current ||
-      isAnalysing
-    ) {
-      return;
-    }
-
-    /*
-     * 1. AUTHENTICATION
-     */
-
-    if (!user?.id) {
-      Alert.alert(
-        'Session Required',
-        'Your session is unavailable. Please sign in again.',
-      );
-
-      return;
-    }
-
-    /*
-     * 2. PLAN
-     */
-
-    if (!plan) {
-      Alert.alert(
-        'Plan Error',
-        'Your subscription plan could not be determined. Please try again.',
-      );
-
-      return;
-    }
-
-    /*
-     * 3. VALIDATE FORM AGAIN
-     */
-
-    const validationErrors = {};
-
-    const fieldsToValidate = {
-      patientName: [
-        'patientName',
-        patientName,
-      ],
-      age: ['age', patientAge],
-      temperature: [
-        'temperature',
-        temperature,
-      ],
-      bloodPressure: [
-        'bloodPressure',
-        bloodPressure,
-      ],
-    };
-
-    Object.values(
-      fieldsToValidate,
-    ).forEach(([field, value]) => {
-      const error = validateField(
-        field,
-        value,
-      );
-
-      if (error) {
-        validationErrors[field] =
-          error;
-      }
-    });
-
-    if (!patientName.trim()) {
-      validationErrors.patientName =
-        'Enter patient name';
-    }
-
-    if (!patientAge.trim()) {
-      validationErrors.age =
-        'Enter patient age';
-    }
-
-    if (!patientGender) {
-      validationErrors.patientGender =
-        'Select patient gender';
-    }
-
-    if (!temperature.trim()) {
-      validationErrors.temperature =
-        'Enter temperature';
-    }
-
-    if (!bloodPressure.trim()) {
-      validationErrors.bloodPressure =
-        'Enter blood pressure';
-    }
-
-    if (!image) {
-      validationErrors.image =
-        'Capture or upload a blood smear image';
-    }
-
-    if (
-      Object.keys(validationErrors)
-        .length > 0
-    ) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    /*
-     * 4. LOCK
-     */
-
-    analysisLock.current = true;
-
-    const analysisSession =
-      `${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
-
-    analysisSessionRef.current =
-      analysisSession;
-
-    setIsAnalysing(true);
-
-    let createdPatientId = null;
-    let createdScanId = null;
-
-    try {
+  const handleStartAnalysis =
+    async () => {
       /*
-       * 5. CHECK SCAN LIMIT
+       * 0. IMMEDIATE LOCK
+       *
+       * This must happen before any async operation.
+       */
+      if (
+        analysisLock.current ||
+        isAnalysing
+      ) {
+        return;
+      }
+
+      /*
+       * 1. AUTHENTICATION
        */
 
-      setAnalysisStage(
-        'Checking scan availability...',
+      if (!user?.id) {
+        Alert.alert(
+          'Session Required',
+          'Your session is unavailable. Please sign in again.',
+        );
+
+        return;
+      }
+
+      /*
+       * 2. PLAN
+       */
+
+      if (!plan) {
+        Alert.alert(
+          'Plan Error',
+          'Your subscription plan could not be determined. Please try again.',
+        );
+
+        return;
+      }
+
+      /*
+       * 3. VALIDATE FORM AGAIN
+       *
+       * Never rely only on button disabled state.
+       */
+
+      const validationErrors =
+        {};
+
+      const fieldsToValidate = {
+        patientName: [
+          'patientName',
+          patientName,
+        ],
+
+        age: [
+          'age',
+          patientAge,
+        ],
+
+        temperature: [
+          'temperature',
+          temperature,
+        ],
+
+        bloodPressure: [
+          'bloodPressure',
+          bloodPressure,
+        ],
+      };
+
+      Object.values(
+        fieldsToValidate,
+      ).forEach(
+        ([field, value]) => {
+          const error =
+            validateField(
+              field,
+              value,
+            );
+
+          if (error) {
+            validationErrors[
+              field
+            ] = error;
+          }
+        },
       );
 
-      const currentRemaining =
-        await getRemainingScans(
-          user.id,
-          plan,
-        );
+      if (!patientName.trim()) {
+        validationErrors.patientName =
+          'Enter patient name';
+      }
 
-      if (
-        !Number.isFinite(
-          currentRemaining,
-        ) &&
-        currentRemaining !== Infinity
-      ) {
-        throw new Error(
-          'Could not verify scan availability.',
-        );
+      if (!patientAge.trim()) {
+        validationErrors.age =
+          'Enter patient age';
+      }
+
+      if (!patientGender) {
+        validationErrors.patientGender =
+          'Select patient gender';
+      }
+
+      if (!temperature.trim()) {
+        validationErrors.temperature =
+          'Enter temperature';
+      }
+
+      if (!bloodPressure.trim()) {
+        validationErrors.bloodPressure =
+          'Enter blood pressure';
+      }
+
+      if (!image) {
+        validationErrors.image =
+          'Capture or upload a blood smear image';
       }
 
       if (
-        currentRemaining !== Infinity &&
-        currentRemaining <= 0
+        Object.keys(
+          validationErrors,
+        ).length > 0
       ) {
-        if (mountedRef.current) {
+        setErrors(
+          validationErrors,
+        );
+
+        return;
+      }
+
+      /*
+       * 4. LOCK
+       */
+
+      analysisLock.current = true;
+
+      const analysisSession =
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}`;
+
+      analysisSessionRef.current =
+        analysisSession;
+
+      setIsAnalysing(true);
+
+      let createdPatientId =
+        null;
+
+      let createdScanId =
+        null;
+
+      try {
+        /*
+         * 5. CHECK SCAN LIMIT
+         */
+
+        setAnalysisStage(
+          'Checking scan availability...',
+        );
+
+        const currentRemaining =
+          await getRemainingScans(
+            user.id,
+            plan,
+          );
+
+        if (
+          !Number.isFinite(
+            currentRemaining,
+          ) &&
+          currentRemaining !==
+            Infinity
+        ) {
+          throw new Error(
+            'Could not verify scan availability.',
+          );
+        }
+
+        if (
+          currentRemaining !==
+            Infinity &&
+          currentRemaining <= 0
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            Alert.alert(
+              'Daily Limit Reached',
+              getUpgradeMessage(
+                plan,
+              ),
+              [
+                {
+                  text: 'Maybe Later',
+                  style: 'cancel',
+                },
+
+                {
+                  text: 'View Plans',
+
+                  onPress: () =>
+                    navigation.navigate(
+                      'Subscription',
+                    ),
+                },
+              ],
+            );
+          }
+
+          return;
+        }
+
+        /*
+         * 6. PREPARE IMAGE
+         */
+
+        setAnalysisStage(
+          'Preparing blood smear image...',
+        );
+
+        const compressedUri =
+          await prepareImage(
+            image,
+          );
+
+        if (!compressedUri) {
+          throw new Error(
+            'Image preparation failed.',
+          );
+        }
+
+        /*
+         * 7. CREATE PATIENT
+         */
+
+        setAnalysisStage(
+          'Creating patient record...',
+        );
+
+        const {
+          data: patientRow,
+          error: patientError,
+        } = await supabase
+          .from('patients')
+          .insert({
+            created_by:
+              user.id,
+
+            name:
+              patientName.trim(),
+
+            age:
+              Number(
+                patientAge,
+              ),
+
+            gender:
+              patientGender.toLowerCase(),
+          })
+          .select('id')
+          .single();
+
+        if (patientError) {
+          throw patientError;
+        }
+
+        if (!patientRow?.id) {
+          throw new Error(
+            'Patient record could not be created.',
+          );
+        }
+
+        createdPatientId =
+          patientRow.id;
+
+        /*
+         * 8. AI ANALYSIS
+         */
+
+        setAnalysisStage(
+          'Analysing blood smear...',
+        );
+
+        const rawPrediction =
+          await analyzeBloodSmear(
+            compressedUri,
+            patientRow.id,
+            temperature.trim(),
+            bloodPressure.trim(),
+          );
+
+        /*
+         * The current /predict endpoint can return:
+         *
+         * anemia_probability
+         * is_anemic
+         * decision_threshold
+         * cbc
+         *
+         * prediction_id is optional.
+         */
+
+        if (
+          !hasUsablePrediction(
+            rawPrediction,
+          )
+        ) {
+          console.error(
+            'Invalid /predict response:',
+            rawPrediction,
+          );
+
+          throw new Error(
+            'No usable analysis result was returned.',
+          );
+        }
+
+        /*
+         * Preserve and normalize
+         * the complete API response.
+         */
+
+        const prediction =
+          normalizePrediction(
+            rawPrediction,
+          );
+
+        /*
+         * 9. UPLOAD IMAGE
+         */
+
+        setAnalysisStage(
+          'Securing scan image...',
+        );
+
+        const storedImagePath =
+          await uploadScanImage(
+            user.id,
+            compressedUri,
+            scanId,
+          );
+
+        /*
+         * Image storage may legitimately
+         * return null when consent is disabled.
+         */
+
+        const imageUrl =
+          storedImagePath ?? null;
+
+        /*
+         * 10. DETERMINE CONDITION
+         */
+
+        const conditionKey =
+          prediction.condition ??
+          resolveConditionKey(
+            prediction.is_anemic,
+            prediction.morphology_findings,
+            prediction.is_unreliable,
+          );
+
+        /*
+         * Don't discard a valid prediction
+         * just because an optional condition
+         * field is unavailable.
+         */
+
+        const safeConditionKey =
+          conditionKey ??
+          (prediction.is_anemic ===
+          true
+            ? 'anemia'
+            : 'normal');
+
+        /*
+         * 11. BUILD REPORT
+         */
+
+        setAnalysisStage(
+          'Preparing analysis report...',
+        );
+
+        const report =
+          buildReport({
+            patientName:
+              patientName.trim(),
+
+            patientId:
+              patientRow.id,
+
+            condition:
+              safeConditionKey,
+
+            isAnemic:
+              prediction.is_anemic,
+
+            confidence:
+              prediction.anemia_probability,
+
+            confidenceLabel:
+              prediction
+                .explanation
+                ?.confidence ??
+              'moderate',
+
+            labTechName,
+
+            image_url:
+              imageUrl,
+
+            temperature:
+              temperature.trim(),
+
+            bloodPressure:
+              bloodPressure.trim(),
+
+            morphologyFindings:
+              prediction.morphology_findings,
+
+            cbcPatternSummary:
+              prediction.cbc_pattern_summary,
+
+            isUnreliable:
+              prediction.is_unreliable,
+
+            unreliableReasons:
+              prediction.unreliable_reasons,
+
+            imageQuality:
+              prediction.image_quality,
+
+            cellOverlay:
+              prediction.cell_overlay,
+
+            scanId,
+          });
+
+        if (!report) {
+          throw new Error(
+            'Report could not be generated.',
+          );
+        }
+
+        /*
+         * 12. SAVE SCAN
+         */
+
+        setAnalysisStage(
+          'Saving scan record...',
+        );
+
+        const scanInsert = {
+          patient_id:
+            patientRow.id,
+
+          created_by:
+            user.id,
+
+          image_url:
+            imageUrl,
+
+          status: 'done',
+
+          condition:
+            safeConditionKey,
+        };
+
+        /*
+         * prediction_id is optional.
+         */
+
+        if (
+          prediction.prediction_id !==
+            undefined &&
+          prediction.prediction_id !==
+            null
+        ) {
+          scanInsert.prediction_id =
+            prediction.prediction_id;
+        }
+
+        const {
+          data: scanRow,
+          error: scanError,
+        } = await supabase
+          .from('scans')
+          .insert(scanInsert)
+          .select('id')
+          .single();
+
+        if (scanError) {
+          throw scanError;
+        }
+
+        if (!scanRow?.id) {
+          throw new Error(
+            'Scan record could not be saved.',
+          );
+        }
+
+        createdScanId =
+          scanRow.id;
+
+        /*
+         * Attach the actual database
+         * scan ID to the report.
+         */
+
+        report.id =
+          scanRow.id;
+
+        /*
+         * 13. SAVE REPORT
+         */
+
+        setAnalysisStage(
+          'Finalising report...',
+        );
+
+        await saveReport(
+          report,
+          user.id,
+        );
+
+        /*
+         * 14. RECORD USAGE
+         */
+
+        setAnalysisStage(
+          'Updating scan usage...',
+        );
+
+        const usage =
+          await recordScan(
+            user.id,
+            plan,
+          );
+
+        if (!usage) {
+          throw new Error(
+            'Scan usage could not be recorded.',
+          );
+        }
+
+        if (
+          mountedRef.current
+        ) {
+          setRemaining(
+            usage.remaining,
+          );
+        }
+
+        /*
+         * 15. BUILD RESULT OBJECT
+         */
+
+        if (
+          mountedRef.current
+        ) {
+          const result = {
+            /*
+             * Preserve complete prediction.
+             */
+            prediction,
+
+            /*
+             * Completed report.
+             */
+            report,
+
+            /*
+             * Usage information.
+             */
+            bonusJustGranted:
+              usage.bonusJustGranted,
+
+            bonusRemaining:
+              usage.bonusRemaining,
+
+            remaining:
+              usage.remaining,
+
+            /*
+             * Explicit prediction fields.
+             */
+            is_anemic:
+              prediction.is_anemic,
+
+            anemia_probability:
+              prediction.anemia_probability,
+
+            decision_threshold:
+              prediction.decision_threshold,
+
+            cbc:
+              prediction.cbc,
+
+            morphology_findings:
+              prediction.morphology_findings,
+
+            cbc_pattern_summary:
+              prediction.cbc_pattern_summary,
+
+            image_quality:
+              prediction.image_quality,
+
+            is_unreliable:
+              prediction.is_unreliable,
+
+            unreliable_reasons:
+              prediction.unreliable_reasons,
+
+            scanId,
+          };
+
+          console.log(
+            '>>> RESULT MODAL DATA:',
+            result,
+          );
+
+          /*
+           * IMPORTANT:
+           *
+           * Reset the Scan form BEFORE
+           * showing the result modal.
+           *
+           * Closing the result modal therefore
+           * leaves the user on a completely
+           * fresh Scan screen.
+           */
+
+          setPatientName('');
+          setPatientAge('');
+          setPatientGender('');
+          setTemperature('');
+          setBloodPressure('');
+
+          setErrors({});
+
+          setImage(null);
+          setImageSourceType(
+            null,
+          );
+
+          setScanId(
+            generateScanId(),
+          );
+
+          /*
+           * Finally show the result.
+           */
+          setResultModal(
+            result,
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Analysis failed:',
+          error,
+        );
+
+        /*
+         * ======================================================
+         * BEST-EFFORT ROLLBACK
+         * ======================================================
+         */
+
+        if (createdScanId) {
+          try {
+            await supabase
+              .from('scans')
+              .delete()
+              .eq(
+                'id',
+                createdScanId,
+              );
+          } catch (
+            cleanupError
+          ) {
+            console.error(
+              'Failed to roll back orphaned scan row:',
+              cleanupError,
+            );
+          }
+        }
+
+        if (createdPatientId) {
+          try {
+            await supabase
+              .from('patients')
+              .delete()
+              .eq(
+                'id',
+                createdPatientId,
+              );
+          } catch (
+            cleanupError
+          ) {
+            console.error(
+              'Failed to roll back orphaned patient row:',
+              cleanupError,
+            );
+          }
+        }
+
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
+
+        /*
+         * ======================================================
+         * ERROR HANDLING
+         * ======================================================
+         */
+
+        if (
+          error?.isScanLimitError
+        ) {
           Alert.alert(
-            'Daily Limit Reached',
-            getUpgradeMessage(plan),
+            'Scan Limit Reached',
+            error.message ||
+              getUpgradeMessage(
+                plan,
+              ),
             [
               {
                 text: 'Maybe Later',
                 style: 'cancel',
               },
+
               {
                 text: 'View Plans',
+
                 onPress: () =>
                   navigation.navigate(
                     'Subscription',
@@ -1040,576 +1858,113 @@ const Scan = ({ navigation, route }) => {
               },
             ],
           );
+        } else if (
+          error?.isImageQualityError
+        ) {
+          const reasons =
+            error.imageQuality
+              ?.failure_reasons;
+
+          const body =
+            Array.isArray(
+              reasons,
+            ) &&
+            reasons.length > 0
+              ? `${error.message}\n\n${reasons.join(
+                  '\n',
+                )}`
+              : `${error.message}`;
+
+          Alert.alert(
+            'Image Could Not Be Analysed',
+            body,
+          );
+        } else if (
+          error?.message ===
+          'IMAGE_EXPIRED'
+        ) {
+          Alert.alert(
+            'Image Expired',
+            'This photo is no longer available. Please retake or re-select the photo before starting analysis again.',
+          );
+        } else {
+          Alert.alert(
+            'Analysis Failed',
+            getSafeErrorMessage(
+              error,
+            ) ||
+              'Something went wrong while analysing the blood smear. Please try again.',
+          );
         }
-
-        return;
-      }
-
-      /*
-       * 6. PREPARE IMAGE
-       */
-
-      setAnalysisStage(
-        'Preparing blood smear image...',
-      );
-
-      const compressedUri =
-        await prepareImage(image);
-
-      if (!compressedUri) {
-        throw new Error(
-          'Image preparation failed.',
-        );
-      }
-
-      /*
-       * 7. CREATE PATIENT
-       */
-
-      setAnalysisStage(
-        'Creating patient record...',
-      );
-
-      const {
-        data: patientRow,
-        error: patientError,
-      } = await supabase
-        .from('patients')
-        .insert({
-          created_by: user.id,
-          name: patientName.trim(),
-          age: Number(patientAge),
-          gender:
-            patientGender.toLowerCase(),
-        })
-        .select('id')
-        .single();
-
-      if (patientError) {
-        throw patientError;
-      }
-
-      if (!patientRow?.id) {
-        throw new Error(
-          'Patient record could not be created.',
-        );
-      }
-
-      createdPatientId =
-        patientRow.id;
-
-      /*
-       * 8. AI ANALYSIS
-       */
-
-      setAnalysisStage(
-        'Analysing blood smear...',
-      );
-
-      const rawPrediction =
-        await analyzeBloodSmear(
-          compressedUri,
-          patientRow.id,
-          temperature.trim(),
-          bloodPressure.trim(),
-        );
-
-      /*
-       * IMPORTANT CHANGE:
-       *
-       * Do not require prediction_id here.
-       *
-       * The current /predict endpoint can return a valid
-       * prediction containing anemia_probability,
-       * is_anemic, decision_threshold, cbc, etc.
-       */
-
-      if (
-        !hasUsablePrediction(
-          rawPrediction,
-        )
-      ) {
-        console.error(
-          'Invalid /predict response:',
-          rawPrediction,
-        );
-
-        throw new Error(
-          'No usable analysis result was returned.',
-        );
-      }
-
-      /*
-       * Preserve the complete API response.
-       */
-
-      const prediction =
-        normalizePrediction(
-          rawPrediction,
-        );
-
-      /*
-       * 9. UPLOAD IMAGE
-       */
-
-      setAnalysisStage(
-        'Securing scan image...',
-      );
-
-      const storedImagePath =
-        await uploadScanImage(
-          user.id,
-          compressedUri,
-          scanId,
-        );
-
-      /*
-       * The upload can legitimately return null when image
-       * storage consent is not enabled.
-       *
-       * The AI result itself should still be displayable.
-       */
-
-      const imageUrl =
-        storedImagePath ?? null;
-
-      /*
-       * 10. DETERMINE CONDITION
-       */
-
-      const conditionKey =
-        prediction.condition ??
-        resolveConditionKey(
-          prediction.is_anemic,
-          prediction.morphology_findings,
-          prediction.is_unreliable,
-        );
-
-      /*
-       * A condition is useful for the report, but don't
-       * throw away an otherwise valid AI result just because
-       * an optional condition field is unavailable.
-       */
-
-      const safeConditionKey =
-        conditionKey ??
-        (prediction.is_anemic === true
-          ? 'anemia'
-          : 'normal');
-
-      /*
-       * 11. BUILD REPORT
-       */
-
-      setAnalysisStage(
-        'Preparing analysis report...',
-      );
-
-      const report =
-        buildReport({
-          patientName:
-            patientName.trim(),
-
-          patientId:
-            patientRow.id,
-
-          condition:
-            safeConditionKey,
-
-          isAnemic:
-            prediction.is_anemic,
-
-          confidence:
-            prediction.anemia_probability,
-
-          confidenceLabel:
-            prediction.explanation
-              ?.confidence ??
-            'moderate',
-
-          labTechName,
-
-          image_url:
-            imageUrl,
-
-          temperature:
-            temperature.trim(),
-
-          bloodPressure:
-            bloodPressure.trim(),
-
-          morphologyFindings:
-            prediction.morphology_findings,
-
-          cbcPatternSummary:
-            prediction.cbc_pattern_summary,
-
-          isUnreliable:
-            prediction.is_unreliable,
-
-          unreliableReasons:
-            prediction.unreliable_reasons,
-
-          imageQuality:
-            prediction.image_quality,
-
-          cellOverlay:
-            prediction.cell_overlay,
-
-          scanId,
-        });
-
-      if (!report) {
-        throw new Error(
-          'Report could not be generated.',
-        );
-      }
-
-      /*
-       * 12. SAVE SCAN
-       *
-       * prediction_id is optional because the current
-       * /predict response may not provide one.
-       */
-
-      setAnalysisStage(
-        'Saving scan record...',
-      );
-
-      const scanInsert = {
-        patient_id: patientRow.id,
-        created_by: user.id,
-        image_url: imageUrl,
-        status: 'done',
-        condition: safeConditionKey,
-      };
-
-      /*
-       * Only include prediction_id when the API actually
-       * supplied it.
-       */
-      if (
-        prediction.prediction_id !==
-          undefined &&
-        prediction.prediction_id !==
-          null
-      ) {
-        scanInsert.prediction_id =
-          prediction.prediction_id;
-      }
-
-      const {
-        data: scanRow,
-        error: scanError,
-      } = await supabase
-        .from('scans')
-        .insert(scanInsert)
-        .select('id')
-        .single();
-
-      if (scanError) {
-        throw scanError;
-      }
-
-      if (!scanRow?.id) {
-        throw new Error(
-          'Scan record could not be saved.',
-        );
-      }
-
-      createdScanId =
-        scanRow.id;
-
-      /*
-       * Attach the actual database scan ID to
-       * the report before saving/showing it.
-       */
-
-      report.id = scanRow.id;
-
-      /*
-       * 13. SAVE REPORT
-       */
-
-      setAnalysisStage(
-        'Finalising report...',
-      );
-
-      await saveReport(
-        report,
-        user.id,
-      );
-
-      /*
-       * 14. RECORD USAGE
-       */
-
-      setAnalysisStage(
-        'Updating scan usage...',
-      );
-
-      const usage =
-        await recordScan(
-          user.id,
-          plan,
-        );
-
-      if (!usage) {
-        throw new Error(
-          'Scan usage could not be recorded.',
-        );
-      }
-
-      if (mountedRef.current) {
-        setRemaining(
-          usage.remaining,
-        );
-      }
-
-      /*
-       * 15. SHOW RESULT
-       *
-       * IMPORTANT:
-       *
-       * Keep BOTH the raw/normalised prediction and the
-       * completed report inside resultModal.
-       *
-       * TransparencyTrail can therefore display the
-       * prediction immediately without having to refetch
-       * it from Supabase.
-       */
-
-      if (mountedRef.current) {
-        const result = {
-          prediction,
-          report,
-          bonusJustGranted:
-            usage.bonusJustGranted,
-          bonusRemaining:
-            usage.bonusRemaining,
-          remaining:
-            usage.remaining,
-
-          /*
-           * These explicit fields make the result object
-           * easier for TransparencyTrail to consume.
-           */
-          is_anemic:
-            prediction.is_anemic,
-
-          anemia_probability:
-            prediction.anemia_probability,
-
-          decision_threshold:
-            prediction.decision_threshold,
-
-          cbc:
-            prediction.cbc,
-
-          morphology_findings:
-            prediction.morphology_findings,
-
-          cbc_pattern_summary:
-            prediction.cbc_pattern_summary,
-
-          image_quality:
-            prediction.image_quality,
-
-          is_unreliable:
-            prediction.is_unreliable,
-
-          unreliable_reasons:
-            prediction.unreliable_reasons,
-
-          scanId,
-        };
-
-        console.log(
-          '>>> RESULT MODAL DATA:',
-          result,
-        );
-
-        setResultModal(result);
-
+      } finally {
         /*
-         * Clear the form only after the complete
-         * pipeline has succeeded.
+         * Only the session that owns the lock
+         * is allowed to release it.
          */
+        if (
+          analysisSessionRef.current ===
+          analysisSession
+        ) {
+          analysisSessionRef.current =
+            null;
 
-        setPatientName('');
-        setPatientAge('');
-        setPatientGender('');
-        setTemperature('');
-        setBloodPressure('');
+          analysisLock.current =
+            false;
 
-        setErrors({});
-
-        setImage(null);
-        setImageSourceType(null);
-
-        setScanId(
-          generateScanId(),
-        );
-      }
-    } catch (error) {
-      console.error(
-        'Analysis failed:',
-        error,
-      );
-
-      /*
-       * Best-effort rollback.
-       */
-
-      if (createdScanId) {
-        try {
-          await supabase
-            .from('scans')
-            .delete()
-            .eq('id', createdScanId);
-        } catch (cleanupError) {
-          console.error(
-            'Failed to roll back orphaned scan row:',
-            cleanupError,
-          );
-        }
-      }
-
-      if (createdPatientId) {
-        try {
-          await supabase
-            .from('patients')
-            .delete()
-            .eq(
-              'id',
-              createdPatientId,
+          if (
+            mountedRef.current
+          ) {
+            setIsAnalysing(
+              false,
             );
-        } catch (cleanupError) {
-          console.error(
-            'Failed to roll back orphaned patient row:',
-            cleanupError,
-          );
+
+            setAnalysisStage(
+              'Preparing image...',
+            );
+          }
         }
       }
-
-      if (!mountedRef.current) {
-        return;
-      }
-
-      if (error?.isScanLimitError) {
-        Alert.alert(
-          'Scan Limit Reached',
-          error.message ||
-            getUpgradeMessage(plan),
-          [
-            {
-              text: 'Maybe Later',
-              style: 'cancel',
-            },
-            {
-              text: 'View Plans',
-              onPress: () =>
-                navigation.navigate(
-                  'Subscription',
-                ),
-            },
-          ],
-        );
-      } else if (
-        error?.isImageQualityError
-      ) {
-        const reasons =
-          error.imageQuality
-            ?.failure_reasons;
-
-        const body =
-          Array.isArray(reasons) &&
-          reasons.length > 0
-            ? `${error.message}\n\n${reasons.join(
-                '\n',
-              )}`
-            : `${error.message}`;
-
-        Alert.alert(
-          'Image Could Not Be Analysed',
-          body,
-        );
-      } else if (
-        error?.message ===
-        'IMAGE_EXPIRED'
-      ) {
-        Alert.alert(
-          'Image Expired',
-          'This photo is no longer available. Please retake or re-select the photo before starting analysis again.',
-        );
-      } else {
-        Alert.alert(
-          'Analysis Failed',
-          getSafeErrorMessage(
-            error,
-          ) ||
-            'Something went wrong while analysing the blood smear. Please try again.',
-        );
-      }
-    } finally {
-      if (
-        analysisSessionRef.current ===
-        analysisSession
-      ) {
-        analysisSessionRef.current =
-          null;
-
-        analysisLock.current =
-          false;
-
-        if (mountedRef.current) {
-          setIsAnalysing(false);
-          setAnalysisStage(
-            'Preparing image...',
-          );
-        }
-      }
-    }
-  };
+    };
 
   /* ============================================================
      VALIDATION HINT
   ============================================================ */
 
-  const getValidationHint = () => {
-    if (!patientName.trim()) {
-      return 'Enter patient name';
-    }
+  const getValidationHint =
+    () => {
+      if (!patientName.trim()) {
+        return 'Enter patient name';
+      }
 
-    if (!patientAge.trim()) {
-      return 'Enter patient age';
-    }
+      if (!patientAge.trim()) {
+        return 'Enter patient age';
+      }
 
-    if (!patientGender) {
-      return 'Select patient gender';
-    }
+      if (!patientGender) {
+        return 'Select patient gender';
+      }
 
-    if (!temperature.trim()) {
-      return 'Enter temperature';
-    }
+      if (!temperature.trim()) {
+        return 'Enter temperature';
+      }
 
-    if (!bloodPressure.trim()) {
-      return 'Enter blood pressure';
-    }
+      if (!bloodPressure.trim()) {
+        return 'Enter blood pressure';
+      }
 
-    if (!image) {
-      return 'Capture or upload a blood smear image';
-    }
+      if (!image) {
+        return 'Capture or upload a blood smear image';
+      }
 
-    if (hasFieldErrors) {
-      return 'Fix the highlighted fields above';
-    }
+      if (hasFieldErrors) {
+        return 'Fix the highlighted fields above';
+      }
 
-    return '';
-  };
+      return '';
+    };
 
   /* ============================================================
-     SCAN LIMIT
+     SCAN LIMIT LABEL
   ============================================================ */
 
   const scanLimitLabel =
@@ -1618,7 +1973,9 @@ const Scan = ({ navigation, route }) => {
       : remaining === Infinity
         ? 'Unlimited scans'
         : `${remaining} scan${
-            remaining !== 1 ? 's' : ''
+            remaining !== 1
+              ? 's'
+              : ''
           } remaining today`;
 
   /* ============================================================
@@ -1628,28 +1985,41 @@ const Scan = ({ navigation, route }) => {
   return (
     <SafeAreaView
       style={styles.container}
-      edges={['left', 'right', 'bottom']}
+      edges={[
+        'left',
+        'right',
+        'bottom',
+      ]}
     >
-      {/* HEADER */}
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
       <Header
         left={
           <TouchableOpacity
-            style={styles.backButton}
+            style={
+              styles.backButton
+            }
             onPress={() =>
               navigation.goBack()
             }
-            disabled={isAnalysing}
+            disabled={
+              isAnalysing
+            }
           >
             <MaterialIcons
               name="arrow-back-ios-new"
-              size={HEADER.iconSize}
+              size={
+                HEADER.iconSize
+              }
               color={
                 COLORS.textPrimary
               }
             />
           </TouchableOpacity>
         }
+
         center={
           <Text
             style={
@@ -1659,6 +2029,7 @@ const Scan = ({ navigation, route }) => {
             Scan
           </Text>
         }
+
         right={
           <View
             style={
@@ -1726,7 +2097,9 @@ const Scan = ({ navigation, route }) => {
         }
       />
 
-      {/* CONTENT */}
+      {/* ======================================================
+          CONTENT
+      ====================================================== */}
 
       <ScrollView
         showsVerticalScrollIndicator={
@@ -1741,7 +2114,9 @@ const Scan = ({ navigation, route }) => {
           },
         ]}
       >
-        {/* SCAN USAGE */}
+        {/* ====================================================
+            SCAN USAGE
+        ==================================================== */}
 
         <View
           style={
@@ -1759,7 +2134,8 @@ const Scan = ({ navigation, route }) => {
           <Text
             style={[
               styles.usageBannerValue,
-              remaining === 0 &&
+              remaining ===
+                0 &&
                 styles.usageBannerValueWarning,
             ]}
           >
@@ -1768,7 +2144,9 @@ const Scan = ({ navigation, route }) => {
           </Text>
         </View>
 
-        {/* SCAN ID */}
+        {/* ====================================================
+            SCAN ID
+        ==================================================== */}
 
         <View
           style={
@@ -1812,7 +2190,9 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* PATIENT INFORMATION */}
+        {/* ====================================================
+            PATIENT INFORMATION
+        ==================================================== */}
 
         <View
           style={
@@ -1853,7 +2233,10 @@ const Scan = ({ navigation, route }) => {
           }
           value={patientName}
           onChangeText={(text) => {
-            setPatientName(text);
+            setPatientName(
+              text,
+            );
+
             runValidation(
               'patientName',
               text,
@@ -1870,7 +2253,9 @@ const Scan = ({ navigation, route }) => {
             errors.patientName &&
               styles.inputError,
           ]}
-          editable={!isAnalysing}
+          editable={
+            !isAnalysing
+          }
           autoCapitalize="words"
           autoCorrect={false}
         />
@@ -1881,13 +2266,17 @@ const Scan = ({ navigation, route }) => {
               styles.fieldErrorText
             }
           >
-            {errors.patientName}
+            {
+              errors.patientName
+            }
           </Text>
         )}
 
         {/* AGE + GENDER */}
 
-        <View style={styles.row}>
+        <View
+          style={styles.row}
+        >
           <View
             style={
               styles.rowItem
@@ -1937,7 +2326,9 @@ const Scan = ({ navigation, route }) => {
                 errors.age &&
                   styles.inputError,
               ]}
-              editable={!isAnalysing}
+              editable={
+                !isAnalysing
+              }
             />
 
             {!!errors.age && (
@@ -1972,7 +2363,9 @@ const Scan = ({ navigation, route }) => {
               {GENDERS.map(
                 (gender) => (
                   <TouchableOpacity
-                    key={gender}
+                    key={
+                      gender
+                    }
                     style={[
                       styles.genderPill,
                       patientGender ===
@@ -1991,7 +2384,9 @@ const Scan = ({ navigation, route }) => {
                       );
 
                       setErrors(
-                        (prev) => ({
+                        (
+                          prev,
+                        ) => ({
                           ...prev,
                           patientGender:
                             '',
@@ -2054,9 +2449,13 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* TEMPERATURE + BP */}
+        {/* ====================================================
+            TEMPERATURE + BP
+        ==================================================== */}
 
-        <View style={styles.row}>
+        <View
+          style={styles.row}
+        >
           <View
             style={
               styles.rowItem
@@ -2099,7 +2498,9 @@ const Scan = ({ navigation, route }) => {
                 errors.temperature &&
                   styles.inputError,
               ]}
-              editable={!isAnalysing}
+              editable={
+                !isAnalysing
+              }
             />
 
             {!!errors.temperature && (
@@ -2159,7 +2560,9 @@ const Scan = ({ navigation, route }) => {
                 errors.bloodPressure &&
                   styles.inputError,
               ]}
-              editable={!isAnalysing}
+              editable={
+                !isAnalysing
+              }
             />
 
             {!!errors.bloodPressure && (
@@ -2176,7 +2579,9 @@ const Scan = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* BLOOD SMEAR */}
+        {/* ====================================================
+            BLOOD SMEAR
+        ==================================================== */}
 
         <View
           style={
@@ -2383,7 +2788,9 @@ const Scan = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* VALIDATION */}
+        {/* ====================================================
+            VALIDATION
+        ==================================================== */}
 
         {!isFormValid && (
           <View
@@ -2409,11 +2816,14 @@ const Scan = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* START ANALYSIS */}
+        {/* ====================================================
+            START ANALYSIS
+        ==================================================== */}
 
         <TouchableOpacity
           style={[
             styles.button,
+
             (!isFormValid ||
               isAnalysing) &&
               styles.disabledButton,
@@ -2478,7 +2888,9 @@ const Scan = ({ navigation, route }) => {
         </Text>
       </ScrollView>
 
-      {/* IMAGE VIEWER */}
+      {/* ======================================================
+          IMAGE VIEWER
+      ====================================================== */}
 
       <Modal
         visible={
@@ -2532,24 +2944,79 @@ const Scan = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* ========================================================
-          RESULT
-      ======================================================== */}
+      {/* ======================================================
+          RESULT MODAL
+      ====================================================== */}
 
-      onClose={() => {
-  setResultModal(null);
-  navigation.navigate('Report');   // ← "New Scan" button navigates to Report
-}}
-onViewReport={() => {
-  const reportId = resultModal?.report?.id;
-  setResultModal(null);
-  navigation.navigate('Report', { scanId: reportId });   // ← so does this
-}}
-      {/* ANALYSIS MODAL */}
+      {resultModal && (
+        <TransparencyTrail
+          data={resultModal}
+          userId={user?.id}
+          onClose={() => {
+            /*
+             * IMPORTANT:
+             *
+             * Do NOT navigate to Report here.
+             *
+             * The Scan form was already reset after
+             * successful analysis, so closing the result
+             * simply returns the user to the fresh Scan
+             * screen underneath this modal.
+             */
+            setResultModal(null);
+          }}
+          onViewReport={() => {
+            /*
+             * Get the actual database report/scan ID.
+             */
+            const reportId =
+              resultModal?.report?.id;
+
+            /*
+             * Close the result modal first.
+             */
+            setResultModal(null);
+
+            /*
+             * Never navigate with an undefined ID.
+             */
+            if (!reportId) {
+              Alert.alert(
+                'Report Unavailable',
+                'The report ID could not be found.',
+              );
+
+              return;
+            }
+
+            /*
+             * IMPORTANT:
+             *
+             * ReportScreen expects `newScanId`,
+             * not `scanId`.
+             */
+            navigation.navigate(
+              'Report',
+              {
+                newScanId:
+                  reportId,
+              },
+            );
+          }}
+        />
+      )}
+
+      {/* ======================================================
+          ANALYSIS MODAL
+      ====================================================== */}
 
       <AnalysisModal
-        visible={isAnalysing}
-        stage={analysisStage}
+        visible={
+          isAnalysing
+        }
+        stage={
+          analysisStage
+        }
       />
     </SafeAreaView>
   );
