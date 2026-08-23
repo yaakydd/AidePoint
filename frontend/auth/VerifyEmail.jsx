@@ -9,11 +9,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../assets/theme';
 
-const BOXES = 6; 
+const BOXES = 6;
 
 const MAX_ATTEMPTS    = 5;
-const LOCKOUT_MS       = 60_000;   // 1 minute
-const RESEND_COOLDOWN  = 30;       // seconds
+const LOCKOUT_MS       = 60_000;
+const RESEND_COOLDOWN  = 30;
 
 export default function VerifyEmail() {
   const navigation   = useNavigation();
@@ -28,15 +28,13 @@ export default function VerifyEmail() {
   const [resendMsg, setResendMsg] = useState('');
   const [error, setError]         = useState('');
 
-  // ─── THROTTLING STATE (mirrors ForgotPassword.js) ────────
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil]       = useState(null);
-  const [lockRemaining, setLockRemaining]   = useState(0); // seconds, for display
+  const [lockRemaining, setLockRemaining]   = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const refs = useRef([]);        // one ref per input box
+  const refs = useRef([]);
 
-  // Tick the lockout countdown while active.
   useEffect(() => {
     if (!lockedUntil) return;
     const tick = () => {
@@ -53,7 +51,6 @@ export default function VerifyEmail() {
     return () => clearInterval(t);
   }, [lockedUntil]);
 
-  // Tick the resend cooldown.
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const t = setInterval(() => setResendCooldown(s => Math.max(0, s - 1)), 1000);
@@ -62,9 +59,7 @@ export default function VerifyEmail() {
 
   const isLocked = !!lockedUntil && Date.now() < lockedUntil;
 
-  // ─── INPUT HANDLING ──────────────────────────────────────
   function handleChange(text, index) {
-    // Handle paste: if user pastes all 6 digits into first box
     if (text.length === BOXES) {
       const pasted = text.replace(/\D/g, '').slice(0, BOXES).split('');
       const filled = [...Array(BOXES)].map((_, i) => pasted[i] ?? '');
@@ -73,7 +68,7 @@ export default function VerifyEmail() {
       return;
     }
 
-    const char = text.replace(/\D/g, '').slice(-1); // digits only, last char
+    const char = text.replace(/\D/g, '').slice(-1);
     const next  = [...digits];
     next[index] = char;
     setDigits(next);
@@ -81,17 +76,16 @@ export default function VerifyEmail() {
     clearError?.();
 
     if (char && index < BOXES - 1) {
-      refs.current[index + 1]?.focus();   // jump to next box
+      refs.current[index + 1]?.focus();
     }
   }
 
   function handleKeyPress(e, index) {
     if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
-      refs.current[index - 1]?.focus();   // jump back on delete
+      refs.current[index - 1]?.focus();
     }
   }
 
-  // ─── VERIFY ──────────────────────────────────────────────
   async function handleVerify() {
     if (isLocked) {
       setError(`Too many attempts. Please wait ${lockRemaining}s and try again.`);
@@ -122,17 +116,14 @@ export default function VerifyEmail() {
         setError(result.error ?? 'Invalid code. Please try again.');
       }
 
-      setDigits(Array(BOXES).fill(''));   // clear boxes on failure
+      setDigits(Array(BOXES).fill(''));
       refs.current[0]?.focus();
       return;
     }
 
     setFailedAttempts(0);
-    // On success: AuthContext moves authState → 'CONSENT' or 'APP'
-    // The root navigator handles the screen swap automatically.
   }
 
-  // ─── RESEND ──────────────────────────────────────────────
   async function handleResend() {
     if (resendCooldown > 0) return;
 
@@ -153,7 +144,6 @@ export default function VerifyEmail() {
   const token = digits.join('');
   const ready = token.length === BOXES && !loading && !isLocked;
 
-  // ─── UI ──────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
@@ -164,7 +154,6 @@ export default function VerifyEmail() {
 
       <View style={styles.container}>
 
-        {/* ICON */}
         <View style={styles.iconWrap}>
           <MaterialCommunityIcons name="email-check-outline" size={52} color={COLORS.primary} />
         </View>
@@ -175,7 +164,10 @@ export default function VerifyEmail() {
           <Text style={styles.emailText}>{email}</Text>
         </Text>
 
-        {/* OTP BOXES */}
+        <Text style={styles.spamNotice}>
+          Don't see it? Check your spam or junk folder — it can take a minute to arrive.
+        </Text>
+
         <View style={styles.boxRow}>
           {digits.map((d, i) => (
             <TextInput
@@ -190,7 +182,7 @@ export default function VerifyEmail() {
               onChangeText={t => handleChange(t, i)}
               onKeyPress={e => handleKeyPress(e, i)}
               keyboardType="number-pad"
-              maxLength={BOXES}        // allows paste on first box
+              maxLength={BOXES}
               textAlign="center"
               autoFocus={i === 0}
               selectTextOnFocus
@@ -199,17 +191,14 @@ export default function VerifyEmail() {
           ))}
         </View>
 
-        {/* ERROR */}
         {(!!error || !!authError) && (
           <Text style={styles.err}>{error || authError}</Text>
         )}
 
-        {/* LOCKOUT COUNTDOWN */}
         {isLocked && (
           <Text style={styles.lockMsg}>Try again in {lockRemaining}s</Text>
         )}
 
-        {/* RESEND MESSAGE */}
         {!!resendMsg && (
           <Text style={[
             styles.resendMsg,
@@ -219,7 +208,6 @@ export default function VerifyEmail() {
           </Text>
         )}
 
-        {/* VERIFY BUTTON */}
         <TouchableOpacity
           style={[styles.btn, !ready && { opacity: 0.5 }]}
           disabled={!ready}
@@ -231,7 +219,6 @@ export default function VerifyEmail() {
           }
         </TouchableOpacity>
 
-        {/* RESEND */}
         <TouchableOpacity
           style={styles.resendBtn}
           onPress={handleResend}
@@ -255,7 +242,6 @@ export default function VerifyEmail() {
   );
 }
 
-// ─── STYLES ──────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe:       { flex: 1, backgroundColor: '#fff' },
   back:       { padding: 16 },
@@ -270,13 +256,22 @@ const styles = StyleSheet.create({
 
   title:      { fontSize: 24, fontWeight: '700', color: '#111', marginBottom: 10 },
 
-  sub:        { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  sub:        { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 22, marginBottom: 12 },
   emailText:  { fontWeight: '600', color: '#111' },
+
+  spamNotice: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontStyle: 'italic',
+    paddingHorizontal: 8,
+  },
 
   boxRow:     { flexDirection: 'row', gap: 10, marginBottom: 16 },
 
   box: {
-    width: 46, height: 56,        // slightly narrower to fit 6 boxes on screen
+    width: 46, height: 56,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
     borderRadius: 10,
