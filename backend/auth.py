@@ -1,13 +1,14 @@
 import os
 import logging
-import httpx
+import jwt
 from fastapi import HTTPException, Request, status
 from supabase import Client
 
 log = logging.getLogger("aidepoint")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")# your project URL
-SUPABASE_ANON_KEY  = os.getenv("SUPABASE_ANON_KEY", "")   # public anon key
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+
 
 def get_supabase_client(request: Request) -> Client:
     """
@@ -25,13 +26,30 @@ def get_supabase_client(request: Request) -> Client:
         )
     return supabase_client
 
-# Auth: verify Supabase JWT 
+
+# Auth: verify Supabase JWT
 async def verify_supabase_token(request: Request) -> dict:
     """
-    Extracts the Bearer token from the Authorization header and
-    verifies it against Supabase's /auth/v1/user endpoint.
-    Returns the user dict on success, raises 401 on failure.
+    Extracts the Bearer token from the Authorization header and verifies
+    it locally against the project's JWT secret, with no outbound network
+    call. Supabase-issued access tokens are standard signed JWTs, so this
+    is equivalent to hitting /auth/v1/user for the purpose of confirming
+    the token is valid and unexpired, without depending on Render's
+    outbound networking or Supabase's Auth API being reachable on the
+    hot path of every single prediction request.
+
+    Returns a dict with at least "id" and "email" on success, raises 401
+    on an invalid/expired token, and 503 if SUPABASE_JWT_SECRET isn't
+    configured (a misconfiguration, not a bad token, so it shouldn't be
+    reported to the caller as 401).
     """
+    if not SUPABASE_JWT_SECRET:
+        log.error("SUPABASE_JWT_SECRET not set -- cannot verify tokens.")
+        raise HTTPException(
+            status_code=503,
+            detail="Auth is not configured on the server.",
+        )
+
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(
@@ -42,25 +60,25 @@ async def verify_supabase_token(request: Request) -> dict:
     token = auth_header[len("Bearer "):]
 
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            resp = await client.get(
-                f"{SUPABASE_URL}/auth/v1/user",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "apikey": SUPABASE_ANON_KEY,
-                },
-            )
-    except httpx.RequestError as exc:
-        log.exception("Supabase auth check failed")
-        raise HTTPException(
-            status_code=503,
-            detail=str(exc),
+        payload = jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            audience="authenticated",
         )
-
-    if resp.status_code != 200:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session. Please log in again.",
+        )
+    except jwt.InvalidTokenError:
+        log.warning("Rejected invalid Supabase token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session. Please log in again.",
         )
 
-    return resp.json()   # contains id, email, etc.
+    return {
+        "id": payload.get("sub"),
+        "email": payload.get("email"),
+    }
