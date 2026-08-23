@@ -15,8 +15,8 @@ import { useAuth }   from '../context/AuthContext';
 
 const OTP_BOXES = 6;
 const MAX_ATTEMPTS   = 5;
-const LOCKOUT_MS     = 60_000;   // 1 minute
-const RESEND_COOLDOWN = 30;      // seconds
+const LOCKOUT_MS     = 60_000;
+const RESEND_COOLDOWN = 30;
 
 const PASSWORD_CHECKS = [
   { key: 'length',  label: 'At least 8 characters',         test: p => p.length >= 8 },
@@ -37,23 +37,20 @@ const ForgotPassword = () => {
   const navigation = useNavigation();
   const { beginPasswordRecovery, endPasswordRecovery } = useAuth();
 
-  const [step,    setStep]    = useState(1);   // 1 | 2 | 3
+  const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState(null);
-  const [lockRemaining, setLockRemaining] = useState(0); // seconds, for display
+  const [lockRemaining, setLockRemaining] = useState(0);
 
-  // Step 1
   const [email, setEmail] = useState('');
 
-  // Step 2 — OTP boxes
   const [digits,    setDigits]    = useState(Array(OTP_BOXES).fill(''));
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
   const otpRefs = useRef([]);
 
-  // Step 3
   const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew,         setShowNew]         = useState(false);
@@ -63,16 +60,12 @@ const ForgotPassword = () => {
   const strength = getStrength(newPassword);
   const isLocked = !!lockedUntil && Date.now() < lockedUntil;
 
-  // Safety net: if the user backs out mid-flow (back button, etc.) before
-  // reaching the signOut() in handleSetPassword, make sure we don't leave
-  // AuthContext permanently ignoring auth-state events.
   useEffect(() => {
     return () => {
       endPasswordRecovery();
     };
   }, []);
 
-  // Tick the lockout countdown while active.
   useEffect(() => {
     if (!lockedUntil) return;
     const tick = () => {
@@ -89,8 +82,6 @@ const ForgotPassword = () => {
     return () => clearInterval(t);
   }, [lockedUntil]);
 
-  // STEP 1: Send reset email 
-
   async function handleSendOTP() {
     if (!email.trim()) { setError('Please enter your email address.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -100,22 +91,15 @@ const ForgotPassword = () => {
     setLoading(true);
     setError('');
 
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      // redirectTo is NOT used for OTP, Supabase sends a 6-digit code
-      // because you have email OTP enabled. No redirect URL needed.
-    });
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {});
 
     setLoading(false);
 
     if (err) {
-      // Don't reveal if email exists rather sends a generic message for security
       setError('If that email is registered, a reset code has been sent.');
-      // Still move to step 2 so user can try
     }
     setStep(2);
   }
-
-  // STEP 2: OTP input handlers 
 
   function handleOtpChange(text, index) {
     if (text.length === OTP_BOXES) {
@@ -139,62 +123,55 @@ const ForgotPassword = () => {
     }
   }
 
-
-
-async function handleVerifyOTP() {
-  if (lockedUntil && Date.now() < lockedUntil) {
-    setError(`Too many attempts. Please wait ${lockRemaining}s and try again.`);
-    return;
-  }
-  const token = digits.join('');
-  if (token.length < OTP_BOXES) { setError('Please enter all 6 digits.'); return; }
-
-  setLoading(true);
-  setError('');
-
-  const { error: err } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
-
-  setLoading(false);
-
-  if (err) {
-    const attempts = failedAttempts + 1;
-    setFailedAttempts(attempts);
-    if (attempts >= MAX_ATTEMPTS) {
-      setLockedUntil(Date.now() + LOCKOUT_MS); // 1 min lockout
-      setError('Too many failed attempts. Please wait a minute and try again.');
-    } else {
-      setError('Invalid or expired code. Please try again.');
+  async function handleVerifyOTP() {
+    if (lockedUntil && Date.now() < lockedUntil) {
+      setError(`Too many attempts. Please wait ${lockRemaining}s and try again.`);
+      return;
     }
-    setDigits(Array(OTP_BOXES).fill(''));
-    otpRefs.current[0]?.focus();
-    return;
+    const token = digits.join('');
+    if (token.length < OTP_BOXES) { setError('Please enter all 6 digits.'); return; }
+
+    setLoading(true);
+    setError('');
+
+    const { error: err } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+
+    setLoading(false);
+
+    if (err) {
+      const attempts = failedAttempts + 1;
+      setFailedAttempts(attempts);
+      if (attempts >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCKOUT_MS);
+        setError('Too many failed attempts. Please wait a minute and try again.');
+      } else {
+        setError('Invalid or expired code. Please try again.');
+      }
+      setDigits(Array(OTP_BOXES).fill(''));
+      otpRefs.current[0]?.focus();
+      return;
+    }
+
+    setFailedAttempts(0);
+    beginPasswordRecovery();
+    setStep(3);
   }
 
-  setFailedAttempts(0);
-  beginPasswordRecovery();
-  setStep(3);
-}
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
 
-
-
-
-useEffect(() => {
-  if (resendCooldown <= 0) return;
-  const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-  return () => clearInterval(t);
-}, [resendCooldown]);
-
-async function handleResend() {
-  if (resendCooldown > 0) return;
-  setResending(true);
-  setResendMsg('');
-  const { error: err } = await supabase.auth.resetPasswordForEmail(email);
-  setResending(false);
-  setResendCooldown(RESEND_COOLDOWN); // 30s before they can resend again
-  setResendMsg(err ? 'Could not resend. Please try again.' : 'A new code has been sent to your email.');
-}
-
-  // STEP 3: Set new password 
+  async function handleResend() {
+    if (resendCooldown > 0) return;
+    setResending(true);
+    setResendMsg('');
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email);
+    setResending(false);
+    setResendCooldown(RESEND_COOLDOWN);
+    setResendMsg(err ? 'Could not resend. Please try again.' : 'A new code has been sent to your email.');
+  }
 
   async function handleSetPassword() {
     if (strength.score < 3) { setError('Password is too weak.'); return; }
@@ -203,7 +180,6 @@ async function handleResend() {
     setLoading(true);
     setError('');
 
-    // updateUser works because verifyOtp (step 2) gave us an active session
     const { data, error: err } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -214,7 +190,6 @@ async function handleResend() {
       return;
     }
 
-    // Insert a notification so the user sees a "password changed" alert in-app
     const userId = data?.user?.id;
     if (userId) {
       await supabase.from('notifications').insert({
@@ -224,8 +199,6 @@ async function handleResend() {
       });
     }
 
-    // Kill the recovery session so it's never mistaken for a real login,
-    // then let AuthContext resume normal hydration on future events.
     await supabase.auth.signOut();
     endPasswordRecovery();
 
@@ -251,12 +224,10 @@ async function handleResend() {
         keyboardOpeningTime={0}
       >
 
-        {/* Back button */}
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.primary} />
         </TouchableOpacity>
 
-        {/* Step indicator */}
         <View style={styles.stepRow}>
           {[1, 2, 3].map(s => (
             <View key={s} style={styles.stepItem}>
@@ -273,7 +244,6 @@ async function handleResend() {
           ))}
         </View>
 
-        {/* STEP 1: Email */}
         {step === 1 && (
           <>
             <View style={styles.iconWrap}>
@@ -315,7 +285,6 @@ async function handleResend() {
           </>
         )}
 
-        {/* STEP 2: OTP */}
         {step === 2 && (
           <>
             <View style={styles.iconWrap}>
@@ -327,9 +296,12 @@ async function handleResend() {
               <Text style={styles.emailHighlight}>{email}</Text>
             </Text>
 
+            <Text style={styles.spamNotice}>
+              Don't see it? Check your spam or junk folder — it can take a minute to arrive.
+            </Text>
+
             {!!error && <Text style={styles.err}>{error}</Text>}
 
-            {/* LOCKOUT COUNTDOWN */}
             {isLocked && (
               <Text style={styles.lockMsg}>Try again in {lockRemaining}s</Text>
             )}
@@ -340,7 +312,6 @@ async function handleResend() {
               </Text>
             )}
 
-            {/* OTP boxes */}
             <View style={styles.otpRow}>
               {digits.map((d, i) => (
                 <TextInput
@@ -392,7 +363,6 @@ async function handleResend() {
           </>
         )}
 
-        {/* STEP 3: New password */}
         {step === 3 && (
           <>
             <View style={styles.iconWrap}>
@@ -405,7 +375,6 @@ async function handleResend() {
 
             {!!error && <Text style={styles.err}>{error}</Text>}
 
-            {/* New password */}
             <Text style={styles.label}>New Password</Text>
             <View style={styles.inputRow}>
               <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
@@ -423,7 +392,6 @@ async function handleResend() {
               </TouchableOpacity>
             </View>
 
-            {/* Strength */}
             {newPassword.length > 0 && (
               <>
                 <View style={styles.barRow}>
@@ -448,7 +416,6 @@ async function handleResend() {
               </>
             )}
 
-            {/* Confirm */}
             <Text style={styles.label}>Confirm New Password</Text>
             <View style={styles.inputRow}>
               <MaterialCommunityIcons name="lock-outline" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
@@ -492,7 +459,6 @@ const styles = StyleSheet.create({
 
   backBtn:    { marginBottom: 8 },
 
-  // Step indicator
   stepRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 32 },
   stepItem:   { flexDirection: 'row', alignItems: 'center' },
   stepDot:    {
@@ -513,8 +479,17 @@ const styles = StyleSheet.create({
     alignSelf: 'center', marginBottom: 20,
   },
   title:     { fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center' },
-  subtitle:  { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginTop: 6, marginBottom: 24 },
+  subtitle:  { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginTop: 6, marginBottom: 12 },
   emailHighlight: { fontWeight: '600', color: '#111827' },
+
+  spamNotice: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontStyle: 'italic',
+    paddingHorizontal: 8,
+  },
 
   label:     { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 16 },
 
@@ -527,7 +502,6 @@ const styles = StyleSheet.create({
   inputError: { borderColor: '#EF4444' },
   input:      { flex: 1, fontSize: 15, color: '#111827' },
 
-  // OTP
   otpRow:    { flexDirection: 'row', gap: 10, justifyContent: 'center', marginVertical: 20 },
   otpBox: {
     width: 46, height: 56,
@@ -545,7 +519,6 @@ const styles = StyleSheet.create({
   resendMsg:  { fontSize: 13, textAlign: 'center', marginBottom: 8 },
   lockMsg:    { fontSize: 13, textAlign: 'center', marginBottom: 8, color: '#EF4444', fontWeight: '600' },
 
-  // Password strength
   barRow:        { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
   bar:           { flex: 1, height: 5, borderRadius: 3 },
   strengthLabel: { fontSize: 12, fontWeight: '600', marginLeft: 6, minWidth: 68 },
