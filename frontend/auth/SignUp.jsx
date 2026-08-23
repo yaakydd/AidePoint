@@ -25,10 +25,6 @@ import { supabase } from '../utils/supabase';
 import { COLORS } from '../assets/theme';
 import { signupStyle as styles } from '../styles/SignUpStyles';
 
-/* -------------------------------------------------------------------------- */
-/* CONSTANTS                                                                  */
-/* -------------------------------------------------------------------------- */
-
 const STEPS = ['start', 'hospital', 'password'];
 
 const STEP_ICONS = {
@@ -54,35 +50,35 @@ const PASSWORD_CHECKS = [
   {
     key: 'length',
     label: 'At least 8 characters',
+    hint: 'at least 8 characters',
     test: (password) => password.length >= 8,
   },
   {
     key: 'upper',
     label: 'At least one uppercase letter',
+    hint: 'an uppercase letter',
     test: (password) => /[A-Z]/.test(password),
   },
   {
     key: 'number',
     label: 'At least one number',
+    hint: 'a number',
     test: (password) => /[0-9]/.test(password),
   },
   {
     key: 'special',
     label: 'At least one special character',
+    hint: 'a special character',
     test: (password) => /[@#!$%^&*()\-_=+]/.test(password),
   },
 ];
-
-/* -------------------------------------------------------------------------- */
-/* HELPERS                                                                    */
-/* -------------------------------------------------------------------------- */
 
 const getStrength = (password) => {
   const passed = PASSWORD_CHECKS.filter((check) => check.test(password)).length;
 
   if (passed <= 1) {
     return {
-      label: 'Too weak: try adding more numbers',
+      label: 'Too weak',
       color: COLORS.danger,
       score: 1,
     };
@@ -90,7 +86,7 @@ const getStrength = (password) => {
 
   if (passed === 2) {
     return {
-      label: 'Fair: add a symbol or capital letter',
+      label: 'Fair',
       color: COLORS.warning,
       score: 2,
     };
@@ -111,15 +107,24 @@ const getStrength = (password) => {
   };
 };
 
-/*
- * Duplicate-account detection is intentionally specific.
- *
- * We no longer perform a separate "is_email_taken" RPC check.
- * Supabase Auth is the source of truth.
- *
- * Only messages that clearly indicate an existing Auth account
- * should be treated as duplicate-email errors.
- */
+const buildMissingRequirementsMessage = (password) => {
+  const missing = PASSWORD_CHECKS.filter((check) => !check.test(password));
+
+  if (missing.length === 0) return '';
+
+  if (missing.length === 1) {
+    return `Add ${missing[0].hint}.`;
+  }
+
+  const last = missing[missing.length - 1].hint;
+  const rest = missing.slice(0, -1).map((check) => check.hint).join(', ');
+
+  return `Add ${rest} and ${last}.`;
+};
+
+const isGenericPasswordCharsetError = (message) =>
+  !!message && /at least one character of each/i.test(message);
+
 function isDuplicateAccountError(message) {
   if (!message) return false;
 
@@ -169,11 +174,6 @@ const getTypePillStyle = (type) => {
   );
 };
 
-/*
- * Supabase .or() uses PostgREST syntax.
- * Characters such as %, comma and parentheses can interfere with that syntax.
- * Escaping the user's search string prevents malformed queries.
- */
 function escapeSearchValue(value) {
   return value
     .trim()
@@ -184,32 +184,16 @@ function escapeSearchValue(value) {
     .replace(/\)/g, '\\)');
 }
 
-/* -------------------------------------------------------------------------- */
-/* COMPONENT                                                                  */
-/* -------------------------------------------------------------------------- */
-
 const SignUp = () => {
   const navigation = useNavigation();
   const { register, authError, clearError } = useAuth();
-
-  /* ------------------------------------------------------------------------ */
-  /* STEP                                                                     */
-  /* ------------------------------------------------------------------------ */
 
   const [stepIndex, setStepIndex] = useState(0);
 
   const step = STEPS[stepIndex];
 
-  /* ------------------------------------------------------------------------ */
-  /* STEP 1                                                                   */
-  /* ------------------------------------------------------------------------ */
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-
-  /* ------------------------------------------------------------------------ */
-  /* STEP 2 - HOSPITAL                                                        */
-  /* ------------------------------------------------------------------------ */
 
   const [hospitalQuery, setHospitalQuery] = useState('');
   const [hospitalSelected, setHospitalSelected] = useState('');
@@ -226,10 +210,6 @@ const SignUp = () => {
 
   const searchRequestId = useRef(0);
 
-  /* ------------------------------------------------------------------------ */
-  /* STEP 3                                                                   */
-  /* ------------------------------------------------------------------------ */
-
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -238,32 +218,18 @@ const SignUp = () => {
 
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
-  /* ------------------------------------------------------------------------ */
-  /* GENERAL                                                                  */
-  /* ------------------------------------------------------------------------ */
-
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const strength = useMemo(() => getStrength(password), [password]);
 
-  /* ------------------------------------------------------------------------ */
-  /* CLEAR AUTH ERROR WHEN SCREEN GETS FOCUS                                  */
-  /* ------------------------------------------------------------------------ */
-
   useFocusEffect(
     useCallback(() => {
       clearError?.();
 
-      return () => {
-        // Nothing needed here.
-      };
+      return () => {};
     }, [clearError])
   );
-
-  /* ------------------------------------------------------------------------ */
-  /* HOSPITAL SEARCH                                                          */
-  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     if (!modalVisible) return;
@@ -365,10 +331,6 @@ const SignUp = () => {
     setShowCustomInput(false);
     setCustomHospital('');
 
-    /*
-     * The search query is not the selected hospital.
-     * The main textbox must always display hospitalSelected.
-     */
     setHospitalQuery('');
   };
 
@@ -376,11 +338,6 @@ const SignUp = () => {
     if (!hospital) return;
 
     if (hospital.isOther || hospital.name === 'Other') {
-      /*
-       * The user chose Other.
-       * Do NOT save "Other" as the hospital.
-       * Instead show the custom hospital textbox.
-       */
       setShowCustomInput(true);
       setCustomHospital('');
       setHospitalSearchError('');
@@ -394,10 +351,6 @@ const SignUp = () => {
 
     setHospitalSelected(selectedName);
 
-    /*
-     * This is only used by the modal search.
-     * The main textbox uses hospitalSelected directly.
-     */
     setHospitalQuery('');
 
     setModalVisible(false);
@@ -406,10 +359,6 @@ const SignUp = () => {
 
     clearField('hospital');
   };
-
-  /* ------------------------------------------------------------------------ */
-  /* CONFIRM CUSTOM HOSPITAL                                                  */
-  /* ------------------------------------------------------------------------ */
 
   const handleConfirmCustom = () => {
     const value = customHospital.trim();
@@ -438,10 +387,6 @@ const SignUp = () => {
     clearField('hospital');
   };
 
-  /* ------------------------------------------------------------------------ */
-  /* CLEAR FIELD ERROR                                                        */
-  /* ------------------------------------------------------------------------ */
-
   const clearField = (key) => {
     setErrors((previous) => {
       if (!previous[key]) return previous;
@@ -454,10 +399,6 @@ const SignUp = () => {
 
     clearError?.();
   };
-
-  /* ------------------------------------------------------------------------ */
-  /* VALIDATION                                                               */
-  /* ------------------------------------------------------------------------ */
 
   const validateStart = () => {
     const nextErrors = {};
@@ -498,7 +439,8 @@ const SignUp = () => {
     if (!password) {
       nextErrors.password = 'Password is required';
     } else if (strength.score < 3) {
-      nextErrors.password = 'Password is too weak';
+      nextErrors.password =
+        buildMissingRequirementsMessage(password) || 'Password is too weak';
     }
 
     if (!confirmPassword) {
@@ -517,22 +459,6 @@ const SignUp = () => {
     return Object.keys(nextErrors).length === 0;
   };
 
-  /* ------------------------------------------------------------------------ */
-  /* isFormValid                                                              */
-  /* ------------------------------------------------------------------------ */
-
-  /*
-   * KEEPING isFormValid:
-   *
-   * This is the single source of truth for whether the current step has
-   * enough information to allow the user to continue.
-   *
-   * It intentionally does NOT replace validateStart(), validateHospital(),
-   * or validatePassword().
-   *
-   * Those functions show detailed errors.
-   * isFormValid() controls the button.
-   */
   const isFormValid = () => {
     if (step === 'start') {
       return (
@@ -561,10 +487,6 @@ const SignUp = () => {
 
   const nextEnabled = isFormValid();
 
-  /* ------------------------------------------------------------------------ */
-  /* NAVIGATION                                                               */
-  /* ------------------------------------------------------------------------ */
-
   const handleBack = () => {
     if (loading) return;
 
@@ -589,22 +511,11 @@ const SignUp = () => {
 
     Keyboard.dismiss();
 
-    /* ---------------------------------------------------------------------- */
-    /* STEP 1 - BASIC INFO                                                    */
-    /* ---------------------------------------------------------------------- */
-
     if (step === 'start') {
       if (!validateStart()) {
         return;
       }
 
-      /*
-       * Supabase Auth is now the source of truth for whether this email
-       * already belongs to an account.
-       *
-       * We intentionally do NOT call is_email_taken() or maintain a
-       * separate email_lookup table.
-       */
       const normalizedEmail = email.trim().toLowerCase();
 
       setEmail(normalizedEmail);
@@ -613,10 +524,6 @@ const SignUp = () => {
 
       return;
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* STEP 2 - HOSPITAL                                                      */
-    /* ---------------------------------------------------------------------- */
 
     if (step === 'hospital') {
       if (!validateHospital()) {
@@ -629,10 +536,6 @@ const SignUp = () => {
       return;
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* STEP 3 - PASSWORD / CREATE ACCOUNT                                     */
-    /* ---------------------------------------------------------------------- */
-
     if (step === 'password') {
       if (!validatePassword()) {
         return;
@@ -644,10 +547,6 @@ const SignUp = () => {
       clearError?.();
 
       try {
-        /*
-         * Supabase Auth is the final authority.
-         * There is no separate email availability lookup.
-         */
         const result = await register({
           name: name.trim(),
           email: email.trim().toLowerCase(),
@@ -663,6 +562,12 @@ const SignUp = () => {
             });
 
             setStepIndex(0);
+          } else if (isGenericPasswordCharsetError(result?.error)) {
+            setErrors({
+              password:
+                buildMissingRequirementsMessage(password) ||
+                'That password doesn\u2019t meet the requirements above.',
+            });
           } else {
             setErrors({
               password:
@@ -686,10 +591,6 @@ const SignUp = () => {
           console.error('Sign up error:', error);
         }
 
-        /*
-         * Only classify the error as a duplicate account when the actual
-         * Auth error clearly indicates an existing account.
-         */
         if (isDuplicateAccountError(error?.message)) {
           setErrors({
             email:
@@ -697,6 +598,12 @@ const SignUp = () => {
           });
 
           setStepIndex(0);
+        } else if (isGenericPasswordCharsetError(error?.message)) {
+          setErrors({
+            password:
+              buildMissingRequirementsMessage(password) ||
+              'That password doesn\u2019t meet the requirements above.',
+          });
         } else {
           setErrors({
             password:
@@ -709,10 +616,6 @@ const SignUp = () => {
       }
     }
   };
-
-  /* ------------------------------------------------------------------------ */
-  /* HOSPITAL LIST ITEM                                                       */
-  /* ------------------------------------------------------------------------ */
 
   const renderHospitalItem = ({ item }) => {
     const isOther = item?.isOther || item?.name === 'Other';
@@ -829,19 +732,6 @@ const SignUp = () => {
     );
   };
 
-  /* ------------------------------------------------------------------------ */
-  /* SCROLL WRAPPER                                                           */
-  /* ------------------------------------------------------------------------ */
-
-  /*
-   * We DO NOT let KeyboardAwareScrollView manage the background while the
-   * hospital Modal is open.
-   *
-   * The modal has its own keyboard handling.
-   *
-   * This prevents the signup screen underneath the modal from jumping
-   * vertically when the search TextInput receives focus.
-   */
   const ScrollWrapper = modalVisible ? View : KeyboardAwareScrollView;
 
   const scrollWrapperProps = modalVisible
@@ -858,10 +748,6 @@ const SignUp = () => {
         keyboardOpeningTime: 0,
       };
 
-  /* ------------------------------------------------------------------------ */
-  /* RENDER                                                                   */
-  /* ------------------------------------------------------------------------ */
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar
@@ -870,10 +756,6 @@ const SignUp = () => {
       />
 
       <ScrollWrapper {...scrollWrapperProps}>
-        {/* ---------------------------------------------------------------- */}
-        {/* TOP BAR                                                           */}
-        {/* ---------------------------------------------------------------- */}
-
         <View style={styles.topBar}>
           {stepIndex > 0 ? (
             <TouchableOpacity
@@ -902,10 +784,6 @@ const SignUp = () => {
           )}
         </View>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* LOGO                                                              */}
-        {/* ---------------------------------------------------------------- */}
-
         <View style={styles.brandRow}>
           <Image
             source={require('../assets/brand/logo-primary-teal.png')}
@@ -913,10 +791,6 @@ const SignUp = () => {
             resizeMode="contain"
           />
         </View>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* PROGRESS                                                          */}
-        {/* ---------------------------------------------------------------- */}
 
         <View style={styles.progressRow}>
           {STEPS.map((currentStep, index) => (
@@ -970,10 +844,6 @@ const SignUp = () => {
           ))}
         </View>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* AUTH ERROR                                                        */}
-        {/* ---------------------------------------------------------------- */}
-
         {!!authError && (
           <View style={styles.errorBox}>
             <MaterialCommunityIcons
@@ -988,15 +858,7 @@ const SignUp = () => {
           </View>
         )}
 
-        {/* ---------------------------------------------------------------- */}
-        {/* STEP BODY                                                         */}
-        {/* ---------------------------------------------------------------- */}
-
         <View style={styles.stepBody}>
-          {/* ================================================================ */}
-          {/* STEP 1                                                            */}
-          {/* ================================================================ */}
-
           {step === 'start' && (
             <>
               <Text style={styles.stepTitle}>
@@ -1007,8 +869,6 @@ const SignUp = () => {
                 Tell us a bit about yourself to set up your
                 AidePoint account.
               </Text>
-
-              {/* NAME */}
 
               <Text style={styles.label}>
                 Full Name
@@ -1049,8 +909,6 @@ const SignUp = () => {
                   {errors.name}
                 </Text>
               ) : null}
-
-              {/* EMAIL */}
 
               <Text style={styles.label}>
                 Email Address
@@ -1106,10 +964,6 @@ const SignUp = () => {
               ) : null}
             </>
           )}
-
-          {/* ================================================================ */}
-          {/* STEP 2                                                            */}
-          {/* ================================================================ */}
 
           {step === 'hospital' && (
             <>
@@ -1181,10 +1035,6 @@ const SignUp = () => {
                 </Text>
               ) : null}
 
-              {/* ============================================================ */}
-              {/* HOSPITAL MODAL                                                */}
-              {/* ============================================================ */}
-
               <Modal
                 visible={modalVisible}
                 animationType="slide"
@@ -1193,8 +1043,6 @@ const SignUp = () => {
                 onRequestClose={closeModal}
               >
                 <View style={{ flex: 1 }}>
-                  {/* BACKDROP */}
-
                   <TouchableWithoutFeedback
                     onPress={closeModal}
                   >
@@ -1203,11 +1051,7 @@ const SignUp = () => {
                     />
                   </TouchableWithoutFeedback>
 
-                  {/* SHEET */}
-
                   <View style={styles.modalSheet}>
-                    {/* HEADER */}
-
                     <View
                       style={styles.modalHeader}
                     >
@@ -1235,8 +1079,6 @@ const SignUp = () => {
                         />
                       </TouchableOpacity>
                     </View>
-
-                    {/* SEARCH */}
 
                     <View
                       style={
@@ -1279,8 +1121,6 @@ const SignUp = () => {
                       />
                     </View>
 
-                    {/* SEARCH ERROR */}
-
                     {hospitalSearchError ? (
                       <Text
                         style={[
@@ -1294,8 +1134,6 @@ const SignUp = () => {
                         {hospitalSearchError}
                       </Text>
                     ) : null}
-
-                    {/* CUSTOM HOSPITAL */}
 
                     {showCustomInput ? (
                       <View
@@ -1370,8 +1208,6 @@ const SignUp = () => {
                         </View>
                       </View>
                     ) : null}
-
-                    {/* HOSPITAL LIST */}
 
                     <FlatList
                       data={filteredList}
@@ -1506,10 +1342,6 @@ const SignUp = () => {
             </>
           )}
 
-          {/* ================================================================ */}
-          {/* STEP 3                                                            */}
-          {/* ================================================================ */}
-
           {step === 'password' && (
             <>
               <Text style={styles.stepTitle}>
@@ -1519,8 +1351,6 @@ const SignUp = () => {
               <Text style={styles.stepSubtitle}>
                 Strong passwords keep your account safer.
               </Text>
-
-              {/* PASSWORD */}
 
               <Text style={styles.label}>
                 Password
@@ -1677,8 +1507,6 @@ const SignUp = () => {
                 </Text>
               ) : null}
 
-              {/* CONFIRM PASSWORD */}
-
               <Text style={styles.label}>
                 Confirm Password
               </Text>
@@ -1754,8 +1582,6 @@ const SignUp = () => {
                 </Text>
               ) : null}
 
-              {/* PRIVACY */}
-
               <TouchableOpacity
                 style={styles.privacyRow}
                 onPress={() => {
@@ -1813,10 +1639,6 @@ const SignUp = () => {
             </>
           )}
 
-          {/* ================================================================ */}
-          {/* NEXT BUTTON                                                       */}
-          {/* ================================================================ */}
-
           <TouchableOpacity
             style={[
               styles.nextBtn,
@@ -1855,10 +1677,6 @@ const SignUp = () => {
               </>
             )}
           </TouchableOpacity>
-
-          {/* ================================================================ */}
-          {/* SIGN IN                                                           */}
-          {/* ================================================================ */}
 
           {step === 'start' ? (
             <TouchableOpacity
