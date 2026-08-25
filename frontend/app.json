@@ -35,6 +35,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF"
         }
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "backgroundColor": "#FFFFFFFF",
+          "barStyle": "dark-content"
+        }
       ]
     ],
     "runtimeVersion": {

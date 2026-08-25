@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView,
   Switch, StatusBar, Alert, Image, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
@@ -20,6 +20,7 @@ import { clearAllSessions } from '../utils/chatstorage';
 import { MaterialIcons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { HEADER, COLORS } from '../assets/theme';
+import { getTabBarHeight } from '../navigation/MainAppNavigator';
 
 const AVATAR_BUCKET = 'avatars';
 
@@ -41,7 +42,8 @@ function getInitials(name = '') {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-    const { user, logout, updateProfile, deleteAccountSignOut } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { user, logout, updateProfile, deleteAccountSignOut } = useAuth();
 
   const [storeImages, setStoreImages] = useState(user?.storeImages ?? false);
   const [saving, setSaving] = useState(false);
@@ -50,44 +52,36 @@ export default function ProfileScreen() {
   const initials  = getInitials(user?.name);
   const roleLabel = ROLE_DISPLAY[user?.role] || 'Lab Technician';
 
-  // falls back to 'basic' until subscriptionTier is actually populated in
-  // AuthContext's hydrateUser() — see the note at the bottom of this file
   const tier      = user?.subscriptionTier || 'basic';
   const tierLabel = TIER_LABELS[tier] || 'Basic Plan';
   const tierColor = TIER_COLORS[tier] || TIER_COLORS.basic;
 
-async function handleToggle(newValue) {
-  const prev = storeImages;
-  setStoreImages(newValue);
+  async function handleToggle(newValue) {
+    const prev = storeImages;
+    setStoreImages(newValue);
 
-  setSaving(true);
-  const result = await updateProfile({ storeImages: newValue });
-  setSaving(false);
+    setSaving(true);
+    const result = await updateProfile({ storeImages: newValue });
+    setSaving(false);
 
-  if (!result.success) {
-    setStoreImages(prev);
-    Alert.alert('Error', result.error || 'Could not save preference.');
-    return;
-  }
+    if (!result.success) {
+      setStoreImages(prev);
+      Alert.alert('Error', result.error || 'Could not save preference.');
+      return;
+    }
 
-  // Turning storeImages OFF should also clear out anything already
-  // stored, not just stop future uploads. Turning it ON needs no extra
-  // action -- uploadScanImage() already checks this flag going forward.
-  if (prev === true && newValue === false) {
-    try {
-      await deleteAllScanImages(user.id);
-    } catch (err) {
-      console.error('Failed to delete stored scan images:', err);
-      // Best-effort: the preference itself is already saved and honored
-      // even if cleanup fails. Let the user know so they aren't misled
-      // into thinking old images are gone when they might not be.
-      Alert.alert(
-        'Preference Saved',
-        "Your setting was saved, but we couldn't confirm your previously stored images were deleted. You can try toggling this off again later, or contact support if it persists."
-      );
+    if (prev === true && newValue === false) {
+      try {
+        await deleteAllScanImages(user.id);
+      } catch (err) {
+        console.error('Failed to delete stored scan images:', err);
+        Alert.alert(
+          'Preference Saved',
+          "Your setting was saved, but we couldn't confirm your previously stored images were deleted. You can try toggling this off again later, or contact support if it persists."
+        );
+      }
     }
   }
-}
 
   async function handleChangeAvatar() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -108,10 +102,6 @@ async function handleToggle(newValue) {
     setUploadingAvatar(true);
 
     try {
-      // Read the picked file as base64, then convert to an ArrayBuffer.
-      // Do NOT use fetch(asset.uri).blob() here , on React Native that
-      // often returns a broken/empty blob for local file:// URIs, which
-      // makes the Supabase upload fail (or silently upload 0 bytes).
       const base64 = await FileSystem.readAsStringAsync(asset.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -126,8 +116,6 @@ async function handleToggle(newValue) {
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
-      // cache-bust — same path every time means the old image would
-      // otherwise stick around in the RN Image cache after an update
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
       const saveResult = await updateProfile({ avatarUrl: publicUrl });
@@ -141,30 +129,28 @@ async function handleToggle(newValue) {
     }
   }
 
-
-
   function handleResetPin() {
-  Alert.alert(
-    'Reset Report PIN',
-    "You'll be asked to set a new 4-digit PIN the next time you open Reports.",
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Reset PIN',
-        style: 'destructive',
-        onPress: async () => {
-  try {
-    await clearPin(user.id);
-    endSession();
-    Alert.alert('PIN Reset', 'Your report PIN has been reset. You\'ll be asked to create a new one next time you open Reports.');
-  } catch (err) {
-    Alert.alert('Error', err.message ?? 'Could not reset PIN. Please try again.');
+    Alert.alert(
+      'Reset Report PIN',
+      "You'll be asked to set a new 4-digit PIN the next time you open Reports.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset PIN',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearPin(user.id);
+              endSession();
+              Alert.alert('PIN Reset', 'Your report PIN has been reset. You\'ll be asked to create a new one next time you open Reports.');
+            } catch (err) {
+              Alert.alert('Error', err.message ?? 'Could not reset PIN. Please try again.');
+            }
+          },
+        },
+      ],
+    );
   }
-},
-      },
-    ],
-  );
-}
 
   function handleLogout() {
     Alert.alert(
@@ -178,53 +164,51 @@ async function handleToggle(newValue) {
   }
 
   function handleDeleteAccount() {
-  Alert.alert(
-    'Delete Account',
-    'This permanently deletes your AidePoint account, including your profile, saved reports, and chat history. This cannot be undone.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Continue',
-        style: 'destructive',
-        onPress: () => {
-          // Second confirmation , this is destructive and irreversible,
-          // so a single tap shouldn't be enough to trigger it.
-          Alert.alert(
-            'Are you absolutely sure?',
-            'Type nothing needed , tapping Delete below will erase your account immediately.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete My Account',
-                style: 'destructive',
-                    onPress: async () => {
-  try {
-    const { error } = await supabase.functions.invoke('delete-account');
-    if (error) throw error;
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your AidePoint account, including your profile, saved reports, and chat history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Type nothing needed , tapping Delete below will erase your account immediately.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete My Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const { error } = await supabase.functions.invoke('delete-account');
+                      if (error) throw error;
 
-    await Promise.all([
-      clearReports(user.id),
-      clearAllSessions(user.id),
-      clearPin(user.id),
-      deleteAllScanImages(user.id),
-    ]);
+                      await Promise.all([
+                        clearReports(user.id),
+                        clearAllSessions(user.id),
+                        clearPin(user.id),
+                        deleteAllScanImages(user.id),
+                      ]);
 
-    await deleteAccountSignOut();
-  } catch (err) {
-    Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
-  }
-},
-              },
-            ],
-          );
+                      await deleteAccountSignOut();
+                    } catch (err) {
+                      Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
+                    }
+                  },
+                },
+              ],
+            );
+          },
         },
-      },
-    ],
-  );
-}
+      ],
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <Header
@@ -241,58 +225,61 @@ async function handleToggle(newValue) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: getTabBarHeight(insets) + 24 },
+        ]}
       >
 
-<View style={styles.identityBlock}>
-  <View style={styles.avatarWrap}>
-    <View style={styles.avatarRing}>
-      <View style={styles.avatarCircle}>
-        {user?.avatarUrl ? (
-          <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
-        ) : (
-          <Text style={styles.avatarInitials}>{initials}</Text>
-        )}
-      </View>
-    </View>
+        <View style={styles.identityBlock}>
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarRing}>
+              <View style={styles.avatarCircle}>
+                {user?.avatarUrl ? (
+                  <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarInitials}>{initials}</Text>
+                )}
+              </View>
+            </View>
 
-    <TouchableOpacity
-      style={styles.avatarBadge}
-      onPress={handleChangeAvatar}
-      disabled={uploadingAvatar}
-      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-    >
-      {uploadingAvatar ? (
-        <ActivityIndicator size="small" color="#FFFFFF" />
-      ) : (
-        <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
-      )}
-    </TouchableOpacity>
-  </View>
+            <TouchableOpacity
+              style={styles.avatarBadge}
+              onPress={handleChangeAvatar}
+              disabled={uploadingAvatar}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
 
-  <View style={styles.identityInfo}>
-    <Text style={styles.userName} numberOfLines={1}>{user?.name || 'Unknown'}</Text>
-    <Text style={styles.userEmail} numberOfLines={1}>{user?.email || '—'}</Text>
-    <Text style={styles.userRole} numberOfLines={1}>
-      {roleLabel}{user?.hospitalLab ? ` · ${user.hospitalLab}` : ''}
-    </Text>
+          <View style={styles.identityInfo}>
+            <Text style={styles.userName} numberOfLines={1}>{user?.name || 'Unknown'}</Text>
+            <Text style={styles.userEmail} numberOfLines={1}>{user?.email || '—'}</Text>
+            <Text style={styles.userRole} numberOfLines={1}>
+              {roleLabel}{user?.hospitalLab ? ` · ${user.hospitalLab}` : ''}
+            </Text>
 
-    <View style={styles.identityMetaRow}>
-      <View style={[styles.tierPill, { backgroundColor: `${tierColor}18`, borderColor: tierColor }]}>
-        <MaterialCommunityIcons name="crown-outline" size={12} color={tierColor} />
-        <Text style={[styles.tierPillText, { color: tierColor }]}>{tierLabel}</Text>
-      </View>
+            <View style={styles.identityMetaRow}>
+              <View style={[styles.tierPill, { backgroundColor: `${tierColor}18`, borderColor: tierColor }]}>
+                <MaterialCommunityIcons name="crown-outline" size={12} color={tierColor} />
+                <Text style={[styles.tierPillText, { color: tierColor }]}>{tierLabel}</Text>
+              </View>
 
-      <TouchableOpacity
-        style={styles.manageBtn}
-        onPress={() => navigation.navigate('Subscription')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.manageBtnText}>Manage</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</View>
+              <TouchableOpacity
+                style={styles.manageBtn}
+                onPress={() => navigation.navigate('Subscription')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.manageBtnText}>Manage</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
 
         <Section title="ACCOUNT">
           <Row

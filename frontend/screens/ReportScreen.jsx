@@ -10,7 +10,7 @@ import {
   Dimensions, ActivityIndicator, KeyboardAvoidingView,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,20 +20,13 @@ import { isPinCreated, startSession, isSessionExpired } from '../utils/reportPin
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
 import PinModal from '../components/PinModal';
 import DetailModal from '../components/DetailModal';
-import { ReportStyles as styles, REPORT_LIST_BOTTOM_CLEARANCE } from '../styles/ReportStyles';
+import { ReportStyles as styles } from '../styles/ReportStyles';
 import Header from '../components/Header';
 import { COLORS } from '../assets/theme';
+import { getTabBarHeight } from '../navigation/MainAppNavigator';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// FIXED: label changed from 'Healthy' to 'No Anemia' -- the model only
-// screens for anemia (see scope_disclaimer in the backend response), so
-// a sample with something else going on entirely (e.g. malaria) but no
-// anemia still correctly lands in this bucket. Calling that tab
-// "Healthy" implies a general clean bill of health the app never
-// actually confirmed. The `key` stays 'healthy' unchanged -- that's the
-// internal condition value wired to is_anemic on the backend and to
-// CONDITION_CONFIG in ReportUtils.js, only the user-facing label changes.
 const FILTERS = [
   { label: 'All', key: null },
   { label: 'Anemic', key: 'anemic' },
@@ -58,11 +51,6 @@ const getRelativeTime = (iso) => {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-// Full UUIDs (e.g. "396ba0a3-3adb-429a-a2b4-69a56bb24a55") are too long
-// to display on a card without wrapping to two lines, confirmed on a
-// real device screenshot. Truncating to the first 8 characters keeps
-// enough of the ID to be useful for a quick visual match while staying
-// on one line; the full ID is still visible in the report detail sheet.
 const formatShortId = (id) => {
   if (!id) return '';
   const str = String(id);
@@ -101,9 +89,10 @@ const ReportCard = React.memo(({ report, onPress }) => {
 
 const ReportScreen = ({ navigation, route }) => {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [pinUnlocked, setPinUnlocked] = useState(false);
-  const [pinModalMode, setPinModalMode] = useState(null); // 'create' | 'enter' | null
+  const [pinModalMode, setPinModalMode] = useState(null);
 
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,9 +115,6 @@ const ReportScreen = ({ navigation, route }) => {
     }, [runPinCheck])
   );
 
-  // Safety net for the race condition described above: reacts to
-  // user?.id actually changing (e.g. auth finishing hydration after this
-  // screen already had focus), which useFocusEffect alone cannot do.
   useEffect(() => {
     runPinCheck();
   }, [user?.id]);
@@ -141,7 +127,6 @@ const ReportScreen = ({ navigation, route }) => {
       setLoading(false);
     })();
   }, [user?.id]);
-
 
   useFocusEffect(
     useCallback(() => {
@@ -234,7 +219,7 @@ const ReportScreen = ({ navigation, route }) => {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.screen} edges={['left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
 
         <Header
@@ -255,7 +240,10 @@ const ReportScreen = ({ navigation, route }) => {
           updateCellsBatchingPeriod={50}
 
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.listContent, { paddingBottom: REPORT_LIST_BOTTOM_CLEARANCE }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: getTabBarHeight(insets) + 24 },
+          ]}
 
           ListHeaderComponent={
             <View>

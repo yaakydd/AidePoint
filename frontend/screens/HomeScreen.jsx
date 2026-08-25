@@ -1,9 +1,9 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Platform, RefreshControl, Image,
+  RefreshControl, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -13,8 +13,7 @@ import { supabase } from '../utils/supabase';
 import { homeStyles as styles } from '../styles/HomeStyles';
 import Header from '../components/Header';
 import { COLORS, HEADER } from '../assets/theme';
-
-const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 105 : 90;
+import { getTabBarHeight } from '../navigation/MainAppNavigator';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -125,6 +124,7 @@ const ScanCard = ({ scan }) => (
 const HomeScreen = () => {
   const { user }   = useContext(AuthContext);
   const navigation = useNavigation();
+  const insets     = useSafeAreaInsets();
 
   const [loading,        setLoading]        = useState(true);
   const [refreshing,     setRefreshing]     = useState(false);
@@ -182,9 +182,6 @@ const HomeScreen = () => {
       const weekScans = weekRes.data  ?? [];
       const recentRaw = recentRes.data ?? [];
 
-      // Build weekly chart data (Sun=0,..., Sat=6), each day tagged with its
-      // actual calendar date within the current week so the tap-detail can
-      // show "Tuesday, 24 Jun" rather than just "Tue".
       const countByDay = {};
       weekScans.forEach(s => {
         const idx = new Date(s.created_at).getDay();
@@ -245,17 +242,14 @@ const HomeScreen = () => {
     ? Math.round(stats.thisWeek / 7)
     : 0;
 
-  // "View All" next to Recent Scans sends the user to start a new scan
   function handleViewAllPress() {
     navigation.navigate('Report');
   }
 
   const selectedDay = selectedDayIdx != null ? stats?.weeklyData[selectedDayIdx] : null;
 
-
-
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
 
       <Header
         left={
@@ -289,7 +283,10 @@ const HomeScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: TAB_BAR_CLEARANCE },
+          // Extra breathing room (24) above the tab bar itself, which
+          // already accounts for the system nav bar / home indicator
+          // via getTabBarHeight(insets).
+          { paddingBottom: getTabBarHeight(insets) + 24 },
         ]}
         refreshControl={
           <RefreshControl
@@ -300,14 +297,12 @@ const HomeScreen = () => {
           />
         }
       >
-        {/*  Error banner  */}
         {fetchError ? (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{fetchError}</Text>
           </View>
         ) : null}
 
-        {/*  Stat Cards  */}
         <Text style={styles.sectionTitle}>General Overview</Text>
         <View style={styles.statsRow}>
 
@@ -336,7 +331,6 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/*  Weekly Chart  */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeaderRow}>
             <View>
@@ -373,7 +367,6 @@ const HomeScreen = () => {
           ) : null}
         </View>
 
-        {/*  Quick Action  */}
         <TouchableOpacity
           style={styles.quickActionBtn}
           onPress={() => navigation.navigate('Scan')}
@@ -388,7 +381,6 @@ const HomeScreen = () => {
           <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
         </TouchableOpacity>
 
-        {/*  Recent Scans  */}
         <View style={styles.listHeader}>
           <Text style={styles.sectionTitle}>Recent Scans</Text>
           {recentScans.length > 0 && (

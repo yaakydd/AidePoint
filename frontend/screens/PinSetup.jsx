@@ -96,13 +96,6 @@ const PinSetup = () => {
     setError('');
   };
 
-  const handleBack = () => {
-    if (step !== 'confirm' || saving) return;
-    setStep('enter');
-    setConfirmPin('');
-    setError('');
-  };
-
   const title = step === 'enter' ? 'Create a PIN' : 'Confirm your PIN';
   const subtitle = step === 'enter'
     ? 'Set a 4-digit PIN to protect AidePoint'
@@ -112,12 +105,6 @@ const PinSetup = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {step === 'confirm' && (
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}>
-          <MaterialIcons name="arrow-back" size={22} color={COLORS.white} />
-        </TouchableOpacity>
-      )}
-
       <View style={styles.header}>
           <View style={styles.iconWrap}>
             <Image

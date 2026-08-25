@@ -152,6 +152,6 @@ const styles = StyleSheet.create({
   indicator: {
     height: 3,
     borderRadius: 999,
-    backgroundColor: COLORS.primaryDark,
+    backgroundColor: COLORS.primary,
   },
 });

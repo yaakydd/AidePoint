@@ -12,7 +12,7 @@ import {
     Platform,
     ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from '@react-navigation/native';
 import { ChatStyles as styles } from "../styles/ChatStyles";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -29,6 +29,7 @@ import {
     incrementTodayUsage,
 } from "../utils/chatstorage";
 import { getPlan } from "../constants/SubscriptionPlans";
+import { getTabBarHeight } from "../navigation/MainAppNavigator";
 
 const welcomeMessage = {
     id: 'welcome',
@@ -53,18 +54,16 @@ const Chatbot = () => {
     const navigation = useNavigation();
     const flatListRef = useRef(null);
     const { user } = useContext(AuthContext);
+    const insets = useSafeAreaInsets();
     const plan = getPlan(user?.subscriptionTier);
     const displayName = user?.name?.trim() || 'You';
 
-    // Sidebar / history
     const [sidebarVisible, setSidebarVisible] = useState(false);
     const [sessions, setSessions] = useState([]);
     const [activeSession, setActiveSession] = useState(newSession());
 
-    // Usage / limits
     const [usageCount, setUsageCount] = useState(0);
 
-    // Modals & input
     const [isInfoVisible, setIsInfoVisible] = useState(false);
     const [isBugModalVisible, setIsBugModalVisible] = useState(false);
     const [bugReport, setBugReport] = useState("");
@@ -74,7 +73,6 @@ const Chatbot = () => {
     const messages = activeSession.messages;
     const limitReached = usageCount >= plan.dailyChatLimit;
 
-    // Load persisted history + today's usage on mount 
     useEffect(() => {
         (async () => {
             const stored = await loadSessions(user?.id);
@@ -95,8 +93,6 @@ const Chatbot = () => {
             return next;
         });
     }, [user?.id]);
-
-    // Sending a message 
 
     const handleSend = async (textToSend = inputText) => {
         const messageText = typeof textToSend === 'string' ? textToSend : inputText;
@@ -155,12 +151,6 @@ const Chatbot = () => {
             console.error('Chatbot handleSend (Gemini):', err.message);
 
             if (err.isChatLimitError) {
-                // The server is the authoritative limit -- this fires when
-                // the on-device counter (chatstorage.js) has drifted behind
-                // the real count (new device, reinstall, another session).
-                // Snap the local counter forward so the UI reflects reality
-                // and the "limit reached" state below takes over instead of
-                // silently re-hitting the server on every keystroke.
                 setUsageCount(plan.dailyChatLimit);
                 Alert.alert('Daily chat limit reached', err.message, [{ text: 'OK' }]);
                 setActiveSession(updatedSession);
@@ -180,8 +170,6 @@ const Chatbot = () => {
             setIsSending(false);
         }
     };
-
-    // Sidebar actions 
 
     const handleStartNewChat = () => {
         setActiveSession(newSession());
@@ -240,7 +228,7 @@ const Chatbot = () => {
     const canSend = inputText.trim().length > 0 && !isSending && !limitReached;
 
     return (
-        <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
 
             <Header
                 left={
@@ -266,13 +254,11 @@ const Chatbot = () => {
                 }
             />
 
-            {/*  Outer Layout System */}
             <KeyboardAvoidingView
                 style={styles.mainLayoutBody}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={0}
             >
-                {/* Chat Messages */}
                 <FlatList
                     ref={flatListRef}
                     data={messages}
@@ -326,9 +312,15 @@ const Chatbot = () => {
                     style={styles.messageList}
                 />
 
-                {/* Inline Interaction Layer, lifted clear of the floating tab bar */}
-                <View style={styles.bottomControlsDeck}>
-                    {/* Horizontal Suggestion Chips */}
+                {/*
+                  Bottom controls sit in normal flow below the FlatList,
+                  above the tab bar. Since this screen is a Tab.Screen,
+                  the tab bar overlays it via position: absolute, so we
+                  reserve its full height (icons + system inset) here
+                  rather than relying on SafeAreaView's bottom edge,
+                  which only knows about the system inset.
+                */}
+                <View style={[styles.bottomControlsDeck, { paddingBottom: getTabBarHeight(insets) }]}>
                     {messages.length === 1 && (
                         <View style={styles.suggestionContainer}>
                             <FlatList
@@ -349,7 +341,6 @@ const Chatbot = () => {
                         </View>
                     )}
 
-                    {/* Input Bar */}
                     <View style={styles.inputLayout}>
                         <View style={styles.inputContainer}>
                             <TouchableOpacity style={styles.iconButton}>
@@ -379,7 +370,6 @@ const Chatbot = () => {
                         </View>
                     </View>
 
-                    {/* Disclaimer */}
                     <View style={styles.disclaimerRow}>
                         <MaterialIcons name="info-outline" size={13} color={COLORS.textSecondary} />
                         <Text style={styles.disclaimerText}>
@@ -389,7 +379,6 @@ const Chatbot = () => {
                 </View>
             </KeyboardAvoidingView>
 
-            {/* History Sidebar */}
             <Modal animationType="fade" transparent visible={sidebarVisible} onRequestClose={() => setSidebarVisible(false)}>
                 <View style={styles.sidebarOverlay}>
                     <View style={styles.sidebarPanel}>
@@ -462,7 +451,6 @@ const Chatbot = () => {
                 </View>
             </Modal>
 
-            {/* Info Modal */}
             <Modal animationType="fade" transparent visible={isInfoVisible} onRequestClose={() => setIsInfoVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -477,7 +465,6 @@ const Chatbot = () => {
                 </View>
             </Modal>
 
-            {/*  Bug Report Modal (now includes chat history as context)  */}
             <Modal animationType="slide" transparent visible={isBugModalVisible} onRequestClose={() => setIsBugModalVisible(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.bugModalContent}>
