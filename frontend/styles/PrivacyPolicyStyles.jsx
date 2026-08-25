@@ -16,7 +16,7 @@ export const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: SPACING.pagePad,
     paddingTop: SPACING.lg,
-    paddingBottom: layout.tabBarHeight + SPACING.xl,
+    paddingBottom: layout.bottomInset + SPACING.xl,
   },
 
   lastUpdated: {

@@ -1,8 +1,6 @@
 import { StyleSheet, Platform } from 'react-native';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOWS, SCREEN, layout, scale } from '../assets/theme';
 
-export const REPORT_LIST_BOTTOM_CLEARANCE = layout.tabBarHeight + SPACING.lg;
-
 export const ReportStyles = StyleSheet.create({
 
 

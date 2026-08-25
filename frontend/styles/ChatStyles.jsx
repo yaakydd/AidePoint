@@ -40,7 +40,6 @@ export const ChatStyles = StyleSheet.create({
     bottomControlsDeck: {
         width: '100%',
         backgroundColor: 'transparent',
-        paddingBottom: layout.tabBarHeight,
     },
 
     // Suggestion Chips Layout 

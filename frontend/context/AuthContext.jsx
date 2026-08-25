@@ -26,7 +26,6 @@ export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState('BOOTING');
   const [user, setUser]           = useState(null);
   const [authError, setAuthError] = useState(null);
-  const [isOnline, setIsOnline]   = useState(true);
 
 
   const initialized = useRef(false);
@@ -144,13 +143,11 @@ export function AuthProvider({ children }) {
 
       if (!error && data) {
         profile = data;
-        setIsOnline(true);
       } else {
         throw new Error('profile fetch failed');
       }
     } catch {
       // Can't reach Supabase — try the local cache instead
-      setIsOnline(false);
       const cached = await getCachedUser();
 
       if (cached?.id === uid && alive) {
@@ -280,14 +277,6 @@ export function AuthProvider({ children }) {
     setAuthError(null);
 
     try {
-      //  Offline check (from second version)
-      if (!isOnline) {
-        const msg =
-          'No internet connection. You need internet to create an account.';
-        setAuthError(msg);
-        return { success: false, error: msg };
-      }
-
       //  Supabase signup (merged both versions)
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
@@ -359,12 +348,6 @@ export function AuthProvider({ children }) {
   async function login(email, password) {
     setAuthError(null);
 
-    if (!isOnline) {
-      const msg = 'No internet connection. Please connect to sign in.';
-      setAuthError(msg);
-      return { success: false, error: msg };
-    }
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
@@ -429,24 +412,29 @@ export function AuthProvider({ children }) {
 
     const updated = { ...user, storeImages, consentDone: true };
 
-    if (!isOnline) {
-      await cacheUser({ ...updated, consentPending: true });
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ store_images: storeImages, consent_required: false })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      await cacheUser(updated);
       setUser(updated);
       setAuthState(await resolvePostConsentState(user.id));
       return { success: true };
+    } catch (err) {
+      if (isNetworkError(err)) {
+        // Can't reach Supabase right now — save locally and let the
+        // app proceed; consentPending flags this for a later sync.
+        await cacheUser({ ...updated, consentPending: true });
+        setUser(updated);
+        setAuthState(await resolvePostConsentState(user.id));
+        return { success: true };
+      }
+      return { success: false, error: sanitizeDbError(err) };
     }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ store_images: storeImages, consent_required: false })
-      .eq('id', user.id);
-
-    if (error) return { success: false, error: sanitizeDbError(error) };
-
-    await cacheUser(updated);
-    setUser(updated);
-    setAuthState(await resolvePostConsentState(user.id));
-    return { success: true };
   }
 
   //  PIN SETUP 
@@ -481,18 +469,24 @@ export function AuthProvider({ children }) {
     await cacheUser(updated);
     setUser(updated);
 
-    if (isOnline) {
+    try {
       const { error } = await supabase
         .from('profiles')
         .update(dbChanges)
         .eq('id', user.id);
 
-      if (error) {
-        // Revert on failure
-        await cacheUser(user);
-        setUser(user);
-        return { success: false, error: sanitizeDbError(error) };
+      if (error) throw error;
+    } catch (err) {
+      if (isNetworkError(err)) {
+        // Can't reach Supabase — keep the optimistic local update in
+        // place rather than reverting; there's nothing wrong with the
+        // change itself, just no connection to persist it right now.
+        return { success: true };
       }
+      // Revert on a genuine (non-network) failure
+      await cacheUser(user);
+      setUser(user);
+      return { success: false, error: sanitizeDbError(err) };
     }
 
     return { success: true };
@@ -547,7 +541,6 @@ export function AuthProvider({ children }) {
       authState,
       user,
       authError,
-      isOnline,
       register,
       verifyEmail,
       resendVerification,
