@@ -16,3 +16,4 @@ supabase-auth==2.31.0
 supabase-functions==2.31.0
 cachetools==7.1.7
 PyJWT==2.13.0
+cryptography==43.0.3
