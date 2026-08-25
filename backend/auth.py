@@ -1,13 +1,21 @@
 import os
 import logging
 import jwt
+from jwt import PyJWKClient
 from fastapi import HTTPException, Request, status
 from supabase import Client
 
 log = logging.getLogger("aidepoint")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+
+# Supabase now signs access tokens with ES256 (asymmetric) keys, not a
+# shared HS256 secret. We verify against the project's published JWKS
+# instead of a static secret. PyJWKClient caches the fetched keys and
+# only re-fetches when it sees an unknown key ID (e.g. after rotation),
+# so this doesn't add a network call on every request.
+JWKS_URL = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+_jwks_client = PyJWKClient(JWKS_URL) if SUPABASE_URL else None
 
 
 def get_supabase_client(request: Request) -> Client:
@@ -31,20 +39,21 @@ def get_supabase_client(request: Request) -> Client:
 async def verify_supabase_token(request: Request) -> dict:
     """
     Extracts the Bearer token from the Authorization header and verifies
-    it locally against the project's JWT secret, with no outbound network
-    call. Supabase-issued access tokens are standard signed JWTs, so this
-    is equivalent to hitting /auth/v1/user for the purpose of confirming
-    the token is valid and unexpired, without depending on Render's
-    outbound networking or Supabase's Auth API being reachable on the
-    hot path of every single prediction request.
+    it locally against the project's published JWKS (ES256), with no
+    outbound network call on the common path (JWKS is cached after the
+    first fetch). Supabase-issued access tokens are standard signed JWTs,
+    so this is equivalent to hitting /auth/v1/user for the purpose of
+    confirming the token is valid and unexpired, without depending on
+    Render's outbound networking or Supabase's Auth API being reachable
+    on the hot path of every single prediction request.
 
     Returns a dict with at least "id" and "email" on success, raises 401
-    on an invalid/expired token, and 503 if SUPABASE_JWT_SECRET isn't
-    configured (a misconfiguration, not a bad token, so it shouldn't be
-    reported to the caller as 401).
+    on an invalid/expired token, and 503 if SUPABASE_URL isn't configured
+    (a misconfiguration, not a bad token, so it shouldn't be reported to
+    the caller as 401).
     """
-    if not SUPABASE_JWT_SECRET:
-        log.error("SUPABASE_JWT_SECRET not set -- cannot verify tokens.")
+    if _jwks_client is None:
+        log.error("SUPABASE_URL not set -- cannot verify tokens.")
         raise HTTPException(
             status_code=503,
             detail="Auth is not configured on the server.",
@@ -60,10 +69,11 @@ async def verify_supabase_token(request: Request) -> dict:
     token = auth_header[len("Bearer "):]
 
     try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256"],
             audience="authenticated",
         )
     except jwt.ExpiredSignatureError:
