@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import asyncio
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import cast
@@ -9,6 +10,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from postgrest import CountMethod
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 from supabase import Client
 
 from auth import verify_supabase_token, get_supabase_client
@@ -28,6 +30,12 @@ GEMINI_URL = (
     f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
 )
 
+# FIX (disclaimer): removed the "note that a qualified physician must
+# confirm..." instruction. The disclaimer is now shown persistently in
+# the UI under the input box (ChatStyles.disclaimerRow), so repeating it
+# in every model-generated reply was redundant. All accuracy/grounding
+# instructions (defer to `condition`, don't invent findings, disclose
+# what's missing) are unchanged.
 SYSTEM_INSTRUCTION = """You are AideBot, the in-app assistant for AidePoint, an AI-assisted blood
 smear screening tool used by lab technicians. A technician photographs a
 blood smear on a microscope, then the app returns an anaemia probability, a
@@ -56,11 +64,8 @@ findings, do not invent findings that aren't in the data, and say so
 plainly if something wasn't included in the report you were given.
 
 You are a support and interpretation tool, not a diagnostic authority.
-Every substantive answer about a result should note that a qualified
-physician must confirm any diagnosis or treatment decision, this
-mirrors the disclaimer already shown elsewhere in the app, so don't
-contradict it. Keep answers concise and practical for someone reading
-them on a phone at a lab bench, not a long clinical essay."""
+Keep answers concise and practical for someone reading them on a phone
+at a lab bench, not a long clinical essay."""
 
 MAX_HISTORY_MESSAGES = 10
 
@@ -114,6 +119,11 @@ def _fetch_verified_report_context(
     404 if the prediction doesn't exist, 403 if it belongs to someone
     else both are treated as client errors not server errors, since
     either means the request itself is invalid for this user.
+
+    NOTE: this makes a blocking supabase-py call. Callers running inside
+    an async route MUST invoke this via run_in_threadpool -- see
+    aidebot_chat() below. Calling it directly from an async def would
+    block the whole event loop for every concurrent request.
     """
     lookup = (
         supabase_client.table("prediction_records")
@@ -135,14 +145,6 @@ def _fetch_verified_report_context(
             detail="This prediction does not belong to your account.",
         )
 
-    # Same canonical decision /predict uses, not left for Gemini to infer
-    # from raw is_anemic/is_unreliable on its own -- see services/condition.py.
-    # Same canonical decision /predict already computed and persisted --
-    # not re-derived here, since resolve_condition needs is_off_scope
-    # (shape_screening's needs_review), which isn't stored on this row
-    # and is a different signal from is_unreliable. Re-deriving it a
-    # second time is exactly the drift services/condition.py's own
-    # docstring warns about; reading the stored value avoids it.
     condition = record["condition"]
 
     return ReportContext(
@@ -165,6 +167,9 @@ def _check_and_record_rate_limit(supabase_client: Client, user_id: str) -> None:
     NOTE: this is only ever a lower bound the client can also enforce for
     UX purposes (see Chatbot.jsx), but this table count is the real,
     authoritative limit -- it can't be reset by reinstalling the app.
+
+    NOTE: this makes blocking supabase-py calls. Must be run via
+    run_in_threadpool from async route handlers -- see aidebot_chat().
     """
     start_of_today: str = datetime.now(timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0
@@ -192,7 +197,10 @@ def _check_and_record_rate_limit(supabase_client: Client, user_id: str) -> None:
 def _record_message(supabase_client: Client, user_id: str) -> None:
     """Best-effort usage log -- a failure here shouldn't block a reply
     the user is already waiting on, but it's logged loudly since a
-    silent failure here would mean the rate limit stops enforcing."""
+    silent failure here would mean the rate limit stops enforcing.
+
+    NOTE: blocking supabase-py call. Run as a background task from the
+    async route, not awaited directly -- see aidebot_chat()."""
     try:
         supabase_client.table("aidebot_messages").insert({"user_id": user_id}).execute()
     except Exception as exc:
@@ -202,10 +210,7 @@ def _record_message(supabase_client: Client, user_id: str) -> None:
 def _parse_gemini_reply(response_json: dict) -> GeminiReply:
     """Walks the nested, all-optional candidates/content/parts chain in
     a Gemini generateContent response and returns whatever text was
-    found, or None if any level was missing. response_json.get(...)
-    returns JSON | None at every step (dict.get is typed against the
-    broad JSON union here too), so each level is cast to the shape we
-    know Gemini actually returns before indexing into it."""
+    found, or None if any level was missing."""
     candidates = cast(list, response_json.get("candidates") or [{}])
     content = cast(dict, candidates[0].get("content") or {})
     parts = cast(list, content.get("parts") or [{}])
@@ -225,7 +230,12 @@ async def aidebot_chat(
             detail="Server is missing GEMINI_API_KEY. Set it in the backend environment.",
         )
 
-    _check_and_record_rate_limit(supabase_client, user["id"])
+    # FIX (latency): _check_and_record_rate_limit does blocking supabase-py
+    # I/O. Calling it directly inside this async def would freeze the
+    # entire event loop -- every other in-flight request on this server --
+    # for the duration of that DB call. run_in_threadpool moves it off
+    # the event loop.
+    await run_in_threadpool(_check_and_record_rate_limit, supabase_client, user["id"])
 
     trimmed_history: list[ChatMessage] = payload.history[-MAX_HISTORY_MESSAGES:]
     contents: list[dict] = [
@@ -238,8 +248,9 @@ async def aidebot_chat(
         raise HTTPException(status_code=400, detail="No valid messages in history.")
 
     if payload.prediction_id is not None:
-        report_context: ReportContext = _fetch_verified_report_context(
-            supabase_client, payload.prediction_id, user["id"]
+        # FIX (latency): same blocking-call issue as above.
+        report_context: ReportContext = await run_in_threadpool(
+            _fetch_verified_report_context, supabase_client, payload.prediction_id, user["id"]
         )
         context_message: dict = {
             "role": "user",
@@ -265,7 +276,7 @@ async def aidebot_chat(
             },
         },
     }
-    
+
     try:
         response = await _gemini_client.post(GEMINI_URL, json=request_body)
     except httpx.TimeoutException:
@@ -284,6 +295,12 @@ async def aidebot_chat(
     if not parsed.text:
         raise HTTPException(status_code=502, detail="Gemini returned no usable response.")
 
-    _record_message(supabase_client, user["id"])
+    reply_text = parsed.text.strip()
 
-    return {"reply": parsed.text.strip()}
+    # FIX (latency): fire usage logging as a background task instead of
+    # awaiting it. It's already documented as best-effort/non-critical --
+    # no reason to make the user wait on this write after they already
+    # have their reply.
+    asyncio.create_task(run_in_threadpool(_record_message, supabase_client, user["id"]))
+
+    return {"reply": reply_text}
