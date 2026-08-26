@@ -5,11 +5,15 @@ const AIDEBOT_ENDPOINT = `${API_BASE_URL}/aidebot/chat`;
 
 const MAX_HISTORY_MESSAGES = 10;
 
-// How long to wait before giving up on a hung request. Without this, a
-// dropped connection or a stalled backend just spins the "..." loading
-// state forever with no way for the UI to recover or tell the user
-// something went wrong.
+// How long to wait before giving up on a single hung request attempt.
 const REQUEST_TIMEOUT_MS = 30000;
+
+// NEW: retry config. Transient failures (network blip, cold-start 5xx)
+// get one retry with a short backoff before giving up -- this is what
+// was previously surfacing as "AideBot couldn't be reached" for requests
+// that would have succeeded on a second try.
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
 
 async function getAuthToken() {
   const { data: { session }, error } = await supabase.auth.getSession();
@@ -17,6 +21,45 @@ async function getAuthToken() {
     throw new Error('Your session has expired. Please log in again.');
   }
   return session.access_token;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// NEW: wraps fetch with a timeout AND a retry-with-backoff. Retries on
+// network errors and 5xx responses (backend/cold-start failures) but
+// never on 4xx (client errors -- retrying those would just fail again).
+// Each attempt gets its own fresh timeout budget.
+async function fetchWithRetry(url, options, retriesLeft = MAX_RETRIES) {
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { ...options, signal: abortController.signal });
+
+    if (!response.ok && response.status >= 500 && retriesLeft > 0) {
+      await sleep(RETRY_DELAY_MS);
+      return fetchWithRetry(url, options, retriesLeft - 1);
+    }
+
+    return response;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      if (retriesLeft > 0) {
+        await sleep(RETRY_DELAY_MS);
+        return fetchWithRetry(url, options, retriesLeft - 1);
+      }
+      throw new Error('AideBot took too long to respond. Please try again.');
+    }
+    if (retriesLeft > 0) {
+      await sleep(RETRY_DELAY_MS);
+      return fetchWithRetry(url, options, retriesLeft - 1);
+    }
+    throw new Error(`Could not reach AideBot: ${err.message}`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**
@@ -41,39 +84,20 @@ export async function sendToGemini(history, predictionId = null) {
       text: m.text,
     }));
 
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
-
-  let response;
-  try {
-    response = await fetch(AIDEBOT_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        history: trimmedHistory,
-        prediction_id: predictionId,
-      }),
-      signal: abortController.signal,
-    });
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error('AideBot took too long to respond. Please try again.');
-    }
-    throw new Error(`Could not reach AideBot: ${err.message}`);
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const response = await fetchWithRetry(AIDEBOT_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      history: trimmedHistory,
+      prediction_id: predictionId,
+    }),
+  });
 
   if (!response.ok) {
     if (response.status === 429) {
-      // Authoritative server-side daily limit (aidebot.py's
-      // _check_and_record_rate_limit, backed by the aidebot_messages
-      // table). The client-side counter in chatstorage.js is a
-      // same-numbers UX shortcut and can drift (new device, reinstall,
-      // another session) -- this is the real limit.
       let body = null;
       try { body = await response.json(); } catch {}
       const limitError = new Error(
@@ -93,4 +117,4 @@ export async function sendToGemini(history, predictionId = null) {
     throw new Error('AideBot returned no usable response.');
   }
   return reply.trim();
-}
+      }
