@@ -9,6 +9,7 @@ import {
     Alert,
     Linking,
     KeyboardAvoidingView,
+    Keyboard,
     Platform,
     ActivityIndicator,
 } from 'react-native';
@@ -70,6 +71,11 @@ const Chatbot = () => {
     const [inputText, setInputText] = useState("");
     const [isSending, setIsSending] = useState(false);
 
+    // NEW: tracks whether the keyboard is currently open, so the bottom
+    // deck can drop its tab-bar-height padding while the keyboard (which
+    // already covers the tab bar) is showing.
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+
     const messages = activeSession.messages;
     const limitReached = usageCount >= plan.dailyChatLimit;
 
@@ -84,6 +90,20 @@ const Chatbot = () => {
             setUsageCount(count);
         })();
     }, [user?.id]);
+
+    // NEW: keyboard visibility listener
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+        const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     const persistSession = useCallback(async (session) => {
         setSessions(prev => {
@@ -319,8 +339,19 @@ const Chatbot = () => {
                   reserve its full height (icons + system inset) here
                   rather than relying on SafeAreaView's bottom edge,
                   which only knows about the system inset.
+
+                  FIX: only reserve full tab-bar height when the keyboard
+                  is closed. When the keyboard is open it already covers
+                  the tab bar, so reserving that height on top of the
+                  keyboard's own space produced a visible gap above the
+                  keyboard -- drop to just the safe-area inset instead.
                 */}
-                <View style={[styles.bottomControlsDeck, { paddingBottom: getTabBarHeight(insets) }]}>
+                <View
+                    style={[
+                        styles.bottomControlsDeck,
+                        { paddingBottom: keyboardVisible ? insets.bottom : getTabBarHeight(insets) },
+                    ]}
+                >
                     {messages.length === 1 && (
                         <View style={styles.suggestionContainer}>
                             <FlatList
