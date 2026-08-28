@@ -16,8 +16,9 @@ import { HEADER, COLORS } from '../assets/theme';
 
 function iconFor(title = '') {
   const t = title.toLowerCase();
-  if (t.includes('password'))  return { name: 'lock-outline', color: '#0EA5E9', bg: '#F0F9FF' };
-  if (t.includes('scan'))      return { name: 'microscope',   color: '#22C55E', bg: '#F0FDF4' };
+  if (t.includes('pin'))       return { name: 'dialpad',        color: '#DC2626', bg: '#FEF2F2' };
+  if (t.includes('password'))  return { name: 'lock-outline',   color: '#0EA5E9', bg: '#F0F9FF' };
+  if (t.includes('scan'))      return { name: 'microscope',     color: '#22C55E', bg: '#F0FDF4' };
   if (t.includes('subscri') || t.includes('plan')) return { name: 'crown-outline', color: '#7C3AED', bg: '#F5F3FF' };
   return { name: 'bell-outline', color: '#F97316', bg: '#FFF7ED' };
 }
@@ -93,7 +94,7 @@ export default function NotificationsScreen() {
         onPress={() => markAsRead(item)}
       >
         <View style={[styles.iconBox, { backgroundColor: icon.bg }]}>
-          <MaterialIcons name="arrow-back-ios-new" size={HEADER.iconSize} color={COLORS.textPrimary} />
+          <MaterialCommunityIcons name={icon.name} size={HEADER.iconSize} color={icon.color} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.title} numberOfLines={1}>{item.title}</Text>

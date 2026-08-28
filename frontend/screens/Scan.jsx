@@ -741,6 +741,16 @@ const Scan = ({ navigation, route }) => {
       report.id = scanRow.id;
       setAnalysisStage('Finalising report...');
       await saveReport(report, user.id);
+
+            try {
+        await supabase.from('notifications').insert({
+          user_id: user.id,
+          title: 'Scan Complete',
+          body: `Scan for ${patientName.trim()} finished analysing. Result: ${report.conditionLabel ?? safeConditionKey}.`,
+        });
+      } catch (notifyError) {
+        console.error('Failed to insert scan notification:', notifyError);
+      }
       setAnalysisStage('Updating scan usage...');
       const usage = await recordScan(user.id, plan);
       if (!usage) {
@@ -1336,3 +1346,5 @@ const Scan = ({ navigation, route }) => {
   );
 };
 export default Scan;
+
+
