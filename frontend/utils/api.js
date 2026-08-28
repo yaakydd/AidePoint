@@ -123,22 +123,14 @@ export async function analyzeBloodSmear(imageUri, patientSampleId, temperature, 
   } catch (err) {
     clearTimeout(timeoutId);
     const elapsedMs = Date.now() - startedAt;
-
     if (err.name === 'AbortError') {
-      console.error(`>>> /predict aborted after ${elapsedMs}ms (timeout was ${TIMEOUT_MS}ms)`);
-      throw new Error(
-        `Analysis timed out after ${Math.round(TIMEOUT_MS / 1000)}s. ` +
-        `The server may still be processing — check your backend logs, or try again.`
-      );
+      console.error(`>>> /predict aborted after ${elapsedMs}ms (timeout ${TIMEOUT_MS}ms)`);
+      throw new Error('This is taking longer than expected. Please check your connection and try again.');
     }
-    if (err.message === 'Network request failed') {
-      console.error(`>>> /predict network failure after ${elapsedMs}ms`);
-      throw new Error(
-        `Could not reach the backend at ${API_BASE_URL}. ` +
-        `Make sure your phone and computer are on the same wifi network, the server is running, ` +
-        `and Windows/macOS firewall isn't blocking port 8000.`
-      );
-    }
+   if (err.message === 'Network request failed') {
+     console.error(`>>> /predict network failure after ${elapsedMs}ms, target: ${API_BASE_URL}`);
+    throw new Error('No connection to the server. Please check your internet connection and try again.');
+  }
 
     throw err;
   }
