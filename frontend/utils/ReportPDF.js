@@ -23,9 +23,6 @@ async function loadBrandImages() {
   cachedWordmarkBase64 = wordmarkBase64;
 }
 
-const shouldShowProbabilityAndConfidence = (conditionKey) =>
-  conditionKey === 'anemic' || conditionKey === 'healthy';
-
 const escapeHtml = (value) => {
   if (value === undefined || value === null) return value;
   return String(value)
@@ -85,21 +82,6 @@ const buildCbcSection = (cbcPatternSummary) => {
     <table>${rows}</table>`;
 };
 
-const buildReliabilitySection = (isUnreliable, unreliableReasons) => {
-  if (!isUnreliable) return '';
-
-  const items = (unreliableReasons ?? [])
-    .map((reason) => `<li>${escapeHtml(reason)}</li>`)
-    .join('');
-
-  return `
-    <div class="reliability-banner">
-      <div class="reliability-title">Review Recommended</div>
-      <div class="note-text">This result should be manually reviewed before acting on it. Here's why, and what to do:</div>
-      <ul class="finding-list">${items}</ul>
-    </div>`;
-};
-
 const buildTechnicianNotesSection = (report) => {
   const rows = [
     row('Lab Technician', report.labTechName),
@@ -111,12 +93,24 @@ const buildTechnicianNotesSection = (report) => {
     <table>${rows}</table>`;
 };
 
+// Typed-signature block (Option A). Not a captured drawn signature --
+// just a script-styled rendering of the technician's name above a
+// signature line, so the sign-off reads as a signature rather than a
+// plain data row. If/when a real drawn signature is captured and stored
+// (Option B), swap this block for an <img> of that PNG instead.
+const buildSignatureBlock = (labTechName, dateDisplay) => {
+  const safeLabTechName = escapeHtml(labTechName) ?? '—';
+  const safeDateDisplay = escapeHtml(dateDisplay) ?? '';
+
+  return `
+    <div class="verified-by">
+      <div class="signature-name">${safeLabTechName}</div>
+      <div class="signature-line">Reviewed by — ${safeDateDisplay}</div>
+    </div>`;
+};
+
 const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
   const cfg = CONDITION_CONFIG[report.condition] ?? CONDITION_CONFIG.healthy;
-  const showProbabilityConfidence = shouldShowProbabilityAndConfidence(report.condition);
-  const confidencePct = typeof report.confidence === 'number'
-    ? `${Math.round(report.confidence * 100)}%`
-    : (report.confidence ?? '—');
 
   const printedAt = new Date();
   const printedAtDisplay = printedAt.toLocaleString('en-GB', {
@@ -203,8 +197,21 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
           margin-top: 20px; padding-top: 12px; border-top: 1px solid #EDF2F7;
           font-size: 9px; color: #9CA3AF; line-height: 1.6;
         }
-        .verified-by { margin-top: 20px; font-size: 11px; color: #6B7C93; }
-        .verified-line { margin-bottom: 2px; }
+        .verified-by { margin-top: 20px; }
+        .signature-name {
+          font-family: 'Brush Script MT', 'Segoe Script', cursive;
+          font-size: 22px;
+          color: #1A2332;
+          margin-bottom: 2px;
+        }
+        .signature-line {
+          border-top: 1px solid #1A2332;
+          width: 220px;
+          margin-top: 4px;
+          padding-top: 4px;
+          font-size: 10px;
+          color: #6B7C93;
+        }
         .end-of-report {
           text-align: center; font-size: 10px; font-weight: 600;
           color: #6B7C93; letter-spacing: 1px; text-transform: uppercase;
@@ -259,7 +266,6 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
         <strong>${escapeHtml(cfg.label)}</strong>. ${escapeHtml(cfg.morphology)}
       </div>
       <table>
-        ${showProbabilityConfidence ? row('Confidence', confidencePct) : ''}
         ${row('Urgency', cfg.urgency)}
       </table>
 
@@ -282,9 +288,7 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
       </div>
 
       <div class="divider"></div>
-      <div class="verified-by">
-        <div class="verified-line">Reviewed by: <strong>${safeLabTechName}</strong></div>
-      </div>
+      ${buildSignatureBlock(report.labTechName, report.dateDisplay)}
 
       <div class="end-of-report">End of Report</div>
     </body>

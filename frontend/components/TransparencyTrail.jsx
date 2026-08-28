@@ -7,7 +7,14 @@ import {
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
 import CellOverlay from './CellOverlay';
-import { CONDITION_CONFIG, resolveConditionKey, updateReportNotes } from '../utils/ReportUtils';
+import {
+  CONDITION_CONFIG,
+  resolveConditionKey,
+  updateReportNotes,
+  severityToColor,
+  SEVERITY_BUCKETS,
+  computeSeverityBreakdown,
+} from '../utils/ReportUtils';
 import { ReportStyles } from '../styles/ReportStyles';
 import { COLORS, FONTS, SPACING, RADIUS, scale, vScale } from '../assets/theme';
 
@@ -24,30 +31,6 @@ const CONFIDENCE_LABELS = {
   moderate: { text: 'Moderate confidence', color: '#92400E' },
   low:      { text: 'Low confidence',      color: '#B91C1C' },
 };
-
-// Same three bands as the current gradient labels, now used to actually
-// bucket and count real cells instead of just labeling a reference scale.
-const SEVERITY_BUCKETS = [
-  { key: 'normal',  label: 'Normal shape',   min: 0.0,  max: 0.33 },
-  { key: 'mild',    label: 'Mild variation', min: 0.33, max: 0.66 },
-  { key: 'unusual', label: 'Unusual shape',  min: 0.66, max: 1.001 }, // 1.001: severity===1.0 falls in top bucket
-];
-
-function computeSeverityBreakdown(cells) {
-  const total = cells.length;
-  return SEVERITY_BUCKETS.map((bucket) => {
-    const count = cells.filter(
-      (cell) => cell.severity >= bucket.min && cell.severity < bucket.max
-    ).length;
-    const midpoint = (bucket.min + Math.min(bucket.max, 1)) / 2;
-    return {
-      ...bucket,
-      count,
-      percent: total > 0 ? Math.round((count / total) * 100) : 0,
-      color: severityToColor(midpoint), // reuses your existing gradient math for the swatch
-    };
-  });
-}
 
 const shouldShowProbabilityAndConfidence = (conditionKey, anemiaProbability) =>
   (conditionKey === 'anemic' || conditionKey === 'healthy') &&
@@ -85,22 +68,55 @@ const getRecommendation = (conditionKey, isUnreliable) => {
   };
 };
 
-const severityToColor = (severityScore) => {
-  let redValue, greenValue, blueValue;
-  if (severityScore < 0.5) {
-    const blendRatio = severityScore / 0.5;
-    redValue   = Math.round(0x16 + (0xEA - 0x16) * blendRatio);
-    greenValue = Math.round(0xA3 + (0xB3 - 0xA3) * blendRatio);
-    blueValue  = Math.round(0x4A + (0x08 - 0x4A) * blendRatio);
-  } else {
-    const blendRatio = (severityScore - 0.5) / 0.5;
-    redValue   = Math.round(0xEA + (0xDC - 0xEA) * blendRatio);
-    greenValue = Math.round(0xB3 + (0x26 - 0xB3) * blendRatio);
-    blueValue  = Math.round(0x08 + (0x26 - 0x08) * blendRatio);
-  }
-  const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
-  return `#${toHex(redValue)}${toHex(greenValue)}${toHex(blueValue)}`;
-};
+function averageSeverity(cells) {
+  if (!cells || cells.length === 0) return 0;
+  const sum = cells.reduce((acc, cell) => acc + (cell.severity ?? 0), 0);
+  return sum / cells.length;
+}
+
+// Continuous 0→1 gradient bar, calibrated with tick labels and a marker
+// showing where this sample's average cell severity lands. Uses the same
+// severityToColor function as CellOverlay and the bucket breakdown below,
+// so the bar, the dots on the photo, and the swatches all agree.
+function SeverityScale({ cells }) {
+  const GRADIENT_STEPS = 24;
+  const avg = averageSeverity(cells);
+  const markerLeftPercent = Math.min(Math.max(avg, 0), 1) * 100;
+
+  return (
+    <View style={{ width: '100%', marginTop: SPACING.sm, marginBottom: SPACING.md }}>
+      <View style={scaleStyles.gradientBar}>
+        {Array.from({ length: GRADIENT_STEPS }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              backgroundColor: severityToColor(i / (GRADIENT_STEPS - 1)),
+            }}
+          />
+        ))}
+        <View
+          style={[
+            scaleStyles.marker,
+            { left: `${markerLeftPercent}%` },
+          ]}
+        >
+          <View style={scaleStyles.markerLine} />
+        </View>
+      </View>
+      <View style={scaleStyles.tickRow}>
+        <Text style={scaleStyles.tickText}>0.0</Text>
+        <Text style={scaleStyles.tickText}>Normal</Text>
+        <Text style={scaleStyles.tickText}>0.5</Text>
+        <Text style={scaleStyles.tickText}>Unusual</Text>
+        <Text style={scaleStyles.tickText}>1.0</Text>
+      </View>
+      <Text style={scaleStyles.avgLabel}>
+        Average cell severity for this sample: {avg.toFixed(2)}
+      </Text>
+    </View>
+  );
+}
 
 function ImageWithOverlay({ imageBase64, cellOverlay, showOverlay, isShowingAnalyzedCrop, selectedSeverityBand }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -303,8 +319,11 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 <View style={{ width: '100%' }}>
                   <Text style={styles.legendCaption}>
                     Each detected cell is scored on how far its shape departs from a
-                    normal round cell. Breakdown for this sample:
+                    normal round cell. The scale below shows the full range, with a
+                    marker at this sample's average:
                   </Text>
+
+                  <SeverityScale cells={prediction.cell_overlay.cells} />
 
                   {computeSeverityBreakdown(prediction.cell_overlay.cells).map((bucket) => {
                     const isSelected = selectedSeverityBand === bucket.key;
@@ -320,6 +339,9 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                         <View style={[styles.breakdownSwatch, { backgroundColor: bucket.color }]} />
                         <Text style={[styles.breakdownLabel, bucket.count === 0 && styles.breakdownLabelEmpty]}>
                           {bucket.label}
+                        </Text>
+                        <Text style={styles.breakdownRange}>
+                          {bucket.min.toFixed(2)}–{Math.min(bucket.max, 1).toFixed(2)}
                         </Text>
                         <Text style={styles.breakdownCount}>
                           {bucket.count} cell{bucket.count !== 1 ? 's' : ''} ({bucket.percent}%)
@@ -467,6 +489,47 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
 }
 export default TransparencyTrail;
 
+const scaleStyles = StyleSheet.create({
+  gradientBar: {
+    flexDirection: 'row',
+    width: '100%',
+    height: scale(16),
+    borderRadius: RADIUS.xs,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  marker: {
+    position: 'absolute',
+    top: -4,
+    width: 2,
+    height: scale(16) + 8,
+    alignItems: 'center',
+    marginLeft: -1,
+  },
+  markerLine: {
+    width: 2,
+    height: '100%',
+    backgroundColor: COLORS.textPrimary,
+    borderRadius: 1,
+  },
+  tickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 6,
+  },
+  tickText: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+  },
+  avgLabel: {
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+    fontWeight: FONTS.medium,
+  },
+});
+
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
   sheet: {
@@ -476,9 +539,6 @@ const styles = StyleSheet.create({
   },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: SPACING.md },
 
-  // Patient name (left) / date+time (right) row, directly under the
-  // branded letterhead -- mirrors DetailModal.js's sheetHeader/sheetName
-  // pairing so both modals present report identity the same way.
   patientMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -522,10 +582,6 @@ const styles = StyleSheet.create({
   toggleChipText: { fontSize: FONTS.xs, color: COLORS.primary, fontWeight: FONTS.semibold },
   overlayCaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: SPACING.xs },
 
-  // Legend caption + column layout. Swatches are now sized via theme
-  // scale() (not raw inline numbers) and stacked as a column with a
-  // label directly beside each swatch, one per row, instead of the old
-  // cramped horizontal row of 3 dots.
   legendCaption: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,
@@ -534,45 +590,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 16,
   },
-  gradientBar: {
-    flexDirection: 'row',
-    width: '100%',
-    height: scale(14),
-    borderRadius: RADIUS.xs,
-    overflow: 'hidden',
-    marginTop: SPACING.xs,
-  },
-  gradientTickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 4,
-  },
-  gradientTickText: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-  },
-  gradientLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 2,
-    marginBottom: SPACING.xs,
-  },
-  gradientBandLabel: {
-    flex: 1,
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
-    fontWeight: FONTS.medium,
-  },
 
   sectionBlock: { width: '100%', marginBottom: SPACING.md },
   sectionHeading: { fontSize: FONTS.sm, fontWeight: FONTS.bold, color: COLORS.textPrimary, marginBottom: 4 },
   sectionSubcaption: { fontSize: FONTS.xs, color: COLORS.textMuted, marginBottom: SPACING.xs, fontStyle: 'italic' },
 
-  // flexShrink + alignItems: 'flex-start' so a long finding name wraps
-  // onto a second line and stays lined up with the icon at the top,
-  // instead of overflowing past the sheet's right edge.
   findingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 2 },
   findingText: { fontSize: FONTS.sm, color: COLORS.textSecondary, textTransform: 'capitalize', flexShrink: 1 },
 
@@ -619,67 +641,36 @@ const styles = StyleSheet.create({
   },
   btnSecondaryText: { fontSize: FONTS.md, fontWeight: FONTS.semibold, color: COLORS.textPrimary },
   breakdownRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingVertical: 6,
-},
-breakdownSwatch: {
-  width: 14,
-  height: 14,
-  borderRadius: 4,
-  marginRight: SPACING.sm,
-},
-breakdownLabel: {
-  flex: 1,
-  fontSize: FONTS.sm,
-  color: COLORS.textPrimary,
-},
-breakdownCount: {
-  fontSize: FONTS.sm,
-  fontWeight: FONTS.semibold,
-  color: COLORS.textSecondary,
-},
-breakdownCount: {
-  fontSize: FONTS.sm,
-  fontWeight: FONTS.semibold,
-  color: COLORS.textSecondary,
-},
-breakdownRowSelected: {
-  backgroundColor: COLORS.surfaceAlt,
-  borderRadius: RADIUS.sm,
-},
-breakdownLabelEmpty: {
-  color: COLORS.textMuted,
-},
-gradientBar: {
     flexDirection: 'row',
-    width: '100%',
-    height: scale(14),
-    borderRadius: RADIUS.xs,
-    overflow: 'hidden',
-    marginTop: SPACING.xs,
+    alignItems: 'center',
+    paddingVertical: 6,
   },
-  gradientTickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 4,
+  breakdownSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    marginRight: SPACING.sm,
   },
-  gradientTickText: {
+  breakdownLabel: {
+    flex: 1,
+    fontSize: FONTS.sm,
+    color: COLORS.textPrimary,
+  },
+  breakdownRange: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,
+    marginRight: SPACING.sm,
   },
-  gradientLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 2,
-    marginBottom: SPACING.xs,
-  },
-  gradientBandLabel: {
-    flex: 1,
-    fontSize: FONTS.xs,
+  breakdownCount: {
+    fontSize: FONTS.sm,
+    fontWeight: FONTS.semibold,
     color: COLORS.textSecondary,
-    fontWeight: FONTS.medium,
+  },
+  breakdownRowSelected: {
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.sm,
+  },
+  breakdownLabelEmpty: {
+    color: COLORS.textMuted,
   },
 });

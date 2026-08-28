@@ -1,11 +1,8 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Ellipse } from 'react-native-svg';
+import { severityToColor } from '../utils/ReportUtils';
 
-// Only draws cells at or above this severity by default, to avoid
-// cluttering the photo with every faint, harmless variation , the
-// technician can still see the raw numbers in the report even for
-// cells not drawn here. Pass showAllCells to override this.
 const DEFAULT_MINIMUM_SEVERITY_TO_DRAW = 0.0;
 
 const CellOverlay = ({
@@ -19,7 +16,6 @@ const CellOverlay = ({
   if (!cellOverlay || !Array.isArray(cellOverlay.cells) || cellOverlay.cells.length === 0) {
     return null;
   }
-
 
   const cellsToRender = showAllCells
     ? cellOverlay.cells
@@ -39,6 +35,13 @@ const CellOverlay = ({
           const radiusXPixels = cell.radius_x * displayWidth;
           const radiusYPixels = cell.radius_y * displayHeight;
 
+          // Always derive from severity via the shared function, so this
+          // dot's color is guaranteed to match the legend swatch for the
+          // bucket it falls into -- never trust a pre-baked cell.color,
+          // which may have been computed by a different formula (e.g.
+          // server-side) and silently drift out of sync.
+          const cellColor = severityToColor(cell.severity);
+
           return (
             <Ellipse
               key={cellIndex}
@@ -49,17 +52,9 @@ const CellOverlay = ({
               rotation={cell.rotation_angle}
               originX={centerXPixels}
               originY={centerYPixels}
-              stroke={cell.color}
-              // Was a hard cutoff (1.5px/8% below severity 0.5, 2.5px/18%
-              // at or above) -- on a real, low-contrast smear the faint
-              // end was visually indistinguishable from the background,
-              // so "normal" cells (which sit well under 0.5) rendered as
-              // effectively invisible even though they were technically
-              // in the SVG. A smooth gradient keeps flagged cells
-              // visually louder while guaranteeing every cell, including
-              // normal ones, has a real minimum visible stroke/fill.
+              stroke={cellColor}
               strokeWidth={1.5 + cell.severity * 1.5}
-              fill={cell.color}
+              fill={cellColor}
               fillOpacity={0.14 + cell.severity * 0.16}
             />
           );

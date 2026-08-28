@@ -163,3 +163,51 @@ export const updateReportNotes = async (reportId, notes, userId) => {
     throw error;
   }
 };
+
+
+// ─────────────────────────────────────────────────────────────
+// Severity → color, single source of truth.
+// Both the cell overlay drawn on the image (CellOverlay.js) and every
+// legend/breakdown list (TransparencyTrail.js, DetailModal.js) must
+// call THIS function -- never re-derive the RGB blend locally, or the
+// dots on the photo and the legend swatches will silently drift apart.
+// ─────────────────────────────────────────────────────────────
+export const severityToColor = (severityScore) => {
+  let redValue, greenValue, blueValue;
+  if (severityScore < 0.5) {
+    const blendRatio = severityScore / 0.5;
+    redValue   = Math.round(0x16 + (0xEA - 0x16) * blendRatio);
+    greenValue = Math.round(0xA3 + (0xB3 - 0xA3) * blendRatio);
+    blueValue  = Math.round(0x4A + (0x08 - 0x4A) * blendRatio);
+  } else {
+    const blendRatio = (severityScore - 0.5) / 0.5;
+    redValue   = Math.round(0xEA + (0xDC - 0xEA) * blendRatio);
+    greenValue = Math.round(0xB3 + (0x26 - 0xB3) * blendRatio);
+    blueValue  = Math.round(0x08 + (0x26 - 0x08) * blendRatio);
+  }
+  const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+  return `#${toHex(redValue)}${toHex(greenValue)}${toHex(blueValue)}`;
+};
+
+// Same three bands used everywhere a breakdown or scale is shown.
+export const SEVERITY_BUCKETS = [
+  { key: 'normal',  label: 'Normal shape',   min: 0.0,  max: 0.33 },
+  { key: 'mild',    label: 'Mild variation', min: 0.33, max: 0.66 },
+  { key: 'unusual', label: 'Unusual shape',  min: 0.66, max: 1.001 }, // 1.001: severity===1.0 falls in top bucket
+];
+
+export const computeSeverityBreakdown = (cells) => {
+  const total = cells.length;
+  return SEVERITY_BUCKETS.map((bucket) => {
+    const count = cells.filter(
+      (cell) => cell.severity >= bucket.min && cell.severity < bucket.max
+    ).length;
+    const midpoint = (bucket.min + Math.min(bucket.max, 1)) / 2;
+    return {
+      ...bucket,
+      count,
+      percent: total > 0 ? Math.round((count / total) * 100) : 0,
+      color: severityToColor(midpoint),
+    };
+  });
+};

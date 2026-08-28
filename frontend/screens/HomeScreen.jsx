@@ -147,24 +147,24 @@ const HomeScreen = () => {
       const now          = new Date();
       const startOfToday = new Date(
         now.getFullYear(), now.getMonth(), now.getDate()
-      ).toISOString();
+      );
 
-      const sevenDaysAgo = new Date(
-        now.getTime() - 7 * 24 * 60 * 60 * 1000
-      ).toISOString();
+      // Anchor to this week's Sunday (strict current week, not a rolling 7 days)
+      const startOfWeek = new Date(startOfToday);
+      startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
 
       const [todayRes, weekRes, recentRes] = await Promise.all([
         supabase
           .from('scans')
           .select('*', { count: 'exact', head: true })
           .eq('created_by', user.id)
-          .gte('created_at', startOfToday),
+          .gte('created_at', startOfToday.toISOString()),
 
         supabase
           .from('scans')
           .select('created_at, status')
           .eq('created_by', user.id)
-          .gte('created_at', sevenDaysAgo)
+          .gte('created_at', startOfWeek.toISOString())
           .order('created_at', { ascending: false }),
 
         supabase
@@ -188,20 +188,16 @@ const HomeScreen = () => {
         countByDay[idx] = (countByDay[idx] || 0) + 1;
       });
 
-      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-const startOfWeek = new Date(todayDate);
-startOfWeek.setDate(todayDate.getDate() - todayDate.getDay()); // back up to Sunday
-
-const weeklyData = DAY_NAMES.map((day, dayIndex) => {
-  const date = new Date(startOfWeek);
-  date.setDate(startOfWeek.getDate() + dayIndex); // move forward from Sunday
-  return {
-    day,
-    dayIndex,
-    count: countByDay[dayIndex] ?? 0,
-    date: date.toISOString(),
-  };
-});
+      const weeklyData = DAY_NAMES.map((day, dayIndex) => {
+        const date = new Date(startOfWeek);
+        date.setDate(startOfWeek.getDate() + dayIndex);
+        return {
+          day,
+          dayIndex,
+          count: countByDay[dayIndex] ?? 0,
+          date: date.toISOString(),
+        };
+      });
 
       setStats({
         todayCount: todayRes.count ?? 0,

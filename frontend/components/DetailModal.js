@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Image, useWindowDimensions } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Image, useWindowDimensions, StyleSheet } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
-import { CONDITION_CONFIG, updateReportNotes, computeSeverityBreakdown } from '../utils/ReportUtils';
+import { CONDITION_CONFIG, updateReportNotes, computeSeverityBreakdown, severityToColor } from '../utils/ReportUtils';
 import { exportReportAsPdf } from '../utils/ReportPDF';
 import CellOverlay from './CellOverlay';
 import { COLORS, SPACING, FONTS, RADIUS, scale, vScale } from '../assets/theme';
@@ -23,6 +23,50 @@ function getRecommendation(conditionKey, isUnreliable) {
 
 function shouldShowProbabilityAndConfidence(conditionKey) {
   return conditionKey === 'anemic' || conditionKey === 'healthy';
+}
+
+function averageSeverity(cells) {
+  if (!cells || cells.length === 0) return 0;
+  const sum = cells.reduce((acc, cell) => acc + (cell.severity ?? 0), 0);
+  return sum / cells.length;
+}
+
+// Same calibrated 0→1 gradient scale as TransparencyTrail.js, built from
+// the same severityToColor function used by CellOverlay -- so the scale,
+// the overlay dots on the image, and the bucket swatches all match.
+function SeverityScale({ cells }) {
+  const GRADIENT_STEPS = 24;
+  const avg = averageSeverity(cells);
+  const markerLeftPercent = Math.min(Math.max(avg, 0), 1) * 100;
+
+  return (
+    <View style={{ width: '100%', marginTop: SPACING.sm, marginBottom: SPACING.md }}>
+      <View style={scaleStyles.gradientBar}>
+        {Array.from({ length: GRADIENT_STEPS }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              backgroundColor: severityToColor(i / (GRADIENT_STEPS - 1)),
+            }}
+          />
+        ))}
+        <View style={[scaleStyles.marker, { left: `${markerLeftPercent}%` }]}>
+          <View style={scaleStyles.markerLine} />
+        </View>
+      </View>
+      <View style={scaleStyles.tickRow}>
+        <Text style={scaleStyles.tickText}>0.0</Text>
+        <Text style={scaleStyles.tickText}>Normal</Text>
+        <Text style={scaleStyles.tickText}>0.5</Text>
+        <Text style={scaleStyles.tickText}>Unusual</Text>
+        <Text style={scaleStyles.tickText}>1.0</Text>
+      </View>
+      <Text style={scaleStyles.avgLabel}>
+        Average cell severity for this sample: {avg.toFixed(2)}
+      </Text>
+    </View>
+  );
 }
 
 function ReportImageWithOverlay({ imageUri, cellOverlay, showOverlay }) {
@@ -210,6 +254,9 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
                 <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: SPACING.xs }}>
                   {report.cellOverlay.cell_count} cells detected, {report.cellOverlay.flagged_count} flagged for unusual shape
                 </Text>
+
+                <SeverityScale cells={report.cellOverlay.cells} />
+
                 {severityBreakdown.map(function (bucket) {
                   const isSelected = selectedSeverityBand === bucket.key;
                   return (
@@ -226,6 +273,9 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
                       <View style={{ width: 14, height: 14, borderRadius: 4, marginRight: SPACING.sm, backgroundColor: bucket.color }} />
                       <Text style={{ flex: 1, fontSize: FONTS.sm, color: bucket.count === 0 ? COLORS.textMuted : COLORS.textPrimary }}>
                         {bucket.label}
+                      </Text>
+                      <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, marginRight: SPACING.sm }}>
+                        {bucket.min.toFixed(2)}–{Math.min(bucket.max, 1).toFixed(2)}
                       </Text>
                       <Text style={{ fontSize: FONTS.sm, fontWeight: FONTS.semibold, color: COLORS.textSecondary }}>
                         {bucket.count} cell{bucket.count !== 1 ? 's' : ''} ({bucket.percent}%)
@@ -389,3 +439,44 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
     </Modal>
   );
 }
+
+const scaleStyles = StyleSheet.create({
+  gradientBar: {
+    flexDirection: 'row',
+    width: '100%',
+    height: scale(16),
+    borderRadius: RADIUS.xs,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  marker: {
+    position: 'absolute',
+    top: -4,
+    width: 2,
+    height: scale(16) + 8,
+    alignItems: 'center',
+    marginLeft: -1,
+  },
+  markerLine: {
+    width: 2,
+    height: '100%',
+    backgroundColor: COLORS.textPrimary,
+    borderRadius: 1,
+  },
+  tickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 6,
+  },
+  tickText: {
+    fontSize: FONTS.xs,
+    color: COLORS.textMuted,
+  },
+  avgLabel: {
+    fontSize: FONTS.xs,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+    fontWeight: FONTS.medium,
+  },
+});

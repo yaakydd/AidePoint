@@ -6,9 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
-  savePin, verifyPin,
+  savePin, verifyPin, isPinCreated,
   isBiometricAvailable, authenticateWithBiometrics,
 } from '../utils/reportPin';
+import { supabase } from '../utils/supabase';
 import { COLORS, FONTS, SPACING, RADIUS, scale, vScale } from '../assets/theme';
 
 const PIN_LENGTH = 4;
@@ -62,7 +63,24 @@ export default function PinModal({ mode, userId, onSuccess }) {
         setConfirmPin('');
         return;
       }
+
+      // Check before saving -- distinguishes a genuine reset (user already
+      // had a PIN) from first-time creation, so only a reset notifies the
+      // user. First-time setup via PinSetup.js's onboarding flow never
+      // reaches this branch, but PinModal can also be used to (re)create a
+      // PIN from the Reports screen, which is the actual reset path.
+      const hadExistingPin = await isPinCreated(userId);
+
       await savePin(userId, pin);
+
+      if (hadExistingPin) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Report PIN Reset',
+          body: 'Your AidePoint report PIN was successfully changed. If you did not make this change, contact support immediately.',
+        });
+      }
+
       onSuccess();
     } else {
       // Verify mode
@@ -190,10 +208,6 @@ export default function PinModal({ mode, userId, onSuccess }) {
   );
 }
 
-// Styles mirror PinSetup.js's scale()-based, full-bleed brand-colour
-// design 1:1 , same iconWrap/dot/key sizing and spacing tokens , so
-// PIN creation (onboarding) and PIN verification/re-creation (Reports)
-// now look like the same product surface instead of two different ones.
 export const styles = StyleSheet.create({
   safe: {
     flex: 1,
