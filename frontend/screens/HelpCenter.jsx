@@ -114,7 +114,7 @@ const HelpCenter = () => {
 
           <TouchableOpacity
             style={styles.row}
-            onPress={() => Linking.openURL('mailto:support@aidebot.gmail.com')}
+            onPress={() => Linking.openURL('mailto:aidepoint171@gmail.com')}
             activeOpacity={0.7}
           >
             <View style={[styles.iconBox, { backgroundColor: COLORS.infoBg }]}>

@@ -234,7 +234,7 @@ const Chatbot = () => {
         const body =
             `Issue description:\n${bugReport} \nChat history (${activeSession.title}):\n${transcript}`;
 
-        const url = `mailto:support@aidebot.gmail.com?subject=Bug Report&body=${encodeURIComponent(body)}`;
+        const url = `mailto:aidepoint171@gmail.com?subject=Bug Report&body=${encodeURIComponent(body)}`;
         Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open email app."));
         setIsBugModalVisible(false);
         setBugReport("");
