@@ -86,7 +86,7 @@ export default function ProfileScreen() {
   async function handleChangeAvatar() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission Needed', 'Allow photo library access to set a profile picture.');
+      ('Permission Needed', 'Allow photo library access to set a profile picture.');
       return;
     }
 
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
 
     } catch (err) {
       console.error('Avatar upload failed:', err);
-      Alert.alert('Upload Failed', err.message ?? 'Could not update your profile picture.');
+      ('Upload Failed', err.message ?? 'Could not update your profile picture.');
     } finally {
       setUploadingAvatar(false);
     }
