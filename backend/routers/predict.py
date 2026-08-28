@@ -59,6 +59,16 @@ async def predict(
       - Every completed prediction is persisted to prediction_records for
         audit purposes, independent of the response returned to the app
 
+    Scan limit contract:
+      - check_and_enforce_scan_limit() is the single, authoritative place
+        the daily limit (base + consent-gated bonus) is computed and
+        enforced. Its ScanLimitStatus is carried through to
+        response_payload as scans_remaining_today, so the app's "N
+        remaining" banner and this endpoint's own 429 enforcement always
+        agree -- they were previously computed independently on the
+        client (a separate scans table, local midnight, no consent
+        check on the bonus) and could disagree with the server.
+
     Condition contract (see services/condition.py -- the single place this
     is decided; this docstring is a summary, not the source of truth):
       - is_unreliable always wins -> "unknown", regardless of is_anemic.
@@ -89,10 +99,11 @@ async def predict(
             detail="Model not loaded yet. Try again in a few seconds.",
         )
 
-    # Authoritative daily scan-limit check (see scanStorage.js for the
-    # client-side pre-check this backs up). Runs before we even read the
-    # upload, so an over-limit request fails cheaply.
-    check_and_enforce_scan_limit(_supabase_client, user["id"])
+    # Authoritative daily scan-limit check. Runs before we even read the
+    # upload, so an over-limit request fails cheaply. scan_limit_status is
+    # threaded through to response_payload below so the app's "N
+    # remaining" display and this endpoint's own enforcement always agree.
+    scan_limit_status = check_and_enforce_scan_limit(_supabase_client, user["id"])
 
     if not patient_sample_id.strip():
         raise HTTPException(
@@ -105,7 +116,7 @@ async def predict(
             detail="patient_sample_id is too long (max 255 characters).",
         )
 
-    # Validate file type 
+    # Validate file type
     content_type: str = file.content_type or ""
     if content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
@@ -113,7 +124,7 @@ async def predict(
             detail=f"Unsupported file type: {content_type}. Send JPEG,JPG or PNG.",
         )
 
-    #  Read and size-check 
+    # Read and size-check
     image_bytes: bytes = await file.read()
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(
@@ -167,7 +178,7 @@ async def predict(
             },
         )
 
-    #  Inference 
+    # Inference
     t0 = time.perf_counter()
     try:
         result = _model.predict(
@@ -183,7 +194,6 @@ async def predict(
             detail="Inference failed. Please try again.",
         )
     elapsed_ms: float = round((time.perf_counter() - t0) * 1000, 1)
-
 
     result["image_quality_warning"] = quality_result.quality_score == "poor"
 
@@ -305,6 +315,9 @@ async def predict(
         "original_preview_base64": preprocessed.original_preview_base64,
         "cropped_preview_base64": preprocessed.cropped_preview_base64,
         "image_quality": quality_result.__dict__,
+        "scans_remaining_today": (
+            scan_limit_status.scans_remaining if scan_limit_status else None
+        ),
     }
 
     return JSONResponse(content=response_payload)
