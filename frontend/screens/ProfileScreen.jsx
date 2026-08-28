@@ -163,50 +163,6 @@ export default function ProfileScreen() {
     );
   }
 
-  function handleDeleteAccount() {
-    Alert.alert(
-      'Delete Account',
-      'This permanently deletes your AidePoint account, including your profile, saved reports, and chat history. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Are you absolutely sure?',
-              'Type nothing needed , tapping Delete below will erase your account immediately.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete My Account',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      const { error } = await supabase.functions.invoke('delete-account');
-                      if (error) throw error;
-
-                      await Promise.all([
-                        clearReports(user.id),
-                        clearAllSessions(user.id),
-                        clearPin(user.id),
-                        deleteAllScanImages(user.id),
-                      ]);
-
-                      await deleteAccountSignOut();
-                    } catch (err) {
-                      Alert.alert('Error', err.message ?? 'Could not delete your account. Please try again or contact support.');
-                    }
-                  },
-                },
-              ],
-            );
-          },
-        },
-      ],
-    );
-  }
-
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
