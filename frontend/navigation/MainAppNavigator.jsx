@@ -92,7 +92,7 @@ function MainAppNavigator() {
               <Ionicons
                 name={iconName}
                 size={24}
-                color={focused ? COLORS.primaryDark : COLORS.textMuted}
+                color={focused ? COLORS.primary : COLORS.textMuted}
               />
             );
           },

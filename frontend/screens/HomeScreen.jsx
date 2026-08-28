@@ -189,17 +189,19 @@ const HomeScreen = () => {
       });
 
       const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weeklyData = DAY_NAMES.map((day, dayIndex) => {
-        const diff = (todayDate.getDay() - dayIndex + 7) % 7;
-        const date = new Date(todayDate);
-        date.setDate(date.getDate() - diff);
-        return {
-          day,
-          dayIndex,
-          count: countByDay[dayIndex] ?? 0,
-          date: date.toISOString(),
-        };
-      });
+const startOfWeek = new Date(todayDate);
+startOfWeek.setDate(todayDate.getDate() - todayDate.getDay()); // back up to Sunday
+
+const weeklyData = DAY_NAMES.map((day, dayIndex) => {
+  const date = new Date(startOfWeek);
+  date.setDate(startOfWeek.getDate() + dayIndex); // move forward from Sunday
+  return {
+    day,
+    dayIndex,
+    count: countByDay[dayIndex] ?? 0,
+    date: date.toISOString(),
+  };
+});
 
       setStats({
         todayCount: todayRes.count ?? 0,
