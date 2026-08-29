@@ -13,7 +13,6 @@ have time, they answer different questions.
 
 from dataclasses import dataclass
 from typing import Any
-
 from services.model import MORPHOLOGY_REPORTING_THRESHOLDS
 
 # Per-flag threshold above which a morphology flag is considered a
