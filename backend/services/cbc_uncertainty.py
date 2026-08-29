@@ -14,16 +14,49 @@ suppresses point estimates for fields where the error exceeds a
 clinically meaningful fraction of the reference range.
 """
 
+import os
+import json
 from dataclasses import dataclass
 
-CBC_REFERENCE_RANGES = {
-    "RBC": (4.2, 5.9),            # x10^12/L
-    "HAEMOGLOBIN": (12.0, 16.0),  # g/dL
-    "HAEMATOCRIT": (36.0, 46.0),  # %
-    "MCV": (80.0, 100.0),         # fL
-    "MCH": (27.0, 33.0),          # pg
-    "MCHC": (32.0, 36.0),         # g/dL
-}
+# CBC_REFERENCE_RANGES used to be hand-typed here from memory and had
+# quietly drifted from the ranges eval_report.json's MAE values were
+# actually computed against in the training notebook (Cell 1's
+# CBC_CLINICAL_REFERENCE_RANGES) -- e.g. RBC (4.2, 5.9) here vs. the real
+# (4.0, 5.2) used for evaluation. Since this file's suppression decision
+# is MAE / range_width, that mismatch silently flipped RBC from
+# "not_estimable" (correct, given its real 0.78 MAE/range ratio) to "low"
+# (shown to the technician) -- exactly the patient-safety failure mode
+# this module's own docstring says it exists to prevent.
+#
+# Now loaded from feature_config.json's "cbc_clinical_reference_ranges",
+# the same single source of truth Cell 9 exports and model.py's
+# CBC_NORMALIZATION_RANGES should eventually also read from. No more
+# hand-copied numbers to drift out of sync.
+FEATURE_CONFIG_PATH: str = os.getenv(
+    "FEATURE_CONFIG_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "models", "feature_config.json"),
+)
+
+
+def _load_cbc_reference_ranges() -> dict[str, tuple[float, float]]:
+    if not os.path.exists(FEATURE_CONFIG_PATH):
+        raise FileNotFoundError(
+            f"feature_config.json not found at {FEATURE_CONFIG_PATH}. This file "
+            f"must be committed alongside model.py -- see Cell 9 in the training "
+            f"notebook. Without it, CBC reliability suppression cannot be "
+            f"computed against the same reference ranges the model was "
+            f"evaluated against, and this module would have to fall back to "
+            f"a hand-typed (and previously wrong) copy."
+        )
+    with open(FEATURE_CONFIG_PATH) as feature_config_file:
+        feature_config = json.load(feature_config_file)
+    return {
+        field_name: tuple(bounds)
+        for field_name, bounds in feature_config["cbc_clinical_reference_ranges"].items()
+    }
+
+
+CBC_REFERENCE_RANGES: dict[str, tuple[float, float]] = _load_cbc_reference_ranges()
 
 # If a field's MAE exceeds this fraction of its reference range width,
 # a directional estimate is not trustworthy enough to show at all 

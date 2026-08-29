@@ -225,7 +225,7 @@ const ForgotPassword = () => {
       >
 
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.ry} />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.black} />
         </TouchableOpacity>
 
         <View style={styles.stepRow}>
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   checkFail:     { color: '#9CA3AF' },
 
   btn: {
-    backgroundColor: COLORS.ry,
+    backgroundColor: COLORS.primary,
     padding: 15, borderRadius: 12,
     marginTop: 24, alignItems: 'center',
   },

@@ -21,6 +21,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { HEADER, COLORS } from '../assets/theme';
 import { getTabBarHeight } from '../navigation/MainAppNavigator';
+import DeleteAccountModal from '../components/DeleteAccountModal';
 
 const AVATAR_BUCKET = 'avatars';
 
@@ -48,6 +49,8 @@ export default function ProfileScreen() {
   const [storeImages, setStoreImages] = useState(user?.storeImages ?? false);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const initials  = getInitials(user?.name);
   const roleLabel = ROLE_DISPLAY[user?.role] || 'Lab Technician';
@@ -86,7 +89,7 @@ export default function ProfileScreen() {
   async function handleChangeAvatar() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      ('Permission Needed', 'Allow photo library access to set a profile picture.');
+      Alert.alert('Permission Needed', 'Allow photo library access to set a profile picture.');
       return;
     }
 
@@ -123,7 +126,7 @@ export default function ProfileScreen() {
 
     } catch (err) {
       console.error('Avatar upload failed:', err);
-      ('Upload Failed', err.message ?? 'Could not update your profile picture.');
+      Alert.alert('Upload Failed', err.message ?? 'Could not update your profile picture.');
     } finally {
       setUploadingAvatar(false);
     }
@@ -161,6 +164,46 @@ export default function ProfileScreen() {
         { text: 'Sign Out', style: 'destructive', onPress: logout },
       ],
     );
+  }
+
+  // Opens the confirmation modal (requires typing DELETE) — does not delete anything itself.
+  function handleDeleteAccount() {
+    setShowDeleteModal(true);
+  }
+
+  // Called by DeleteAccountModal once the user has typed DELETE and confirmed.
+  async function confirmDeleteAccount() {
+    if (!user?.id) return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Clean up storage FIRST — deleteAllScanImages needs a valid
+      //    Supabase session/JWT under RLS, which won't exist after the
+      //    auth user is deleted in step 2. A storage failure here is
+      //    logged but does not block account deletion.
+      try {
+        await deleteAllScanImages(user.id);
+      } catch (storageErr) {
+        console.error('Failed to delete scan images before account deletion:', storageErr);
+      }
+
+      // 2. Invoke the edge function to delete the auth user
+      //    (and associated DB rows, per the delete-account function).
+      const { error } = await supabase.functions.invoke('delete-account');
+      if (error) throw error;
+
+      // 3. Close modal, then clear local auth state / navigate to auth stack.
+      setShowDeleteModal(false);
+      await deleteAccountSignOut();
+    } catch (err) {
+      console.error('Account deletion failed:', err);
+      Alert.alert(
+        'Something went wrong',
+        "We couldn't delete your account. Please try again or contact support."
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -329,6 +372,13 @@ export default function ProfileScreen() {
 
         <Text style={styles.version}>AIDEPOINT V1.0.0</Text>
       </ScrollView>
+
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        isDeleting={isDeleting}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteAccount}
+      />
     </SafeAreaView>
   );
 }

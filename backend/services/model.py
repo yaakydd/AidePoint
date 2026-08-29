@@ -12,36 +12,45 @@ from services.shape_screening import (
     CellOverlayResult
 )
 
-# CBC metadata matches the CBC words during training exactly
-# Has 6 fields with real visual
-# grounding in a red-blood-cell photo. WBC and the white-cell differential
-# (neutrophils/lymphocytes/monocytes/eosinophils) are not included; a photo of
-# red cells contains no information about white cells, so training on
-# them was asking the model to guess something it structurally cannot
-# see. Platelets/MPV removed for the same reason. RDW_CV removed because
-# only 43% of training records had a real value for it.
-CBC_KEYS: list[str] = [
-    'RBC', 'HAEMOGLOBIN', 'HAEMATOCRIT', 'MCV', 'MCH', 'MCHC',
-]
+# CBC_KEYS / MORPHOLOGY_KEYS / CBC_NORMALIZATION_RANGES used to be
+# hand-typed here, duplicating the notebook's CBC_FIELD_NAMES /
+# MORPHOLOGY_FIELD_NAMES / CBC_NORMALIZATION_RANGES by hand -- exactly
+# the kind of duplication that let the sickle-cell labeling gap go
+# unnoticed, and that later caused cbc_uncertainty.py's reference ranges
+# to drift out of sync with the notebook (see that file's history). Cell
+# 9 in the training notebook exports feature_config.json specifically so
+# this never has to be hand-copied again; this now loads from it.
+#
+# WBC and the white-cell differential (neutrophils/lymphocytes/monocytes/
+# eosinophils) are not included; a photo of red cells contains no
+# information about white cells, so training on them was asking the
+# model to guess something it structurally cannot see. Platelets/MPV
+# removed for the same reason. RDW_CV removed because only 43% of
+# training records had a real value for it. elliptocytosis was added
+# after a systematic scan of training reports found it mentioned in 433
+# of 1,000 patients with zero prior label vocabulary catching it.
+FEATURE_CONFIG_PATH: str = os.getenv(
+    "FEATURE_CONFIG_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "models", "feature_config.json"),
+)
 
-# elliptocytosis was added after a systematic scan of training reports found
-# it mentioned in 433 of 1,000 patients with zero prior label vocabulary
-# catching it which unlike sickle cell/malaria/leukemia (too few real
-# examples to safely label), 433 patients was enough real labeled data
-# to add this as a genuine training target.
-MORPHOLOGY_KEYS: list[str] = [
-    'dimorphic_picture', 'anisocytosis', 'hypochromia', 'microcytosis',
-    'macrocytosis', 'poikilocytosis', 'target_cells', 'elliptocytosis',
-    'normal_morphology',
-]
+if not os.path.exists(FEATURE_CONFIG_PATH):
+    raise FileNotFoundError(
+        f"feature_config.json not found at {FEATURE_CONFIG_PATH}. This file "
+        f"must be committed alongside model.py -- see Cell 9 in the training "
+        f"notebook. Without it, field names/order and CBC normalization "
+        f"ranges cannot be guaranteed to match what the model was actually "
+        f"trained and evaluated against, so this fails startup loudly rather "
+        f"than silently falling back to a hand-typed copy that could drift."
+    )
+with open(FEATURE_CONFIG_PATH) as _feature_config_file:
+    _FEATURE_CONFIG: dict = json.load(_feature_config_file)
 
+CBC_KEYS: list[str] = _FEATURE_CONFIG["cbc_field_names"]
+MORPHOLOGY_KEYS: list[str] = _FEATURE_CONFIG["morphology_field_names"]
 CBC_NORMALIZATION_RANGES: dict[str, tuple[float, float]] = {
-    'RBC': (0.0, 10.0),
-    'HAEMOGLOBIN': (0.0, 25.0),
-    'HAEMATOCRIT': (0.0, 70.0),
-    'MCV': (50.0, 130.0),
-    'MCH': (10.0, 50.0),
-    'MCHC': (20.0, 45.0),
+    field_name: tuple(bounds)
+    for field_name, bounds in _FEATURE_CONFIG["cbc_normalization_ranges"].items()
 }
 
 EVAL_REPORT_PATH: str = os.getenv(
@@ -101,6 +110,46 @@ def build_morphology_reliability_flags() -> dict[str, bool]:
 
 
 MORPHOLOGY_FLAG_IS_RELIABLE: dict[str, bool] = build_morphology_reliability_flags()
+
+
+# Per-flag decision thresholds from Cell 10's F2-optimized sweep, e.g.
+# {"anisocytosis": 0.35, "target_cells": 0.40, ...}. Previously
+# prediction_helpers.py and morphology_explanations.py both hardcoded a
+# blanket 0.5 for every flag, which meant the "moderate" flags
+# (anisocytosis, target_cells) never actually got the threshold tuning
+# the notebook computed for them -- they were suppressed/shown at the
+# same 0.30 F1 bar as everything else, but "present/absent" itself still
+# used the untuned default. Falls back to blanket 0.5 for any flag not
+# present in the file (or if the file is missing entirely), which is the
+# same behavior this replaces, so this is a pure improvement with no new
+# failure mode: worst case, a flag just doesn't get thresholded any
+# differently than before.
+TUNED_MORPHOLOGY_THRESHOLDS_PATH: str = os.getenv(
+    "TUNED_MORPHOLOGY_THRESHOLDS_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "models", "tuned_morphology_thresholds.json"),
+)
+DEFAULT_MORPHOLOGY_REPORTING_THRESHOLD: float = 0.5
+
+
+def load_morphology_reporting_thresholds() -> dict[str, float]:
+    if not os.path.exists(TUNED_MORPHOLOGY_THRESHOLDS_PATH):
+        print(
+            f"[AidePoint] NOTE: {TUNED_MORPHOLOGY_THRESHOLDS_PATH} not found -- "
+            f"all morphology flags will use the untuned default threshold "
+            f"({DEFAULT_MORPHOLOGY_REPORTING_THRESHOLD}). Copy the real file "
+            f"from Colab's EVALUATION_DIRECTORY (Cell 10 output) into "
+            f"backend/models/ to enable per-flag tuned thresholds."
+        )
+        return {key: DEFAULT_MORPHOLOGY_REPORTING_THRESHOLD for key in MORPHOLOGY_KEYS}
+    with open(TUNED_MORPHOLOGY_THRESHOLDS_PATH) as tuned_thresholds_file:
+        tuned_thresholds_raw: dict[str, float] = json.load(tuned_thresholds_file)
+    return {
+        key: float(tuned_thresholds_raw.get(key, DEFAULT_MORPHOLOGY_REPORTING_THRESHOLD))
+        for key in MORPHOLOGY_KEYS
+    }
+
+
+MORPHOLOGY_REPORTING_THRESHOLDS: dict[str, float] = load_morphology_reporting_thresholds()
 
 
 _VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("optimal_threshold")

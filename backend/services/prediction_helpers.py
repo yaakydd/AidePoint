@@ -147,12 +147,20 @@ def _build_morphology_findings(morphology_probs: dict[str, float]) -> dict[str, 
     observed_indicators. The stored audit record should retain what the
     model actually output, independent of what a report chooses to
     display.
+
+    Threshold is per-flag (see model.MORPHOLOGY_REPORTING_THRESHOLDS,
+    sourced from Cell 10's F2-optimized sweep), not a single blanket 0.5
+    -- previously every flag used the same untuned 0.5 cutoff regardless
+    of whether that flag's own threshold sweep found a better operating
+    point, which meant the "moderate" flags (anisocytosis, target_cells)
+    weren't actually getting the tuning the notebook computed for them.
     """
-    reporting_threshold = 0.5
+    from services.model import MORPHOLOGY_REPORTING_THRESHOLDS
+
     return {
         flag_name: {
             "probability": probability,
-            "flagged": probability >= reporting_threshold,
+            "flagged": probability >= MORPHOLOGY_REPORTING_THRESHOLDS.get(flag_name, 0.5),
         }
         for flag_name, probability in morphology_probs.items()
     }

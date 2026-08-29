@@ -13,22 +13,22 @@ import { styles } from '../styles/ConsentStyles';
 const INFO_ITEMS = [
   {
     icon: 'cloud-check-outline',
-    color: '#10B981',
-    bg: '#ECFDF5',
+    color: COLORS.success,
+    bg: COLORS.successBg,
     title: 'If you allow storage',
     body: 'Blood smear images are uploaded to secure cloud storage.',
   },
   {
     icon: 'eye-off-outline',
-    color: '#6366F1',
-    bg: '#EEF2FF',
+    color: COLORS.info,
+    bg: COLORS.infoBg,
     title: 'If you decline',
     body: 'Images are used only for AI analysis and discarded right after. Reports are still generated — only the image itself is not kept.',
   },
   {
     icon: 'pencil-outline',
-    color: '#F59E0B',
-    bg: '#FFFBEB',
+    color: COLORS.warning,
+    bg: COLORS.warningBg,
     title: 'You can change this later',
     body: 'Update this anytime from Profile → Data & Privacy, even while offline — it will sync once you\'re back online.',
   },
@@ -104,7 +104,7 @@ export default function ConsentScreen() {
             <MaterialCommunityIcons
               name={storeImages ? 'cloud-check' : 'cloud-off-outline'}
               size={24}
-              color={storeImages ? '#10B981' : COLORS.textMuted}
+              color={storeImages ? COLORS.success : COLORS.textMuted}
             />
             <View>
               <Text style={styles.toggleLabel}>
@@ -121,8 +121,8 @@ export default function ConsentScreen() {
           <Switch
             value={storeImages}
             onValueChange={setStoreImages}
-            trackColor={{ false: COLORS.border, true: '#A7F3D0' }}
-            thumbColor={storeImages ? '#10B981' : COLORS.textSecondary}
+            trackColor={{ false: COLORS.border, true: COLORS.successBg === COLORS.surfaceAlt ? '#A7F3D0' : '#A7F3D0' }}
+            thumbColor={storeImages ? COLORS.success : COLORS.textSecondary}
           />
         </View>
 

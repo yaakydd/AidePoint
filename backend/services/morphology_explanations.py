@@ -14,9 +14,18 @@ have time, they answer different questions.
 from dataclasses import dataclass
 from typing import Any
 
-# Threshold above which a morphology flag is considered a contributing
-# indicator worth surfacing to the technician, rather than background noise.
-MORPHOLOGY_REPORTING_THRESHOLD = 0.5
+from services.model import MORPHOLOGY_REPORTING_THRESHOLDS
+
+# Per-flag threshold above which a morphology flag is considered a
+# contributing indicator worth surfacing to the technician, rather than
+# background noise. Sourced from model.MORPHOLOGY_REPORTING_THRESHOLDS
+# (Cell 10's F2-optimized per-flag sweep, falling back to 0.5 for any
+# flag without a tuned value) -- previously this was a single hardcoded
+# 0.5 for every flag, which meant flags whose own threshold sweep found
+# a different optimal cutoff (e.g. a lower threshold to recover recall
+# on a low-prevalence flag) were never actually evaluated at that
+# cutoff here, only in the offline sweep.
+DEFAULT_MORPHOLOGY_REPORTING_THRESHOLD = 0.5
 
 MORPHOLOGY_DISPLAY_NAMES: dict[str, str] = {
     "dimorphic_picture": "Dimorphic red cell population detected",
@@ -128,7 +137,9 @@ def build_explanation(
     observed_indicators = [
         MORPHOLOGY_DISPLAY_NAMES.get(flag_name, flag_name.replace("_", " ").capitalize())
         for flag_name, probability in morphology_probabilities.items()
-        if probability >= MORPHOLOGY_REPORTING_THRESHOLD
+        if probability >= MORPHOLOGY_REPORTING_THRESHOLDS.get(
+            flag_name, DEFAULT_MORPHOLOGY_REPORTING_THRESHOLD
+        )
         and flag_name != "normal_morphology"
     ]
 
