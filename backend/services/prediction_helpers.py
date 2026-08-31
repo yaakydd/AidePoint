@@ -15,7 +15,7 @@ class ScanLimitStatus:
     scans_remaining: int      # after this attempt is counted
 
 
-def _has_image_consent(supabase_client, user_id: str) -> bool:
+def has_image_consent(supabase_client, user_id: str) -> bool:
     """
     Server-side mirror of the frontend's hasImageConsent() in
     scanStorage.js. Fails closed, same as the frontend: if consent
@@ -33,6 +33,11 @@ def _has_image_consent(supabase_client, user_id: str) -> bool:
     except Exception as exc:
         log.warning("Failed to check image consent for user %s: %s", user_id, exc)
         return False  # fail closed
+
+
+# Kept as an internal alias -- check_and_enforce_scan_limit below already
+# calls this under its old private name.
+_has_image_consent = has_image_consent
 
 
 def check_and_enforce_scan_limit(supabase_client, user_id: str) -> ScanLimitStatus | None:
