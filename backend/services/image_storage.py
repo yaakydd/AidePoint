@@ -103,6 +103,7 @@ def route_and_upload_screening_image(
     anemia_probability: float,
     decision_threshold: float,
     is_unreliable: bool,
+    known_image_consent: bool | None = None,
 ) -> StorageRouteResult | None:
     """
     Determines the bucket prefix, uploads the image, and returns the
@@ -120,6 +121,13 @@ def route_and_upload_screening_image(
     frontend could still have their *analyzed* image uploaded here on
     the backend -- the same profiles.store_images preference now
     governs both uploads, not just the frontend one.
+
+    known_image_consent: pass check_and_enforce_scan_limit()'s already-
+    computed ScanLimitStatus.image_consent here when available, so this
+    function doesn't re-query profiles a second time per request. Only
+    falls back to querying has_image_consent() itself when this is None
+    (e.g. an unlimited-tier technician, where check_and_enforce_scan_limit
+    returns None before consent is ever computed).
     """
     bucket_prefix = determine_storage_bucket(
         anemia_probability, decision_threshold, is_unreliable
@@ -139,7 +147,12 @@ def route_and_upload_screening_image(
         )
         return None
 
-    if not has_image_consent(supabase_client, technician_id):
+    consented = (
+        known_image_consent
+        if known_image_consent is not None
+        else has_image_consent(supabase_client, technician_id)
+    )
+    if not consented:
         log.info(
             "Screening image not saved for technician=%r (image-storage "
             "consent is off in their profile, profiles.store_images). "
