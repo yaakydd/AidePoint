@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import cv2
 from dataclasses import asdict
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, Request, status
 from fastapi.responses import JSONResponse
@@ -18,6 +19,7 @@ from services.preprocess import preprocess_image, PreprocessResult
 from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
 from services.morphology_explanations import build_explanation, classify_confidence, Explanation
 from services.audit_trail import build_prediction_record, persist_prediction_record
+from services.image_storage import route_and_upload_screening_image
 from services.prediction_helpers import (
     _extract_image_quality_fields,
     _build_morphology_findings,
@@ -241,6 +243,20 @@ async def predict(
             "flagged_count": 0,
         }
 
+    # Route the analyzed image into the "screenings" bucket
+    # (anemia/healthy/unknown prefix) and attach its confidence score.
+    # Best-effort: a storage failure must not fail the /predict response,
+    # matching how persist_prediction_record's failure is handled below.
+    _, _png_encoded = cv2.imencode(".png", preprocessed.raw_resized_image)
+    storage_route = route_and_upload_screening_image(
+        supabase_client=_supabase_client,
+        patient_session_id=patient_sample_id,
+        analyzed_image_png_bytes=_png_encoded.tobytes(),
+        anemia_probability=result["anemia_probability"],
+        decision_threshold=result["decision_threshold"],
+        is_unreliable=result["is_unreliable"],
+    )
+
     cbc_pattern_summary = serialize_pattern_summary(
         build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
     )
@@ -289,6 +305,8 @@ async def predict(
                 explanation=explanation_dict,
                 temperature=temperature,
                 blood_pressure=blood_pressure,
+                storage_bucket_path=(storage_route.storage_path if storage_route else None),
+                storage_confidence_score=(storage_route.confidence_score if storage_route else None),
             )
             prediction_id = persist_prediction_record(_supabase_client, record)
         except Exception as exc:
@@ -310,6 +328,8 @@ async def predict(
         "explanation": explanation_dict,
         "prediction_confidence": prediction_confidence,
         "prediction_id": prediction_id,
+        "storage_bucket": (storage_route.bucket_prefix if storage_route else None),
+        "storage_confidence_score": (storage_route.confidence_score if storage_route else None),
         "inference_ms": elapsed_ms,
         "was_cropped": preprocessed.was_cropped,
         "original_preview_base64": preprocessed.original_preview_base64,
