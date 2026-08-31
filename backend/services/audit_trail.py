@@ -37,6 +37,8 @@ class PredictionRecord:
     condition: str
     temperature: str | None = None
     blood_pressure: str | None = None
+    storage_bucket_path: str | None = None
+    storage_confidence_score: float | None = None
     lab_tech_notes: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -59,6 +61,8 @@ def build_prediction_record(
     explanation: dict[str, Any],
     temperature: str | None = None,
     blood_pressure: str | None = None,
+    storage_bucket_path: str | None = None,
+    storage_confidence_score: float | None = None,
 ) -> PredictionRecord:
     """
     Assembles a PredictionRecord from the pieces that already exist in
@@ -92,6 +96,8 @@ def build_prediction_record(
         condition=prediction_result["condition"],
         temperature=temperature,
         blood_pressure=blood_pressure,
+        storage_bucket_path=storage_bucket_path,
+        storage_confidence_score=storage_confidence_score,
     )
 
 def persist_prediction_record(supabase_client: Client, record: PredictionRecord) -> str:
@@ -121,6 +127,8 @@ def persist_prediction_record(supabase_client: Client, record: PredictionRecord)
         "condition": record.condition,
         "temperature": record.temperature,
         "blood_pressure": record.blood_pressure,
+        "storage_bucket_path": record.storage_bucket_path,
+        "storage_confidence_score": record.storage_confidence_score,
         "lab_tech_notes": record.lab_tech_notes,
         "created_at": record.created_at.isoformat(),
     }
