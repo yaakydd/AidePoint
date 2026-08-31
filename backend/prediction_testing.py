@@ -11,7 +11,16 @@ if not ACCESS_TOKEN:
         "Run: export AIDEPOINT_TEST_TOKEN='your_token_here'"
     )
 
-IMAGE_PATH = "/home/yaa_baby/Downloads/Testing_Images/malaria.jpg"
+IMAGE_PATH = os.environ.get(
+    "AIDEPOINT_TEST_IMAGE",
+    "/home/yaa_baby/Downloads/Testing_Images/malaria.jpg",
+)
+if not os.path.isfile(IMAGE_PATH):
+    raise RuntimeError(
+        f"Test image not found at {IMAGE_PATH!r}. Set "
+        f"AIDEPOINT_TEST_IMAGE to a real image path, e.g.:\n"
+        f"  export AIDEPOINT_TEST_IMAGE='/path/to/image.jpg'"
+    )
 
 # /predict requires patient_sample_id as a form field alongside the file --
 # without it the request 400s before inference ever runs. Any non-empty
@@ -43,6 +52,8 @@ with open(IMAGE_PATH, "rb") as image_file:
             )
         },
         data=form_data,
+        timeout=60,  # ONNX inference + Supabase writes; a hang here should
+                     # fail loudly rather than block the script forever.
     )
 
 print("Status code:", response.status_code)
@@ -122,6 +133,18 @@ elif response.status_code == 422:
 
     with open("predict_response.json", "w") as output_file:
         json.dump(error_body, output_file, indent=2)
+
+elif response.status_code == 429:
+    # Daily scan limit reached (see check_and_enforce_scan_limit in
+    # services/prediction_helpers.py). Distinct from every case above --
+    # the request was well-formed and the model would have run, but this
+    # technician is out of scans for today under their subscription tier.
+    error_body = response.json()
+    detail = error_body.get("detail", {})
+    print("Daily scan limit reached:")
+    print("  message:", detail.get("message"))
+    print("  tier:", detail.get("tier"))
+    print("  daily_limit:", detail.get("daily_limit"))
 
 elif response.status_code == 503:
     # Model not loaded yet -- distinct from the 400 patient_sample_id
