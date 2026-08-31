@@ -2,9 +2,18 @@
 Uploads analyzed screening images to the existing "scan-images" Supabase
 Storage bucket, routed under one of three path prefixes:
 
-    scan-images/anemia/{patient_session_id}_{utc_timestamp}.png
-    scan-images/healthy/{patient_session_id}_{utc_timestamp}.png
-    scan-images/unknown/{patient_session_id}_{utc_timestamp}.png
+    scan-images/{technician_id}/anemia/{patient_session_id}_{utc_timestamp}.png
+    scan-images/{technician_id}/healthy/{patient_session_id}_{utc_timestamp}.png
+    scan-images/{technician_id}/unknown/{patient_session_id}_{utc_timestamp}.png
+
+The {technician_id} prefix is required, not cosmetic: the bucket's
+existing RLS policies (see scan_images_columns_migration.sql) gate
+SELECT/UPDATE/DELETE on (storage.foldername(name))[1] = auth.uid(). A
+path that doesn't start with the uploading technician's own UID would
+upload fine (the backend uses the service-role key, which bypasses RLS)
+but could never be read back by that technician through their own
+session -- only through the backend re-fetching it with service-role
+privileges. Prefixing here keeps both paths open.
 
 Routing (determine_storage_bucket) is deliberately independent of the
 `condition` string used elsewhere: `condition` already downgrades to
@@ -68,18 +77,25 @@ def compute_confidence_score(anemia_probability: float, decision_threshold: floa
     return round(min((decision_threshold - anemia_probability) / span, 1.0), 4)
 
 
-def build_storage_path(patient_session_id: str, bucket_prefix: str) -> str:
+def build_storage_path(technician_id: str, patient_session_id: str, bucket_prefix: str) -> str:
     utc_timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     # Guard against a patient_session_id containing path separators or
     # other characters that would escape the intended prefix.
     safe_session_id = "".join(
         ch for ch in patient_session_id if ch.isalnum() or ch in ("-", "_")
     ) or "unknown_session"
-    return f"{bucket_prefix}/{safe_session_id}_{utc_timestamp}.png"
+    # technician_id is a Supabase auth UID (uuid), not user input, so it
+    # isn't sanitized the same way -- but guard anyway in case that ever
+    # changes, rather than trusting it blindly in a storage path.
+    safe_technician_id = "".join(
+        ch for ch in technician_id if ch.isalnum() or ch in ("-", "_")
+    ) or "unknown_technician"
+    return f"{safe_technician_id}/{bucket_prefix}/{safe_session_id}_{utc_timestamp}.png"
 
 
 def route_and_upload_screening_image(
     supabase_client: Client | None,
+    technician_id: str,
     patient_session_id: str,
     analyzed_image_png_bytes: bytes,
     anemia_probability: float,
@@ -98,17 +114,17 @@ def route_and_upload_screening_image(
         anemia_probability, decision_threshold, is_unreliable
     )
     confidence_score = compute_confidence_score(anemia_probability, decision_threshold)
-    storage_path = build_storage_path(patient_session_id, bucket_prefix)
+    storage_path = build_storage_path(technician_id, patient_session_id, bucket_prefix)
 
     if supabase_client is None:
         log.error(
             "Screening image NOT saved (Supabase client not configured on "
-            "this server) -- session_id=%r would have gone to bucket "
-            "'%s/%s'. The /predict response was not affected, but this "
-            "image and its confidence score are lost. Fix: set the "
+            "this server) -- session_id=%r for technician=%r would have "
+            "gone to '%s/%s'. The /predict response was not affected, but "
+            "this image and its confidence score are lost. Fix: set the "
             "Supabase env vars (URL + service role key) so the backend "
             "can create a Supabase client on startup.",
-            patient_session_id, BUCKET_NAME, storage_path,
+            patient_session_id, technician_id, BUCKET_NAME, storage_path,
         )
         return None
 
@@ -120,14 +136,14 @@ def route_and_upload_screening_image(
         )
     except Exception as exc:
         log.error(
-            "Screening image upload FAILED for session_id=%r -- tried to "
-            "save to '%s/%s' but got a %s: %s. The /predict response was "
-            "not affected, but this image and its confidence score are "
-            "lost. Common causes: the 'screenings' bucket doesn't exist "
-            "yet in Supabase Storage (run the migration SQL), the "
-            "service-role key lacks storage permissions, or a network/"
+            "Screening image upload FAILED for session_id=%r "
+            "(technician=%r) -- tried to save to '%s/%s' but got a %s: "
+            "%s. The /predict response was not affected, but this image "
+            "and its confidence score are lost. Common causes: the "
+            "'scan-images' bucket's policies rejecting this path, the "
+            "service-role key lacking storage permissions, or a network/"
             "timeout error reaching Supabase.",
-            patient_session_id, BUCKET_NAME, storage_path,
+            patient_session_id, technician_id, BUCKET_NAME, storage_path,
             type(exc).__name__, exc,
         )
         return None
