@@ -31,6 +31,8 @@ from datetime import datetime, timezone
 
 from supabase import Client
 
+from services.prediction_helpers import has_image_consent
+
 log = logging.getLogger("aidepoint")
 
 BUCKET_NAME = "scan-images"
@@ -105,10 +107,19 @@ def route_and_upload_screening_image(
     """
     Determines the bucket prefix, uploads the image, and returns the
     route + confidence so the caller can persist/return both. Returns
-    None (rather than raising) if the Supabase client isn't configured
-    or the upload fails -- storage is best-effort and must never block
-    or fail the /predict response itself, the same way
-    persist_prediction_record's failure handling in predict.py works.
+    None (rather than raising) if the Supabase client isn't configured,
+    the technician hasn't consented to image storage, or the upload
+    fails -- storage is best-effort and must never block or fail the
+    /predict response itself, the same way persist_prediction_record's
+    failure handling in predict.py works.
+
+    Consent: mirrors the frontend's own gate in scanStorage.js
+    (uploadScanImage / hasImageConsent), which skips uploading the
+    original scan image when profiles.store_images is false. Before
+    this check existed, a technician who declined image storage on the
+    frontend could still have their *analyzed* image uploaded here on
+    the backend -- the same profiles.store_images preference now
+    governs both uploads, not just the frontend one.
     """
     bucket_prefix = determine_storage_bucket(
         anemia_probability, decision_threshold, is_unreliable
@@ -125,6 +136,17 @@ def route_and_upload_screening_image(
             "Supabase env vars (URL + service role key) so the backend "
             "can create a Supabase client on startup.",
             patient_session_id, technician_id, BUCKET_NAME, storage_path,
+        )
+        return None
+
+    if not has_image_consent(supabase_client, technician_id):
+        log.info(
+            "Screening image not saved for technician=%r (image-storage "
+            "consent is off in their profile, profiles.store_images). "
+            "session_id=%r was not uploaded to '%s'. This is expected "
+            "behavior, not an error -- the /predict response is not "
+            "affected.",
+            technician_id, patient_session_id, BUCKET_NAME,
         )
         return None
 
