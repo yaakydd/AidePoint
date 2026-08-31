@@ -250,6 +250,7 @@ async def predict(
     _, _png_encoded = cv2.imencode(".png", preprocessed.raw_resized_image)
     storage_route = route_and_upload_screening_image(
         supabase_client=_supabase_client,
+        technician_id=user["id"],
         patient_session_id=patient_sample_id,
         analyzed_image_png_bytes=_png_encoded.tobytes(),
         anemia_probability=result["anemia_probability"],
