@@ -13,6 +13,9 @@ class ScanLimitStatus:
     effective_limit: int
     today_count: int          # count BEFORE this attempt
     scans_remaining: int      # after this attempt is counted
+    image_consent: bool       # profiles.store_images, computed once here so
+                               # route_and_upload_screening_image doesn't
+                               # need to re-query it
 
 
 def has_image_consent(supabase_client, user_id: str) -> bool:
@@ -120,6 +123,7 @@ def check_and_enforce_scan_limit(supabase_client, user_id: str) -> ScanLimitStat
         effective_limit=effective_limit,
         today_count=today_count,
         scans_remaining=max(effective_limit - attempted_count, 0),
+        image_consent=consented,
     )
 
 
