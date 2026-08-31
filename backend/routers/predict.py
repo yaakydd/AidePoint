@@ -256,6 +256,9 @@ async def predict(
         anemia_probability=result["anemia_probability"],
         decision_threshold=result["decision_threshold"],
         is_unreliable=result["is_unreliable"],
+        known_image_consent=(
+            scan_limit_status.image_consent if scan_limit_status else None
+        ),
     )
 
     cbc_pattern_summary = serialize_pattern_summary(
