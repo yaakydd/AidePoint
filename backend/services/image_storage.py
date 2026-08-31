@@ -1,10 +1,10 @@
 """
-Uploads analyzed screening images to the single "screenings" Supabase
+Uploads analyzed screening images to the existing "scan-images" Supabase
 Storage bucket, routed under one of three path prefixes:
 
-    screenings/anemia/{patient_session_id}_{utc_timestamp}.png
-    screenings/healthy/{patient_session_id}_{utc_timestamp}.png
-    screenings/unknown/{patient_session_id}_{utc_timestamp}.png
+    scan-images/anemia/{patient_session_id}_{utc_timestamp}.png
+    scan-images/healthy/{patient_session_id}_{utc_timestamp}.png
+    scan-images/unknown/{patient_session_id}_{utc_timestamp}.png
 
 Routing (determine_storage_bucket) is deliberately independent of the
 `condition` string used elsewhere: `condition` already downgrades to
@@ -24,7 +24,7 @@ from supabase import Client
 
 log = logging.getLogger("aidepoint")
 
-BUCKET_NAME = "screenings"
+BUCKET_NAME = "scan-images"
 
 # Half-width of the "too close to call" band around decision_threshold.
 # A probability within +/- this margin of the threshold is filed as
