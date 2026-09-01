@@ -132,7 +132,10 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
   async function handleExportPdf() {
     setExporting(true);
     try {
-      await exportReportAsPdf(report);
+      const { shared } = await exportReportAsPdf(report);
+      if (!shared) {
+        Alert.alert('Sharing Unavailable', 'The PDF was generated, but sharing is not available on this device.');
+      }
     } catch (err) {
       console.error('DetailModal export PDF:', err.message);
       Alert.alert('Export Failed', 'Could not generate the PDF. Please try again.');
