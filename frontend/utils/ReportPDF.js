@@ -325,5 +325,5 @@ export const exportReportAsPdf = async (report) => {
       UTI: 'com.adobe.pdf',
     });
   }
-  return newUri;
+  return { uri: newUri, shared: canShare };
 };
