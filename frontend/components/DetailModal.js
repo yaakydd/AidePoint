@@ -25,19 +25,11 @@ function shouldShowProbabilityAndConfidence(conditionKey) {
   return conditionKey === 'anemic' || conditionKey === 'healthy';
 }
 
-function averageSeverity(cells) {
-  if (!cells || cells.length === 0) return 0;
-  const sum = cells.reduce((acc, cell) => acc + (cell.severity ?? 0), 0);
-  return sum / cells.length;
-}
-
 // Same calibrated 0→1 gradient scale as TransparencyTrail.js, built from
 // the same severityToColor function used by CellOverlay -- so the scale,
 // the overlay dots on the image, and the bucket swatches all match.
 function SeverityScale({ cells }) {
   const GRADIENT_STEPS = 24;
-  const avg = averageSeverity(cells);
-  const markerLeftPercent = Math.min(Math.max(avg, 0), 1) * 100;
 
   return (
     <View style={{ width: '100%', marginTop: SPACING.sm, marginBottom: SPACING.md }}>
@@ -51,9 +43,6 @@ function SeverityScale({ cells }) {
             }}
           />
         ))}
-        <View style={[scaleStyles.marker, { left: `${markerLeftPercent}%` }]}>
-          <View style={scaleStyles.markerLine} />
-        </View>
       </View>
       <View style={scaleStyles.tickRow}>
         <Text style={scaleStyles.tickText}>0.0</Text>
@@ -62,9 +51,6 @@ function SeverityScale({ cells }) {
         <Text style={scaleStyles.tickText}>Unusual</Text>
         <Text style={scaleStyles.tickText}>1.0</Text>
       </View>
-      <Text style={scaleStyles.avgLabel}>
-        Average cell severity for this sample: {avg.toFixed(2)}
-      </Text>
     </View>
   );
 }
@@ -452,20 +438,6 @@ const scaleStyles = StyleSheet.create({
     overflow: 'visible',
     position: 'relative',
   },
-  marker: {
-    position: 'absolute',
-    top: -4,
-    width: 2,
-    height: scale(16) + 8,
-    alignItems: 'center',
-    marginLeft: -1,
-  },
-  markerLine: {
-    width: 2,
-    height: '100%',
-    backgroundColor: COLORS.textPrimary,
-    borderRadius: 1,
-  },
   tickRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -475,11 +447,5 @@ const scaleStyles = StyleSheet.create({
   tickText: {
     fontSize: FONTS.xs,
     color: COLORS.textMuted,
-  },
-  avgLabel: {
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-    fontWeight: FONTS.medium,
   },
 });
