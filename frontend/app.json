@@ -43,6 +43,8 @@
           "barStyle": "dark-content"
         }
       ]
+      ],
+      "expo-build-properties"
     ],
     "runtimeVersion": {
       "policy": "appVersion"
