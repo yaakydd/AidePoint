@@ -20,9 +20,6 @@
         "CAMERA"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "plugins": [
       "expo-font",
       "expo-secure-store",
@@ -43,8 +40,6 @@
           "barStyle": "dark-content"
         }
       ]
-      ],
-      "expo-build-properties"
     ],
     "runtimeVersion": {
       "policy": "appVersion"
