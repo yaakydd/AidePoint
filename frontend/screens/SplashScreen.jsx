@@ -14,7 +14,6 @@ const SplashScreen = () => {
         resizeMode="contain"
       />
       <Text style={styles.subtitle}>AI-Powered Anemia Screening</Text>
-      <ActivityIndicator size="large" color={COLORS.white} style={styles.loader} />
     </View>
   );
 };
