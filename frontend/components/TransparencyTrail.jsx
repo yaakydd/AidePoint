@@ -165,7 +165,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
 
   const cbcPatternEntries = Object.entries(prediction.cbc_pattern_summary ?? {});
   const morphologyEntries = Object.entries(prediction.morphology_findings ?? {})
-    .filter(([, finding]) => finding?.flagged === true);
+    .filter(([flagName, finding]) => flagName !== 'normal_morphology' && finding?.flagged === true);
 
   const isUnreliable = prediction.is_unreliable ?? false;
   const unreliableReasons = prediction.unreliable_reasons ?? [];
@@ -337,12 +337,20 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
              {morphologyEntries.length > 0 && (
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeading}>Morphology Findings</Text>
-                {morphologyEntries.map(([flagName]) => (
+                {morphologyEntries.map(([flagName, finding]) => (
                   <View key={flagName} style={styles.findingRow}>
                     <MaterialCommunityIcons name="alert-circle-outline" size={14} color={COLORS.textSecondary} style={{ marginTop: 2 }} />
-                    <Text style={styles.findingText}>{flagName.replace(/_/g, ' ')}</Text>
+                    <Text style={styles.findingText}>
+                      {finding?.display_label ?? flagName.replace(/_/g, ' ')}
+                      {finding?.tier === 'possible' ? '  (possible)' : ''}
+                    </Text>
                   </View>
                 ))}
+                {morphologyEntries.some(([, finding]) => finding?.tier === 'possible') && (
+                  <Text style={styles.sectionSubcaption}>
+                    "Possible" findings are patterns the model detects less reliably -- confirm with manual review.
+                  </Text>
+                )}
               </View>
             )}
 
