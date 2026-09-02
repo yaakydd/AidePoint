@@ -314,7 +314,7 @@ const SignIn = () => {
           )}
 
           <View style={styles.form}>
-            {/* ==================== EMAIL ==================== */}
+            {/*  EMAIL  */}
 
             <Text style={styles.inputLabel}>
               Email Address
@@ -366,7 +366,7 @@ const SignIn = () => {
               </Text>
             )}
 
-            {/* ==================== PASSWORD ==================== */}
+            {/*  PASSWORD  */}
 
             <Text style={styles.inputLabel}>
               Password
@@ -439,7 +439,7 @@ const SignIn = () => {
               </Text>
             )}
 
-            {/* ==================== FORGOT PASSWORD ==================== */}
+            {/*  FORGOT PASSWORD  */}
 
             <TouchableOpacity
               onPress={() => {
@@ -458,7 +458,7 @@ const SignIn = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* ==================== SIGN IN ==================== */}
+            {/*  SIGN IN  */}
 
             <TouchableOpacity
               style={[
@@ -510,7 +510,7 @@ const SignIn = () => {
               )}
             </TouchableOpacity>
 
-            {/* ==================== SIGN UP ==================== */}
+            {/*  SIGN UP  */}
 
             <TouchableOpacity
               style={styles.signUpRow}

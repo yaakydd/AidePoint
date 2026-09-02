@@ -356,7 +356,7 @@ async def update_prediction_notes(
     """
     The only technician-authored field on a prediction record. Scoped to
     technician_id so a tech can only ever edit notes on their own scans
-    -- .eq("technician_id", ...) below is doing real access control here,
+    .eq("technician_id", ...) below is doing real access control here,
     not just a convenience filter, since the service-role client bypasses
     RLS and would otherwise let any authenticated caller edit any row.
     """
