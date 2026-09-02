@@ -107,7 +107,9 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
     : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
 
   const morphologyEntries = Object.entries(report.morphologyFindings ?? {})
-    .filter(function (entry) { return entry[1] && entry[1].flagged === true; });
+    .filter(function (entry) {
+      return entry[0] !== 'normal_morphology' && entry[1] && entry[1].flagged === true;
+    });
   const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
 
   const hasCellOverlay = report.cellOverlay?.cells?.length > 0;
@@ -294,13 +296,21 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
                 <Text style={styles.sectionHeading}>Morphology Findings</Text>
                 {morphologyEntries.map(function (entry) {
                   const flagName = entry[0];
+                  const finding = entry[1] ?? {};
+                  const label = finding.display_label ?? flagName.replace(/_/g, ' ');
+                  const isPossible = finding.tier === 'possible';
                   return (
                     <View key={flagName} style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>{flagName.replace(/_/g, ' ')}</Text>
-                      <Text style={styles.detailValue}>Flagged</Text>
+                      <Text style={styles.detailLabel}>{label}</Text>
+                      <Text style={styles.detailValue}>{isPossible ? 'Possible' : 'Flagged'}</Text>
                     </View>
                   );
                 })}
+                {morphologyEntries.some(function (entry) { return entry[1]?.tier === 'possible'; }) ? (
+                  <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginTop: SPACING.xs }}>
+                    "Possible" findings are patterns the model detects less reliably -- confirm with manual review.
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 
