@@ -164,12 +164,21 @@ def _build_morphology_findings(morphology_probs: dict[str, float]) -> dict[str, 
     point, which meant the "moderate" flags (anisocytosis, target_cells)
     weren't actually getting the tuning the notebook computed for them.
     """
-    from services.model import MORPHOLOGY_REPORTING_THRESHOLDS
+    from services.model import MORPHOLOGY_REPORTING_THRESHOLDS, MORPHOLOGY_FLAG_TIER
+    from services.morphology_explanations import MORPHOLOGY_DISPLAY_NAMES
 
     return {
         flag_name: {
             "probability": probability,
             "flagged": probability >= MORPHOLOGY_REPORTING_THRESHOLDS.get(flag_name, 0.5),
+            # display_label/tier let the frontend show a real label and a
+            # confidence signal instead of flag_name.replace('_', ' ')
+            # with no indication that e.g. target_cells (F1 0.41) and
+            # hypochromia (F1 0.89) are not equally trustworthy findings.
+            "display_label": MORPHOLOGY_DISPLAY_NAMES.get(
+                flag_name, flag_name.replace("_", " ").capitalize()
+            ),
+            "tier": MORPHOLOGY_FLAG_TIER.get(flag_name, "strong"),
         }
         for flag_name, probability in morphology_probs.items()
     }
