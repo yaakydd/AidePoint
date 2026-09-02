@@ -159,11 +159,13 @@ export default function Onboarding() {
                 {item.type === "chat" ? (
                   <ChatPreview />
                 ) : (
-                  <Image
-                    source={item.image}
-                    style={styles.photo}
-                    resizeMode="contain"
-                  />
+                  <View style={styles.photoCard}>
+                    <Image
+                      source={item.image}
+                      style={styles.photo}
+                      resizeMode="contain"
+                    />
+                  </View>
                 )}
               </View>
             </View>
