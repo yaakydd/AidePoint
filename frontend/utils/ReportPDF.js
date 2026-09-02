@@ -44,7 +44,7 @@ const row = (label, value) => {
 
 const buildMorphologySection = (morphologyFindings) => {
   const flaggedEntries = Object.entries(morphologyFindings ?? {})
-    .filter(([, finding]) => finding?.flagged === true);
+    .filter(([flagName, finding]) => flagName !== 'normal_morphology' && finding?.flagged === true);
 
   if (flaggedEntries.length === 0) {
     return `
@@ -52,12 +52,20 @@ const buildMorphologySection = (morphologyFindings) => {
       <div class="note-text">No abnormal morphology flags detected above the reporting threshold.</div>`;
   }
 
+  const hasPossibleTier = flaggedEntries.some(([, finding]) => finding?.tier === 'possible');
   const items = flaggedEntries
-    .map(([flagName]) => `<li>${flagName.replace(/_/g, ' ')}</li>`)
+    .map(([flagName, finding]) => {
+      const label = finding?.display_label ?? flagName.replace(/_/g, ' ');
+      const suffix = finding?.tier === 'possible' ? ' (possible)' : '';
+      return `<li>${escapeHtml(label)}${escapeHtml(suffix)}</li>`;
+    })
     .join('');
+  const possibleNote = hasPossibleTier
+    ? `<div class="note-text">"Possible" findings are patterns the model detects less reliably -- confirm with manual review.</div>`
+    : '';
 
   return `
-    <div class="section-bar">Morphology Findings</div>
+    <div class="section-bar">Morphology Findings</div>${possibleNote}
     <ul class="finding-list">${items}</ul>`;
 };
 
