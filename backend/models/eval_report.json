@@ -1,39 +1,39 @@
 {
   "binary": {
-    "optimal_threshold": 0.51,
-    "auc_roc": 0.9737121527777778,
-    "auc_pr": 0.9693543541317974,
-    "accuracy": 0.9041666666666667,
-    "f1_score": 0.9098746081504702,
-    "precision": 0.8587278106508875,
-    "recall": 0.9675,
-    "specificity": 0.8408333333333333,
-    "negative_predictive_value": 0.9627862595419847,
+    "optimal_threshold": 0.5,
+    "auc_roc": 0.9759947916666668,
+    "auc_pr": 0.9739950057495236,
+    "accuracy": 0.9079166666666667,
+    "f1_score": 0.9128205128205128,
+    "precision": 0.8666666666666667,
+    "recall": 0.9641666666666666,
+    "specificity": 0.8516666666666667,
+    "negative_predictive_value": 0.9596244131455399,
     "confusion_matrix": {
-      "true_positives": 1161,
-      "false_positives": 191,
-      "true_negatives": 1009,
-      "false_negatives": 39
+      "true_positives": 1157,
+      "false_positives": 178,
+      "true_negatives": 1022,
+      "false_negatives": 43
     }
   },
   "cbc_mae_per_field": {
-    "RBC": 0.9413744807243347,
-    "HAEMOGLOBIN": 2.966386318206787,
-    "HAEMATOCRIT": 7.470994472503662,
-    "MCV": 9.874780654907227,
-    "MCH": 4.2386884689331055,
-    "MCHC": 2.488996744155884
+    "RBC": 0.9325990676879883,
+    "HAEMOGLOBIN": 2.915106773376465,
+    "HAEMATOCRIT": 7.456165313720703,
+    "MCV": 10.046045303344727,
+    "MCH": 4.337080001831055,
+    "MCHC": 2.5535006523132324
   },
   "morphology_f1_per_flag": {
-    "dimorphic_picture": 0.044444444444444446,
-    "anisocytosis": 0.6693386773547094,
-    "hypochromia": 0.8767022451232978,
-    "microcytosis": 0.8718944099378882,
+    "dimorphic_picture": 0.029850746268656716,
+    "anisocytosis": 0.657323055360897,
+    "hypochromia": 0.8859586600142552,
+    "microcytosis": 0.8715836765256458,
     "macrocytosis": 0.0,
-    "poikilocytosis": 0.24836601307189543,
-    "target_cells": 0.5100671140939598,
-    "elliptocytosis": 0.830220713073005,
-    "normal_morphology": 0.9142857142857143
+    "poikilocytosis": 0.0975609756097561,
+    "target_cells": 0.40770101925254815,
+    "elliptocytosis": 0.8426395939086294,
+    "normal_morphology": 0.9149706015377658
   },
   "validation_sample_count": 2400
 }

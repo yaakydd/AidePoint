@@ -8,23 +8,12 @@ const SplashScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-
-      <View style={styles.logoWrap}>
-        <Image
-          source={require("../assets/brand/icon-white.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      </View>
-
       <Image
         source={require("../assets/brand/wordmark-white.png")}
         style={styles.wordmark}
         resizeMode="contain"
       />
-
       <Text style={styles.subtitle}>AI-Powered Anemia Screening</Text>
-
       <ActivityIndicator size="large" color={COLORS.white} style={styles.loader} />
     </View>
   );
