@@ -83,6 +83,19 @@ photoGlow: {
 photo: {
   width: "100%",
   height: "100%",
+  borderRadius: RADIUS.lg,
+},
+
+photoCard: {
+  width: "100%",
+  height: "100%",
+  borderRadius: RADIUS.xl,
+  overflow: "hidden",
+  backgroundColor: COLORS.surfaceAlt,
+  padding: SPACING.lg,
+  alignItems: "center",
+  justifyContent: "center",
+  ...SHADOWS.md,
 },
 
   photoInner: {
