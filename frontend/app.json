@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.aidepoint.app",
+      "versionCode": 1,
       "permissions": [
         "CAMERA"
       ]
