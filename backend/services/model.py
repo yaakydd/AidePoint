@@ -112,6 +112,56 @@ def build_morphology_reliability_flags() -> dict[str, bool]:
 MORPHOLOGY_FLAG_IS_RELIABLE: dict[str, bool] = build_morphology_reliability_flags()
 
 
+# Above MORPHOLOGY_F1_SUPPRESSION_THRESHOLD (0.30), a flag reaches the
+# user at all, but F1 0.35 and F1 0.89 are not equally trustworthy, and
+# the frontend previously showed every displayed flag identically (raw
+# flag_name.replace('_', ' '), no confidence signal). This tier gives a
+# non-specialist lab technician a way to tell "the model is confident
+# about this" from "the model found this, but its own track record on
+# this specific flag is weak" -- without having to understand F1 scores
+# themselves. Boundary (0.7) chosen to match the same green/amber/red
+# cutoffs already used in the training notebook's Cell 6 plotting code
+# (see morphology_f1.png), so the panel-facing plots and the in-app
+# labels tell a consistent story instead of using different cutoffs.
+MORPHOLOGY_TIER_STRONG_F1_THRESHOLD: float = 0.70
+
+
+def build_morphology_reliability_tiers() -> dict[str, str]:
+    """
+    "strong"   : F1 >= 0.70, shown as a plain finding.
+    "possible" : F1 >= 0.30 (the suppression floor) but < 0.70, shown but
+                 labeled as less certain -- these flags cleared the bar
+                 to be shown at all, but the model's own held-out
+                 performance on them is meaningfully weaker than the
+                 flags in the "strong" tier.
+    Flags below 0.30 never reach this function's result in practice --
+    filter_unreliable_morphology_flags() zeroes their probability before
+    the reporting threshold is ever checked -- but they're still given a
+    tier here (rather than omitted) so this dict always has all 9 keys,
+    matching the same "always all keys present" contract
+    MORPHOLOGY_FLAG_IS_RELIABLE and the audit trail already follow.
+
+    Falls back to "strong" for every flag if eval_report.json is
+    missing, matching build_morphology_reliability_flags()'s own
+    fallback (no tuned signal available, so no tier distinction to make).
+    """
+    morphology_f1_scores: dict[str, float] = _EVAL_REPORT.get("morphology_f1_per_flag", {})
+    if not morphology_f1_scores:
+        return {key: "strong" for key in MORPHOLOGY_KEYS}
+
+    return {
+        key: (
+            "strong"
+            if morphology_f1_scores.get(key, 1.0) >= MORPHOLOGY_TIER_STRONG_F1_THRESHOLD
+            else "possible"
+        )
+        for key in MORPHOLOGY_KEYS
+    }
+
+
+MORPHOLOGY_FLAG_TIER: dict[str, str] = build_morphology_reliability_tiers()
+
+
 # Per-flag decision thresholds from Cell 10's F2-optimized sweep, e.g.
 # {"anisocytosis": 0.35, "target_cells": 0.40, ...}. Previously
 # prediction_helpers.py and morphology_explanations.py both hardcoded a
