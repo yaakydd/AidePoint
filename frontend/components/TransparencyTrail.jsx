@@ -165,7 +165,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
 
   const cbcPatternEntries = Object.entries(prediction.cbc_pattern_summary ?? {});
   const morphologyEntries = Object.entries(prediction.morphology_findings ?? {})
-    .filter(([flagName, finding]) => flagName !== 'normal_morphology' && finding?.flagged === true);
+    .filter(([, finding]) => finding?.flagged === true);
 
   const isUnreliable = prediction.is_unreliable ?? false;
   const unreliableReasons = prediction.unreliable_reasons ?? [];
