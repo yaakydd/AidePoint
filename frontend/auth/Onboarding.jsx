@@ -27,7 +27,7 @@ const SLIDES = [
     image: require("../assets/onboarding/technician.png"),
     accent: "#0EA5E9",
     title: "Scan the smear",
-    description: "Photograph a blood smear on the microscope. That's it.",
+    description: "Photograph a blood smear on the microscope. Nothing else to set up.",
   },
   {
     id: "2",
