@@ -43,6 +43,52 @@ def has_image_consent(supabase_client, user_id: str) -> bool:
 _has_image_consent = has_image_consent
 
 
+def _count_today_and_effective_limit(
+    supabase_client, user_id: str
+) -> tuple[str, int | None, int, int] | None:
+    """
+    Shared counting core for both check_and_enforce_scan_limit (an actual
+    attempt, about to count as +1) and get_scan_limit_status (a read-only
+    "what would the app show right now" query, no pending attempt).
+    Returns (tier, daily_limit, today_count, effective_limit) or None if
+    supabase_client is unavailable. daily_limit is None for unlimited tiers
+    -- callers should treat that as "nothing meaningful to enforce/report."
+
+    The bonus computation intentionally uses today_count (not
+    today_count + 1) here, i.e. "has the technician already hit save_goal
+    today", so a read-only status check and an in-flight attempt agree on
+    whether the bonus is active without the status check ever nudging the
+    count forward itself.
+    """
+    if supabase_client is None:
+        return None
+
+    tier = get_subscription_tier(supabase_client, user_id)
+    limits = SCAN_LIMITS.get(tier, SCAN_LIMITS[DEFAULT_TIER])
+    daily_limit = limits["daily_limit"]
+    if daily_limit is None:
+        return tier, None, 0, 0  # unlimited tier -- caller returns early
+
+    start_of_today = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).isoformat()
+
+    count_result = (
+        supabase_client.table("prediction_records")
+        .select("prediction_id", count=CountMethod.exact)
+        .eq("technician_id", user_id)
+        .gte("created_at", start_of_today)
+        .execute()
+    )
+    today_count: int = count_result.count or 0
+
+    consented = _has_image_consent(supabase_client, user_id)
+    bonus_active = today_count >= limits["save_goal"] and consented
+    effective_limit = daily_limit + (limits["bonus_scans"] if bonus_active else 0)
+
+    return tier, daily_limit, today_count, effective_limit
+
+
 def check_and_enforce_scan_limit(supabase_client, user_id: str) -> ScanLimitStatus | None:
     """
     Server-side counterpart to scanStorage.js's client-side scan-limit
@@ -70,38 +116,20 @@ def check_and_enforce_scan_limit(supabase_client, user_id: str) -> ScanLimitStat
     Raises HTTPException(429) if the technician is at or over their
     tier's effective daily limit.
     """
-    if supabase_client is None:
-        return None
-
     from fastapi import HTTPException, status  # local import to avoid a
     # circular import at module load time (services -> fastapi is fine,
     # but keeping predict.py's own HTTPException usage as the "normal"
     # place this is raised from stays clearer if this helper imports it
     # itself rather than expecting callers to catch a bare exception).
 
-    tier = get_subscription_tier(supabase_client, user_id)
-    limits = SCAN_LIMITS.get(tier, SCAN_LIMITS[DEFAULT_TIER])
-    daily_limit = limits["daily_limit"]
+    counts = _count_today_and_effective_limit(supabase_client, user_id)
+    if counts is None:
+        return None
+    tier, daily_limit, today_count, effective_limit = counts
     if daily_limit is None:
         return None  # unlimited tier (e.g. "pro") -- nothing meaningful to report
 
-    start_of_today = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    ).isoformat()
-
-    count_result = (
-        supabase_client.table("prediction_records")
-        .select("prediction_id", count=CountMethod.exact)
-        .eq("technician_id", user_id)
-        .gte("created_at", start_of_today)
-        .execute()
-    )
-    today_count: int = count_result.count or 0
     attempted_count = today_count + 1
-
-    consented = _has_image_consent(supabase_client, user_id)
-    bonus_active = attempted_count > limits["save_goal"] and consented
-    effective_limit = daily_limit + (limits["bonus_scans"] if bonus_active else 0)
 
     if today_count >= effective_limit:
         raise HTTPException(
@@ -117,12 +145,42 @@ def check_and_enforce_scan_limit(supabase_client, user_id: str) -> ScanLimitStat
             },
         )
 
+    consented = _has_image_consent(supabase_client, user_id)
     # attempted_count (not today_count) because this request is about to
     # count as a completed scan by the time the response reaches the app.
     return ScanLimitStatus(
         effective_limit=effective_limit,
         today_count=today_count,
         scans_remaining=max(effective_limit - attempted_count, 0),
+        image_consent=consented,
+    )
+
+
+def get_scan_limit_status(supabase_client, user_id: str) -> ScanLimitStatus | None:
+    """
+    Read-only counterpart to check_and_enforce_scan_limit, for the Scan
+    screen's "SCANS TODAY" banner to show a real count as soon as the
+    screen mounts, rather than staying blank until the first scan of the
+    session completes (see Scan.jsx's old "no client-side way to know the
+    count before the first scan" comment -- this endpoint is that way).
+
+    Never raises, never advances the count -- it reports where things
+    stand right now. Returns None on the same "nothing meaningful to
+    report" conditions as check_and_enforce_scan_limit (no supabase
+    client, or an unlimited tier).
+    """
+    counts = _count_today_and_effective_limit(supabase_client, user_id)
+    if counts is None:
+        return None
+    tier, daily_limit, today_count, effective_limit = counts
+    if daily_limit is None:
+        return None
+
+    consented = _has_image_consent(supabase_client, user_id)
+    return ScanLimitStatus(
+        effective_limit=effective_limit,
+        today_count=today_count,
+        scans_remaining=max(effective_limit - today_count, 0),
         image_consent=consented,
     )
 
