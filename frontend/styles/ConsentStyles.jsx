@@ -6,20 +6,33 @@ import {
 
 // The scrollable content's bottom padding must clear the absolutely-positioned
 // footer below it. Deriving it from the footer's own measurements (rather than
-// a hardcoded number) keeps the gap consistent across screen sizes and
-// platforms, since layout.bottomInset and the scaled padding/button height
-// both vary by device.
+// a hardcoded number) keeps the gap consistent across screen sizes.
 const FOOTER_BUTTON_HEIGHT = SPACING.lg * 2 + mScale(17) * 1.3; // paddingVertical*2 + approx line height
-const FOOTER_HEIGHT =
-  SPACING.md +               // footer paddingTop
-  FOOTER_BUTTON_HEIGHT +
-  layout.bottomInset + SPACING.md; // footer paddingBottom
+
+// ConsentScreen has no tab bar (it's shown before the main app nav even
+// mounts), so unlike tab-bar screens it can't reuse getTabBarHeight(insets)
+// -- there's no tab bar height to add. It still needs the REAL device
+// bottom inset though, not the hardcoded layout.bottomInset guess (iOS 34 /
+// Android 0) the static styles below used to use, which meant the footer
+// under-padded on any device whose actual inset is bigger than that guess
+// (e.g. Android 3-button/gesture nav, which is never 0) -- the Continue
+// button ends up positioned under the system nav bar / off the visible
+// content, unreachable. Call this from the screen with useSafeAreaInsets()'s
+// real insets.bottom instead of relying on the module-load-time constant.
+export function getConsentFooterMetrics(insetBottom = 0) {
+  const footerPaddingBottom = insetBottom + SPACING.md;
+  const footerHeight = SPACING.md + FOOTER_BUTTON_HEIGHT + footerPaddingBottom;
+  return { footerPaddingBottom, footerHeight };
+}
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
   container: {
     paddingHorizontal: SPACING.pagePad,
-    paddingBottom: FOOTER_HEIGHT + SPACING.xl,
+    // Base padding for the default/static case; ConsentScreen overrides
+    // this inline with getConsentFooterMetrics(insets.bottom).footerHeight
+    // once real safe-area insets are available.
+    paddingBottom: getConsentFooterMetrics().footerHeight + SPACING.xl,
   },
   header: {
     alignItems: 'center',
@@ -119,7 +132,9 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.pagePad,
     paddingTop: SPACING.md,
-    paddingBottom: layout.bottomInset + SPACING.md,
+    // Base/fallback value; ConsentScreen overrides this inline with the
+    // real device inset via getConsentFooterMetrics(insets.bottom).
+    paddingBottom: getConsentFooterMetrics().footerPaddingBottom,
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
   },
