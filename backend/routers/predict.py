@@ -16,7 +16,11 @@ from services.shape_screening import (
     ShapeScreeningResult,
 )
 from services.preprocess import preprocess_image, PreprocessResult
-from services.cbc_uncertainty import build_cbc_pattern_summary, serialize_pattern_summary
+from services.cbc_uncertainty import (
+    build_cbc_pattern_summary,
+    build_unavailable_cbc_pattern_summary,
+    serialize_pattern_summary,
+)
 from services.morphology_explanations import build_explanation, classify_confidence, Explanation
 from services.audit_trail import build_prediction_record, persist_prediction_record
 from services.image_storage import route_and_upload_screening_image
@@ -295,8 +299,17 @@ async def predict(
         ),
     )
 
+    # Same "unknown" gate cell_overlay already applies just above -- a
+    # 0-cell / off-scope image has no real cell data behind any of the six
+    # CBC fields for THIS request, regardless of each field's normal
+    # global reliability tier (MCV/MCH/MCHC's tier is good enough on
+    # average to otherwise print a directional statement even here, which
+    # presented a null result as a real one -- see
+    # build_unavailable_cbc_pattern_summary's docstring).
     cbc_pattern_summary = serialize_pattern_summary(
-        build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
+        build_unavailable_cbc_pattern_summary()
+        if condition == "unknown"
+        else build_cbc_pattern_summary(result["cbc"], _cbc_mean_absolute_errors)
     )
 
     explanation: Explanation = build_explanation(
