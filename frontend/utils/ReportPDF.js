@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
-import { CONDITION_CONFIG } from './ReportUtils';
+import { CONDITION_CONFIG, filterDisplayableMorphologyFindings } from './ReportUtils';
 
 let cachedLogoBase64 = null;
 let cachedWordmarkBase64 = null;
@@ -43,8 +43,7 @@ const row = (label, value) => {
 };
 
 const buildMorphologySection = (morphologyFindings) => {
-  const flaggedEntries = Object.entries(morphologyFindings ?? {})
-    .filter(([, finding]) => finding?.flagged === true);
+  const flaggedEntries = filterDisplayableMorphologyFindings(morphologyFindings);
 
   if (flaggedEntries.length === 0) {
     return `
