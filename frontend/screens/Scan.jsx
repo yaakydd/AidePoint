@@ -34,8 +34,7 @@ import { scanStyles as styles } from '../styles/ScanStyles';
 import { analyzeBloodSmear } from '../utils/api';
 import { prepareImage, stabilizeImage } from '../utils/imageUtils';
 import {
-  getRemainingScans,
-  recordScan,
+  getRemainingScansFromPredictResponse,
   uploadScanImage,
 } from '../utils/scanStorage';
 import { getPlan } from '../constants/SubscriptionPlans';
@@ -312,22 +311,12 @@ const Scan = ({ navigation, route }) => {
       analysisSessionRef.current = null;
     };
   }, []);
-  const loadRemaining = useCallback(async () => {
-    if (!user?.id || !plan) {
-      return;
-    }
-    try {
-      const value = await getRemainingScans(user.id, plan);
-      if (mountedRef.current) {
-        setRemaining(value);
-      }
-    } catch (error) {
-      console.error('Failed to load remaining scans:', error);
-    }
-  }, [user?.id, plan]);
-  useEffect(() => {
-    loadRemaining();
-  }, [loadRemaining]);
+  // Remaining scan count is now sourced entirely from the backend's
+  // /predict response (scans_remaining_today) -- see the comment on
+  // getRemainingScansFromPredictResponse in scanStorage.js. There is no
+  // client-side way to know the count before the first scan of a
+  // session, so `remaining` simply stays null (hidden in the UI) until
+  // the first analysis completes and populates it.
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
       if (!analysisLock.current) {
@@ -618,26 +607,10 @@ const Scan = ({ navigation, route }) => {
     let createdPatientId = null;
     let createdScanId = null;
     try {
-      setAnalysisStage('Checking scan availability...');
-      const currentRemaining = await getRemainingScans(user.id, plan);
-      if (!Number.isFinite(currentRemaining) && currentRemaining !== Infinity) {
-        throw new Error('Could not verify scan availability.');
-      }
-      if (currentRemaining !== Infinity && currentRemaining <= 0) {
-        if (mountedRef.current) {
-          Alert.alert('Daily Limit Reached', getUpgradeMessage(plan), [
-            {
-              text: 'Maybe Later',
-              style: 'cancel',
-            },
-            {
-              text: 'View Plans',
-              onPress: () => navigation.navigate('Subscription'),
-            },
-          ]);
-        }
-        return;
-      }
+      // Scan-limit checking is enforced server-side (the backend returns
+      // a 429 with scan_limit_reached details -- see the isScanLimitError
+      // branch in the catch block below), so there's no client-side
+      // pre-check here anymore.
       setAnalysisStage('Preparing blood smear image...');
       const compressedUri = await prepareImage(image);
       if (!compressedUri) {
@@ -751,21 +724,23 @@ const Scan = ({ navigation, route }) => {
       } catch (notifyError) {
         console.error('Failed to insert scan notification:', notifyError);
       }
-      setAnalysisStage('Updating scan usage...');
-      const usage = await recordScan(user.id, plan);
-      if (!usage) {
-        throw new Error('Scan usage could not be recorded.');
-      }
+      // Scan usage is recorded server-side as part of the /predict call
+      // itself (see check_and_enforce_scan_limit on the backend) -- there
+      // is no separate client-side "record" step. We just read the
+      // updated remaining count back out of that response. Note: the
+      // backend's /predict response does not currently include bonus-scan
+      // info (bonus_just_granted / bonus_remaining), so those are omitted
+      // here rather than fabricated -- add them to response_payload in
+      // routers/predict.py if the result modal needs to show them.
+      const remainingAfterScan = getRemainingScansFromPredictResponse(rawPrediction);
       if (mountedRef.current) {
-        setRemaining(usage.remaining);
+        setRemaining(remainingAfterScan);
       }
       if (mountedRef.current) {
         const result = {
           prediction,
           report,
-          bonusJustGranted: usage.bonusJustGranted,
-          bonusRemaining: usage.bonusRemaining,
-          remaining: usage.remaining,
+          remaining: remainingAfterScan,
           is_anemic: prediction.is_anemic,
           anemia_probability: prediction.anemia_probability,
           decision_threshold: prediction.decision_threshold,
@@ -1346,5 +1321,3 @@ const Scan = ({ navigation, route }) => {
   );
 };
 export default Scan;
-
-
