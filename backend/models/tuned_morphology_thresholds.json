@@ -1,0 +1,11 @@
+{
+  "dimorphic_picture": 0.1,
+  "anisocytosis": 0.1,
+  "hypochromia": 0.1,
+  "microcytosis": 0.18,
+  "macrocytosis": 0.1,
+  "poikilocytosis": 0.1,
+  "target_cells": 0.22,
+  "elliptocytosis": 0.14,
+  "normal_morphology": 0.1
+}

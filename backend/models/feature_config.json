@@ -135,5 +135,5 @@
     ]
   },
   "image_size": 260,
-  "decision_threshold": 0.5
+  "decision_threshold": 0.58
 }

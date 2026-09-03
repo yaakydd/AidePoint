@@ -1,0 +1,65 @@
+{
+  "dimorphic_picture": {
+    "n_positive": 132,
+    "tuned_threshold": 0.1,
+    "f2_at_tuned": 0.27744982290436837,
+    "f2_at_default_0.5": 0.018867924528301886,
+    "f2_gain": 0.2585818983760665
+  },
+  "anisocytosis": {
+    "n_positive": 792,
+    "tuned_threshold": 0.1,
+    "f2_at_tuned": 0.7971464019851117,
+    "f2_at_default_0.5": 0.6166184591112279,
+    "f2_gain": 0.18052794287388374
+  },
+  "hypochromia": {
+    "n_positive": 1380,
+    "tuned_threshold": 0.1,
+    "f2_at_tuned": 0.9397089397089398,
+    "f2_at_default_0.5": 0.8947595738554563,
+    "f2_gain": 0.044949365853483414
+  },
+  "microcytosis": {
+    "n_positive": 1296,
+    "tuned_threshold": 0.18,
+    "f2_at_tuned": 0.9265785609397944,
+    "f2_at_default_0.5": 0.8873303857295319,
+    "f2_gain": 0.03924817521026247
+  },
+  "macrocytosis": {
+    "n_positive": 12,
+    "tuned_threshold": 0.1,
+    "f2_at_tuned": 0.5454545454545454,
+    "f2_at_default_0.5": 0.0,
+    "f2_gain": 0.5454545454545454
+  },
+  "poikilocytosis": {
+    "n_positive": 108,
+    "tuned_threshold": 0.1,
+    "f2_at_tuned": 0.49592391304347827,
+    "f2_at_default_0.5": 0.06711409395973154,
+    "f2_gain": 0.4288098190837467
+  },
+  "target_cells": {
+    "n_positive": 516,
+    "tuned_threshold": 0.22,
+    "f2_at_tuned": 0.6878557874762808,
+    "f2_at_default_0.5": 0.3702180172768408,
+    "f2_gain": 0.31763777019944006
+  },
+  "elliptocytosis": {
+    "n_positive": 1164,
+    "tuned_threshold": 0.14,
+    "f2_at_tuned": 0.8993780896188805,
+    "f2_at_default_0.5": 0.8504098360655737,
+    "f2_gain": 0.048968253553306806
+  },
+  "normal_morphology": {
+    "n_positive": 2064,
+    "tuned_threshold": 0.1,
+    "f2_at_tuned": 0.9684684684684685,
+    "f2_at_default_0.5": 0.9529866214433766,
+    "f2_gain": 0.01548184702509181
+  }
+}
