@@ -31,7 +31,7 @@ import {
   saveReport,
 } from '../utils/ReportUtils';
 import { scanStyles as styles } from '../styles/ScanStyles';
-import { analyzeBloodSmear } from '../utils/api';
+import { analyzeBloodSmear, fetchScanLimitStatus } from '../utils/api';
 import { prepareImage, stabilizeImage } from '../utils/imageUtils';
 import {
   getRemainingScansFromPredictResponse,
@@ -311,12 +311,24 @@ const Scan = ({ navigation, route }) => {
       analysisSessionRef.current = null;
     };
   }, []);
-  // Remaining scan count is now sourced entirely from the backend's
-  // /predict response (scans_remaining_today) -- see the comment on
-  // getRemainingScansFromPredictResponse in scanStorage.js. There is no
-  // client-side way to know the count before the first scan of a
-  // session, so `remaining` simply stays null (hidden in the UI) until
-  // the first analysis completes and populates it.
+  // Remaining scan count is sourced from the backend, either from a
+  // completed /predict response (scans_remaining_today, see the comment
+  // on getRemainingScansFromPredictResponse in scanStorage.js) or, before
+  // any scan has happened this session, from the read-only
+  // /predict/scan-limit status check below -- so the SCANS TODAY banner
+  // shows a real count as soon as the screen mounts instead of staying
+  // blank until the first analysis completes.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchScanLimitStatus().then((status) => {
+        if (!mountedRef.current || !status) {
+          return;
+        }
+        setRemaining(status.scans_remaining_today ?? null);
+      });
+    });
+    return unsubscribe;
+  }, [navigation]);
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
       if (!analysisLock.current) {
