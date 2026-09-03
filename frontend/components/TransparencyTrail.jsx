@@ -14,6 +14,7 @@ import {
   severityToColor,
   SEVERITY_BUCKETS,
   computeSeverityBreakdown,
+  filterDisplayableMorphologyFindings,
 } from '../utils/ReportUtils';
 import { ReportStyles } from '../styles/ReportStyles';
 import { COLORS, FONTS, SPACING, RADIUS, scale, vScale } from '../assets/theme';
@@ -53,11 +54,36 @@ const getRecommendation = (conditionKey, isUnreliable) => {
     };
   }
 
+  // Previously conditionKey === 'anemic' / the final fallback (healthy)
+  // branches below never looked at isUnreliable at all -- a poor-quality
+  // image (blurry/overexposed/understained, see the "Review recommended"
+  // warning driven by the same isUnreliable flag) could still resolve to
+  // a confident-sounding anemic/healthy condition and get the exact same
+  // full-confidence clinical directive as a good-quality scan, directly
+  // contradicting the quality warning shown just above it. These two
+  // branches now hedge instead of asserting the same confidence a clean
+  // image would get.
+  if (conditionKey === 'anemic' && isUnreliable) {
+    return {
+      icon: 'doctor',
+      text:
+        'This screening suggests a pattern consistent with anemia, but image quality issues were detected (see Review recommended above) that may affect how reliable this result is. Treat this as provisional -- retake the photo if possible, and confirm with laboratory testing (e.g. full blood count, iron studies) and clinical evaluation regardless.',
+    };
+  }
+
   if (conditionKey === 'anemic') {
     return {
       icon: 'doctor',
       text:
         'This screening indicates a pattern consistent with anemia. Advise the patient to see a doctor for confirmatory blood tests (e.g. full blood count, iron studies) and clinical evaluation. This result is a screening aid, not a diagnosis.',
+    };
+  }
+
+  if (isUnreliable) {
+    return {
+      icon: 'check-decagram-outline',
+      text:
+        'No anemia pattern was detected, but image quality issues were detected (see Review recommended above) that may affect how reliable this result is. Treat this as provisional -- retake the photo if possible, and re-screen if the patient becomes symptomatic rather than treating this as a confirmed negative.',
     };
   }
 
@@ -164,8 +190,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
     : prediction.cropped_preview_base64;
 
   const cbcPatternEntries = Object.entries(prediction.cbc_pattern_summary ?? {});
-  const morphologyEntries = Object.entries(prediction.morphology_findings ?? {})
-    .filter(([, finding]) => finding?.flagged === true);
+  const morphologyEntries = filterDisplayableMorphologyFindings(prediction.morphology_findings);
 
   const isUnreliable = prediction.is_unreliable ?? false;
   const unreliableReasons = prediction.unreliable_reasons ?? [];
