@@ -191,6 +191,39 @@ def build_cbc_pattern_summary(
     return pattern_summary
 
 
+def build_unavailable_cbc_pattern_summary() -> dict[str, CbcFieldPattern]:
+    """
+    Used instead of build_cbc_pattern_summary() when the overall condition
+    resolved to "unknown" (no usable cells / off-scope image -- see
+    predict.py's condition == "unknown" branch, which zeroes cell_overlay
+    the same way for the same reason).
+
+    build_cbc_pattern_summary()'s reliability tiers are static, keyed off
+    each field's global validation-set MAE, not this specific image --
+    so on a 0-cell / off-scope image it was still printing directional
+    statements ("MCV is estimated within the typical reference range")
+    for MCV/MCH/MCHC, whose global MAE happens to clear the suppression
+    bar, even though there was no real cell data behind the number for
+    THIS image at all. This presented a null result as a real estimate.
+    All six fields get this same "not applicable" message regardless of
+    their normal per-field reliability tier, since none of them have any
+    real image data behind them for this specific request.
+    """
+    return {
+        field_name: CbcFieldPattern(
+            field_name=field_name,
+            direction="not_applicable",
+            confidence="not_applicable",
+            display_text=(
+                f"{_field_display_name(field_name)}: no estimate available "
+                f"-- this image could not be reliably scored. Confirm with "
+                f"laboratory CBC testing."
+            ),
+        )
+        for field_name in CBC_REFERENCE_RANGES
+    }
+
+
 def serialize_pattern_summary(pattern_summary: dict[str, CbcFieldPattern]) -> dict:
     """Converts the dataclass summary into a JSON-serializable dict for
     the API response and for storage in prediction_records.cbc_pattern_summary."""
