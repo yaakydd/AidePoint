@@ -166,12 +166,22 @@ export default function ProfileScreen() {
     );
   }
 
-  // Opens the confirmation modal (requires typing DELETE) — does not delete anything itself.
+  // Step 1 of 2: initial confirmation dialog. Only on OK do we move to
+  // step 2 (the type-DELETE modal) — tapping "Delete Account" no longer
+  // jumps straight to that modal.
   function handleDeleteAccount() {
-    setShowDeleteModal(true);
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'OK', style: 'destructive', onPress: () => setShowDeleteModal(true) },
+      ],
+    );
   }
 
-  // Called by DeleteAccountModal once the user has typed DELETE and confirmed.
+  // Step 2 of 2: called by DeleteAccountModal once the user has typed
+  // DELETE and confirmed.
   async function confirmDeleteAccount() {
     if (!user?.id) return;
 
