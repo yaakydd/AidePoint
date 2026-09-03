@@ -3,12 +3,12 @@ import {
   View, Text, TouchableOpacity, Switch,
   StatusBar, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS, scale } from '../assets/theme';
-import { styles } from '../styles/ConsentStyles';
+import { COLORS, SPACING, scale } from '../assets/theme';
+import { styles, getConsentFooterMetrics } from '../styles/ConsentStyles';
 
 const INFO_ITEMS = [
   {
@@ -40,6 +40,14 @@ export default function ConsentScreen() {
 
   const { completeConsent } = useAuth();
 
+  // Real device bottom inset -- this screen has no tab bar, so it can't
+  // reuse getTabBarHeight(insets) like tab-bar screens do; it just needs
+  // insets.bottom directly. See the comment on getConsentFooterMetrics
+  // for why the previous hardcoded layout.bottomInset guess left the
+  // Continue button unreachable on devices with a bigger real inset.
+  const insets = useSafeAreaInsets();
+  const { footerPaddingBottom, footerHeight } = getConsentFooterMetrics(insets.bottom);
+
   async function handleContinue() {
     if (isSaving) return;
 
@@ -69,7 +77,10 @@ export default function ConsentScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: footerHeight + 24 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
