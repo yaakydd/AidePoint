@@ -425,5 +425,20 @@ def get_cell_overlay(
     return CellOverlayResult(
         cells=detected_cells,
         cell_count=len(detected_cells),
-        flagged_count=sum(1 for cell in detected_cells if cell.severity >= 0.5),
+        # Was `severity >= 0.5` -- severity is a single blended score using
+        # max(eccentricity_component, circularity_component), i.e. a cell
+        # can count as "flagged" here on either axis alone. That's looser
+        # than the actual reliability verdict run_shape_screening() computes
+        # for the SAME cells (eccentricity > ECCENTRICITY_LIMIT AND
+        # circularity < CIRCULARITY_FLOOR, both together), so the "X flagged
+        # for unusual shape" count shown to the user disagreed with -- and
+        # ran meaningfully higher than -- what actually drives "Review
+        # recommended" for the same image. Matching the same AND-based
+        # per-cell criterion here means the displayed count and the real
+        # reliability gate always agree, without changing segmentation,
+        # thresholds, or anything that needs new data to validate.
+        flagged_count=sum(
+            1 for cell in detected_cells
+            if cell.eccentricity > ECCENTRICITY_LIMIT and cell.circularity < CIRCULARITY_FLOOR
+        ),
     )
