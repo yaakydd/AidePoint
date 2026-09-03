@@ -107,9 +107,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
     : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
 
   const morphologyEntries = Object.entries(report.morphologyFindings ?? {})
-    .filter(function (entry) {
-      return entry[0] !== 'normal_morphology' && entry[1] && entry[1].flagged === true;
-    });
+    .filter(function (entry) { return entry[1] && entry[1].flagged === true; });
   const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
 
   const hasCellOverlay = report.cellOverlay?.cells?.length > 0;
