@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import { AuthContext } from '../context/AuthContext';
 import { ConditionIcon, ConditionBadge } from '../components/Conditions';
@@ -132,8 +132,51 @@ const HomeScreen = () => {
   const [recentScans,    setRecentScans]    = useState([]);
   const [fetchError,     setFetchError]     = useState(null);
   const [selectedDayIdx, setSelectedDayIdx] = useState(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const displayName = user?.name ?? 'Lab Technician';
+
+  const fetchUnreadNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    if (!error) setUnreadNotifications(count ?? 0);
+  }, [user?.id]);
+
+  // Refetch every time Home regains focus -- covers coming back from the
+  // Notifications screen after reading some (or all) of them, same as
+  // fetchDashboardData does not otherwise re-run.
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadNotifications();
+    }, [fetchUnreadNotifications])
+  );
+
+  // Live badge updates while Home is open, instead of only updating on
+  // navigation focus -- e.g. a scan-complete or account notification
+  // that lands while the technician is sitting on the dashboard.
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`notifications-badge-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => fetchUnreadNotifications()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchUnreadNotifications]);
 
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) {
@@ -272,6 +315,13 @@ const HomeScreen = () => {
             onPress={() => navigation.navigate('Notifications')}
           >
             <Ionicons name="notifications-outline" size={HEADER.iconSize} color={COLORS.textPrimary} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText} numberOfLines={1}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         }
       />
