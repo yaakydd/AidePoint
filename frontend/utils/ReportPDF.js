@@ -73,21 +73,26 @@ const buildCbcSection = (cbcPatternSummary) => {
   const entries = Object.entries(cbcPatternSummary ?? {});
   if (entries.length === 0) return '';
 
-  const rows = entries
-    .map(([fieldName, fieldData]) => row(
-      fieldName.toUpperCase(),
-      fieldData?.display_text ?? '—',
-    ))
+  const items = entries
+    .map(([fieldName, fieldData]) => {
+      const label = fieldData?.display_name ?? fieldName.replace(/_/g, ' ');
+      const explanation = fieldData?.display_text ?? 'No estimate available for this field.';
+      return `
+        <div class="cbc-item">
+          <div class="cbc-field-name">${escapeHtml(label)}</div>
+          <div class="cbc-field-explanation">${escapeHtml(explanation)}</div>
+        </div>`;
+    })
     .join('');
 
   return `
     <div class="section-bar">Estimated Hematological Pattern</div>
     <div class="note-text">
-      Image-based estimates only, covering RBC / Haemoglobin / Haematocrit / MCV / MCH / MCHC ,
+      Image-based estimates only, covering RBC / Haemoglobin / Haematocrit / MCV / MCH / MCHC,
       not a full laboratory CBC panel and not laboratory measurements. Confirm with laboratory CBC
       testing before relying on these values.
     </div>
-    <table>${rows}</table>`;
+    <div class="cbc-list">${items}</div>`;
 };
 
 const buildTechnicianNotesSection = (report) => {
@@ -200,6 +205,20 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
         .note-text { font-size: 11px; color: #6B7C93; font-style: italic; margin-bottom: 8px; line-height: 1.4; }
         .finding-list { margin: 0 0 8px; padding-left: 18px; }
         .finding-list li { font-size: 12px; margin-bottom: 4px; text-transform: capitalize; }
+
+        .cbc-list { margin: 0 0 4px; }
+        .cbc-item {
+          padding: 7px 0; border-bottom: 1px solid #EDF2F7;
+        }
+        .cbc-item:last-child { border-bottom: none; }
+        .cbc-field-name {
+          font-size: 12px; font-weight: 600; color: #1A2332;
+          margin-bottom: 2px;
+        }
+        .cbc-field-explanation {
+          font-size: 11.5px; color: #4A5568; line-height: 1.5;
+          text-align: left;
+        }
 
         .footer {
           margin-top: 20px; padding-top: 12px; border-top: 1px solid #EDF2F7;
