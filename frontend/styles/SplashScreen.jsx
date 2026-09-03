@@ -34,7 +34,7 @@ export default StyleSheet.create({
   subtitle: {
     fontSize: FONTS.md,
     fontWeight: FONTS.medium,
-    color: "rgba(255,255,255,0.85)",
+    color: "rgba(255,255,255,1)",
     textAlign: "center",
     letterSpacing: 0.3,
   },
