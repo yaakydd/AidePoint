@@ -44,7 +44,7 @@ const row = (label, value) => {
 
 const buildMorphologySection = (morphologyFindings) => {
   const flaggedEntries = Object.entries(morphologyFindings ?? {})
-    .filter(([flagName, finding]) => flagName !== 'normal_morphology' && finding?.flagged === true);
+    .filter(([, finding]) => finding?.flagged === true);
 
   if (flaggedEntries.length === 0) {
     return `
