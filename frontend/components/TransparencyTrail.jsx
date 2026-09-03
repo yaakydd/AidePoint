@@ -27,9 +27,9 @@ const SEVERITY_COLORS = {
 };
 
 const CONFIDENCE_LABELS = {
-  high:     { text: 'High confidence',     color: COLORS.success ?? '#065F46' },
-  moderate: { text: 'Moderate confidence', color: '#92400E' },
-  low:      { text: 'Low confidence',      color: '#B91C1C' },
+  high:     { text: 'High image quality',     icon: 'image-check',   color: COLORS.success ?? '#065F46' },
+  moderate: { text: 'Moderate image quality', icon: 'image-alert-outline', color: '#92400E' },
+  low:      { text: 'Low image quality',      icon: 'image-alert',   color: '#B91C1C' },
 };
 
 const shouldShowProbabilityAndConfidence = (conditionKey, anemiaProbability) =>
@@ -244,9 +244,17 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                 <Text style={styles.probabilityText}>
                   {(prediction.anemia_probability * 100).toFixed(0)}% probability
                 </Text>
-                <Text style={[styles.confidenceText, { color: confidenceInfo.color }]}>
-                  {confidenceInfo.text}
-                </Text>
+                <View style={styles.confidenceRow}>
+                  <MaterialCommunityIcons
+                    name={confidenceInfo.icon}
+                    size={FONTS.xs}
+                    color={confidenceInfo.color}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.confidenceText, { color: confidenceInfo.color, marginTop: 0, marginBottom: 0 }]}>
+                    {confidenceInfo.text}
+                  </Text>
+                </View>
               </>
             ) : (
               <View style={{ marginBottom: SPACING.md }} />
@@ -540,6 +548,7 @@ const styles = StyleSheet.create({
   conditionLabel: { fontSize: FONTS.lg, fontWeight: FONTS.bold, textAlign: 'center', marginTop: 2 },
   probabilityText: { fontSize: FONTS.sm, color: COLORS.textSecondary, textAlign: 'center', marginTop: 4 },
   confidenceText: { fontSize: FONTS.xs, fontWeight: FONTS.semibold, textAlign: 'center', marginTop: 2, marginBottom: SPACING.md },
+  confidenceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 2, marginBottom: SPACING.md },
 
   imageSection: { width: '100%', alignItems: 'center', marginBottom: SPACING.md },
   imageControls: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm, flexWrap: 'wrap', justifyContent: 'center' },
