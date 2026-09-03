@@ -24,6 +24,7 @@ from services.prediction_helpers import (
     _extract_image_quality_fields,
     _build_morphology_findings,
     check_and_enforce_scan_limit,
+    get_scan_limit_status,
 )
 from services.condition import resolve_condition
 
@@ -36,6 +37,39 @@ ALLOWED_MIME_TYPES: set[str] = {"image/jpeg", "image/png", "image/jpg"}
 
 class NotesUpdate(BaseModel):
     notes: str
+
+
+@router.get("/predict/scan-limit")
+async def get_scan_limit(
+    request: Request,
+    user: dict = Depends(verify_supabase_token),
+) -> JSONResponse:
+    """
+    Read-only "how many scans does this technician have left today"
+    check, for the Scan screen's SCANS TODAY banner to populate on
+    mount instead of staying blank until the first scan of the session
+    completes. Uses the same ScanLimitStatus/count logic as /predict's
+    own enforcement (see get_scan_limit_status), so this can never
+    disagree with what /predict will actually allow.
+
+    scans_remaining_today is null for unlimited tiers or if the scan
+    limit store is unavailable, same convention as /predict's response
+    -- the app already treats null as "hide the count".
+    """
+    _supabase_client = request.app.state.supabase_client
+    scan_limit_status = get_scan_limit_status(_supabase_client, user["id"])
+
+    return JSONResponse(
+        {
+            "scans_remaining_today": (
+                scan_limit_status.scans_remaining if scan_limit_status else None
+            ),
+            "daily_limit": (
+                scan_limit_status.effective_limit if scan_limit_status else None
+            ),
+        }
+    )
+
 
 @router.post("/predict")
 async def predict(
