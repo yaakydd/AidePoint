@@ -78,6 +78,28 @@ class CbcFieldPattern:
     display_text: str
 
 
+# Clinical display names for the CBC fields this model estimates, used in
+# place of the raw CBC_KEYS casing (e.g. "HAEMOGLOBIN") when composing
+# display_text -- an all-caps field name embedded mid-sentence read as
+# casual/auto-generated rather than a clinical report. Only covers the six
+# fields this model actually outputs (CBC_REFERENCE_RANGES' superset in
+# feature_config.json includes fields, e.g. WBC/PLATELETS, this model does
+# not estimate; those never reach this function since they're absent from
+# raw_predicted_values).
+CBC_FIELD_DISPLAY_NAMES: dict[str, str] = {
+    "RBC": "Red blood cell count",
+    "HAEMOGLOBIN": "Haemoglobin",
+    "HAEMATOCRIT": "Haematocrit",
+    "MCV": "Mean corpuscular volume (MCV)",
+    "MCH": "Mean corpuscular haemoglobin (MCH)",
+    "MCHC": "Mean corpuscular haemoglobin concentration (MCHC)",
+}
+
+
+def _field_display_name(field_name: str) -> str:
+    return CBC_FIELD_DISPLAY_NAMES.get(field_name, field_name.title())
+
+
 def classify_field_reliability(field_name: str, measured_mae: float) -> str:
     range_minimum, range_maximum = CBC_REFERENCE_RANGES[field_name]
     range_width = range_maximum - range_minimum
@@ -118,7 +140,10 @@ def build_cbc_pattern_summary(
                 field_name=field_name,
                 direction="not_estimable",
                 confidence="not_estimable",
-                display_text="Insufficient validation data for this field",
+                display_text=(
+                    f"{_field_display_name(field_name)}: insufficient validation "
+                    f"data to report an estimate. Confirm with laboratory CBC testing."
+                ),
             )
             continue
 
@@ -130,8 +155,8 @@ def build_cbc_pattern_summary(
                 direction="not_estimable",
                 confidence="not_estimable",
                 display_text=(
-                    f"{field_name} pattern could not be reliably estimated "
-                    f"from image analysis, confirm with laboratory CBC testing"
+                    f"{_field_display_name(field_name)}: could not be reliably "
+                    f"estimated from this image. Confirm with laboratory CBC testing."
                 ),
             )
             continue
@@ -145,9 +170,9 @@ def build_cbc_pattern_summary(
             direction = "within_typical_range"
 
         direction_phrase = {
-            "reduced": "suggests reduced likelihood relative to typical range",
-            "increased": "suggests increased likelihood relative to typical range",
-            "within_typical_range": "appears within the typical image-estimated range",
+            "reduced": "estimated below the typical reference range",
+            "increased": "estimated above the typical reference range",
+            "within_typical_range": "estimated within the typical reference range",
         }[direction]
 
         confidence_phrase = "moderate confidence" if reliability == "moderate" else "low confidence"
@@ -157,8 +182,9 @@ def build_cbc_pattern_summary(
             direction=direction,
             confidence=reliability,
             display_text=(
-                f"Image-based {field_name} pattern {direction_phrase} "
-                f"({confidence_phrase}, not a laboratory measurement)"
+                f"{_field_display_name(field_name)} is {direction_phrase} "
+                f"({confidence_phrase}). Image-based estimate only, not a "
+                f"laboratory measurement."
             ),
         )
 
@@ -173,6 +199,7 @@ def serialize_pattern_summary(pattern_summary: dict[str, CbcFieldPattern]) -> di
             "direction": pattern.direction,
             "confidence": pattern.confidence,
             "display_text": pattern.display_text,
+            "display_name": _field_display_name(field_name),
         }
         for field_name, pattern in pattern_summary.items()
     }
