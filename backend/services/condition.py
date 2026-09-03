@@ -2,7 +2,7 @@
 The single, canonical place condition ("anemic" / "healthy" / "unknown")
 is decided from a prediction's underlying signals.
 
-Every consumer of a prediction -- the /predict response, the AideBot chat
+Every consumer of a prediction, the /predict response, the AideBot chat
 context, and (if ever needed) a future web dashboard or export -- must
 call resolve_condition() rather than re-deriving this decision itself.
 Before this module existed, the decision was implemented three times

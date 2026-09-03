@@ -202,11 +202,11 @@ def load_morphology_reporting_thresholds() -> dict[str, float]:
 MORPHOLOGY_REPORTING_THRESHOLDS: dict[str, float] = load_morphology_reporting_thresholds()
 
 
-_VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("optimal_threshold")
+_VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("deployed_threshold")
 ANEMIA_DECISION_THRESHOLD: float = float(
     os.getenv(
         "ANEMIA_DECISION_THRESHOLD",
-        str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.50",
+        str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.58",
     )
 )
 
