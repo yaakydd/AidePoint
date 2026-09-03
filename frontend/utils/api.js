@@ -157,6 +157,31 @@ export async function warmupBackend() {
   }
 }
 
+// Read-only "how many scans left today" check for the Scan screen's
+// SCANS TODAY banner. Safe to call as soon as the screen mounts --
+// unlike /predict, it never counts as an attempt. Returns null on any
+// failure so the banner just stays hidden (matches the existing
+// remaining === null -> hidden convention) rather than showing a scary
+// error for what's a non-critical display.
+export async function fetchScanLimitStatus() {
+  if (!API_BASE_URL) return null;
+  try {
+    const token = await getAuthToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT_MS);
+    const response = await fetch(`${API_BASE_URL}/predict/scan-limit`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.log('>>> /predict/scan-limit failed:', err.message);
+    return null;
+  }
+}
+
 export async function checkBackendHealth() {
   if (!API_BASE_URL) return false;
   try {
