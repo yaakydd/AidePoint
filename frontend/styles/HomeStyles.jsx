@@ -42,6 +42,27 @@ export const homeStyles = StyleSheet.create({
     // no background / shadow — icon only
   },
 
+  notificationBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: COLORS.danger,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: COLORS.background,
+  },
+
+  notificationBadgeText: {
+    fontSize: 9,
+    fontWeight: FONTS.bold ?? "700",
+    color: "#FFFFFF",
+  },
+
   avatar: {
     width: 45,
     height: 45,
