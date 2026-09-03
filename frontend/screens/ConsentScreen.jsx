@@ -90,7 +90,7 @@ export default function ConsentScreen() {
         {INFO_ITEMS.map(item => (
           <View key={item.title} style={styles.infoCard}>
             <View style={[styles.infoIconWrap, { backgroundColor: item.bg }]}>
-              <MaterialCommunityIcons name={item.icon} size={24} color={item.color} />
+              <MaterialCommunityIcons name={item.icon} size={scale(24)} color={item.color} />
             </View>
             <View style={styles.infoBody}>
               <Text style={styles.infoTitle}>{item.title}</Text>
@@ -103,7 +103,7 @@ export default function ConsentScreen() {
           <View style={styles.toggleLeft}>
             <MaterialCommunityIcons
               name={storeImages ? 'cloud-check' : 'cloud-off-outline'}
-              size={24}
+              size={scale(24)}
               color={storeImages ? COLORS.success : COLORS.textMuted}
             />
             <View>
