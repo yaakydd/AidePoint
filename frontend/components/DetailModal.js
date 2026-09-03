@@ -3,7 +3,7 @@ import { View, Text, Modal, TouchableOpacity, ScrollView, Alert, ActivityIndicat
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { ReportStyles as styles } from '../styles/ReportStyles';
-import { CONDITION_CONFIG, updateReportNotes, computeSeverityBreakdown, severityToColor } from '../utils/ReportUtils';
+import { CONDITION_CONFIG, updateReportNotes, computeSeverityBreakdown, severityToColor, filterDisplayableMorphologyFindings } from '../utils/ReportUtils';
 import { exportReportAsPdf } from '../utils/ReportPDF';
 import CellOverlay from './CellOverlay';
 import { COLORS, SPACING, FONTS, RADIUS, scale, vScale } from '../assets/theme';
@@ -15,8 +15,20 @@ function getRecommendation(conditionKey, isUnreliable) {
   if (conditionKey === 'unknown') {
     return 'Abnormal red cell morphology was flagged. Recommend manual smear review to characterize the finding, and refer the patient to a physician for follow-up.';
   }
+  // See TransparencyTrail.jsx's getRecommendation for why isUnreliable is
+  // now checked here too -- previously a poor-quality image (blurry/
+  // overexposed/understained) that still resolved to a confident-sounding
+  // anemic/healthy condition got this same full-confidence text with no
+  // acknowledgment of the quality warning shown elsewhere in this same
+  // report, directly contradicting it.
+  if (conditionKey === 'anemic' && isUnreliable) {
+    return 'This screening suggests a pattern consistent with anemia, but image quality issues were detected that may affect how reliable this result is. Treat this as provisional -- retake the photo if possible, and confirm with laboratory testing (e.g. full blood count, iron studies) and clinical evaluation regardless.';
+  }
   if (conditionKey === 'anemic') {
     return 'This screening indicates a pattern consistent with anemia. Advise the patient to see a doctor for confirmatory blood tests (e.g. full blood count, iron studies) and clinical evaluation. This result is a screening aid, not a diagnosis.';
+  }
+  if (isUnreliable) {
+    return 'No anemia pattern was detected, but image quality issues were detected that may affect how reliable this result is. Treat this as provisional -- retake the photo if possible, and re-screen if the patient becomes symptomatic rather than treating this as a confirmed negative.';
   }
   return 'No anemia pattern detected in this sample. No immediate action needed based on this screening alone; continue routine care and re-screen if the patient becomes symptomatic.';
 }
@@ -106,8 +118,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
     ? Math.round(report.confidence * 100) + '%'
     : (typeof report.confidence === 'string' ? report.confidence : '\u2014');
 
-  const morphologyEntries = Object.entries(report.morphologyFindings ?? {})
-    .filter(function (entry) { return entry[1] && entry[1].flagged === true; });
+  const morphologyEntries = filterDisplayableMorphologyFindings(report.morphologyFindings);
   const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
 
   const hasCellOverlay = report.cellOverlay?.cells?.length > 0;
