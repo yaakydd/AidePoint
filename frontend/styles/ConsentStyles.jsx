@@ -3,9 +3,24 @@ import {
   COLORS, FONTS, SPACING, RADIUS, SHADOWS,
   layout, scale, mScale,
 } from '../assets/theme';
+
+// The scrollable content's bottom padding must clear the absolutely-positioned
+// footer below it. Deriving it from the footer's own measurements (rather than
+// a hardcoded number) keeps the gap consistent across screen sizes and
+// platforms, since layout.bottomInset and the scaled padding/button height
+// both vary by device.
+const FOOTER_BUTTON_HEIGHT = SPACING.lg * 2 + mScale(17) * 1.3; // paddingVertical*2 + approx line height
+const FOOTER_HEIGHT =
+  SPACING.md +               // footer paddingTop
+  FOOTER_BUTTON_HEIGHT +
+  layout.bottomInset + SPACING.md; // footer paddingBottom
+
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
-  container: { paddingHorizontal: SPACING.pagePad, paddingBottom: 120 },
+  container: {
+    paddingHorizontal: SPACING.pagePad,
+    paddingBottom: FOOTER_HEIGHT + SPACING.xl,
+  },
   header: {
     alignItems: 'center',
     paddingTop: scale(40),
