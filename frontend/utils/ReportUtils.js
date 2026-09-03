@@ -33,6 +33,26 @@ export const CONDITION_CONFIG = {
   },
 };
 
+// Filters a raw morphology_findings dict down to the flags that should
+// actually be shown in a report. Plain `flagged === true` isn't enough on
+// its own: normal_morphology is itself a flag that can be true at the same
+// time as real abnormal flags (independent per-flag sigmoids, no
+// mutual-exclusivity constraint between them), which previously rendered
+// self-contradictory lists like "Hypochromic, Microcytic, Elliptocyte,
+// Normal Morphology" together. normal_morphology is only suppressed when
+// at least one other flag also fired -- if it's the ONLY flag flagged, it
+// still shows, since that's the legitimate "no abnormalities found" case
+// (deliberately not a blanket exclusion, see the project's prior decision
+// to keep normal_morphology visible as a standalone finding).
+export const filterDisplayableMorphologyFindings = (morphologyFindings) => {
+  const entries = Object.entries(morphologyFindings ?? {}).filter(
+    ([, finding]) => finding?.flagged === true
+  );
+  const hasOtherFlaggedFinding = entries.some(([flagName]) => flagName !== 'normal_morphology');
+  if (!hasOtherFlaggedFinding) return entries;
+  return entries.filter(([flagName]) => flagName !== 'normal_morphology');
+};
+
 // FALLBACK ONLY. The backend (services/condition.py's resolve_condition)
 // is the single source of truth for this decision now -- /predict always
 // returns a `condition` field, and every screen should pass that straight
