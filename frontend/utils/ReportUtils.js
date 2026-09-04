@@ -216,12 +216,43 @@ export const SEVERITY_BUCKETS = [
   { key: 'unusual', label: 'Unusual shape',  min: 0.66, max: 1.001 }, // 1.001: severity===1.0 falls in top bucket
 ];
 
+// Must match ECCENTRICITY_LIMIT / CIRCULARITY_FLOOR in
+// backend/services/shape_screening.py exactly -- this is the same
+// AND-based test that backend's flagged_count and needs_review use, so
+// the "Unusual shape" bucket count below always agrees with the
+// headline "X flagged for unusual shape" caption and with "Review
+// recommended". Keep in sync if those backend constants ever change.
+const ECCENTRICITY_LIMIT = 0.55;
+const CIRCULARITY_FLOOR = 0.55;
+
+const isFlaggedCell = (cell) =>
+  cell.eccentricity > ECCENTRICITY_LIMIT && cell.circularity < CIRCULARITY_FLOOR;
+
+// CHANGED: the "Unusual shape" bucket used to be assigned purely by
+// severity >= 0.66 -- but severity is max(eccentricity_component,
+// circularity_component), i.e. a cell lands in "unusual" if EITHER
+// metric alone crosses its limit. That's OR logic, while flagged_count
+// (the headline "X flagged for unusual shape" caption) and
+// needs_review/"Review recommended" both use AND (both metrics must
+// cross). The two numbers could disagree on the same image -- the same
+// contradiction this whole fix was meant to eliminate, just relocated
+// from the caption itself into this breakdown list sitting right below
+// it.
+//
+// Fix: decide "unusual" membership with the SAME AND test flagged_count
+// uses (isFlaggedCell, above), so this bucket's count always matches
+// the headline number exactly. "Normal" vs "mild" for the remaining,
+// non-flagged cells is still a matter of degree, not a pass/fail
+// signal shown elsewhere, so those two keep using the continuous
+// severity score and its existing 0/0.33 split.
 export const computeSeverityBreakdown = (cells) => {
   const total = cells.length;
   return SEVERITY_BUCKETS.map((bucket) => {
-    const count = cells.filter(
-      (cell) => cell.severity >= bucket.min && cell.severity < bucket.max
-    ).length;
+    const count = cells.filter((cell) => {
+      if (bucket.key === 'unusual') return isFlaggedCell(cell);
+      if (isFlaggedCell(cell)) return false; // already counted in 'unusual'
+      return cell.severity >= bucket.min && cell.severity < bucket.max;
+    }).length;
     const midpoint = (bucket.min + Math.min(bucket.max, 1)) / 2;
     return {
       ...bucket,
