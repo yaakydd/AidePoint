@@ -27,10 +27,25 @@ const SEVERITY_COLORS = {
   blue:   { bg: '#EBF8FF', text: '#1D4ED8', icon: 'information' },
 };
 
+// CHANGED: was labeled "X image quality", but explanation.confidence
+// (backend classify_confidence()) is fundamentally a model-confidence
+// value -- how far anemia_probability sits from the decision threshold
+// -- NOT a statement about the photo. It's only capped to "low" in the
+// specific case where is_unreliable is true (a deliberate backend
+// safeguard so a badly-segmented image can't claim false high
+// confidence), but most of the time a "low" here just means the
+// prediction is borderline on a perfectly fine photo. Labeling every
+// value "image quality" made that borderline-but-fine case display a
+// false claim about the image itself -- the same "two signals, one
+// label" problem this app already fixed once, just re-introduced in
+// the other direction. Actual image-quality problems are is_unreliable
+// / unreliable_reasons, surfaced separately via "Review recommended",
+// which already reads directly from is_unreliable and is unaffected by
+// this rename.
 const CONFIDENCE_LABELS = {
-  high:     { text: 'High image quality',     icon: 'image-check',   color: COLORS.success ?? '#065F46' },
-  moderate: { text: 'Moderate image quality', icon: 'image-alert-outline', color: '#92400E' },
-  low:      { text: 'Low image quality',      icon: 'image-alert',   color: '#B91C1C' },
+  high:     { text: 'High confidence',     icon: 'check-decagram',     color: COLORS.success ?? '#065F46' },
+  moderate: { text: 'Moderate confidence', icon: 'alert-decagram-outline', color: '#92400E' },
+  low:      { text: 'Low confidence',      icon: 'alert-decagram',     color: '#B91C1C' },
 };
 
 const shouldShowProbabilityAndConfidence = (conditionKey, anemiaProbability) =>
