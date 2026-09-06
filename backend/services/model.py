@@ -60,11 +60,12 @@ EVAL_REPORT_PATH: str = os.getenv(
 
 # Below this F1 score, a morphology flag's own held-out validation
 # performance is too close to guessing to report as a specific finding.
-# macrocytosis (F1 0.0) and dimorphic_picture (F1 0.044) in the real
-# eval_report.json both fall well under this, the model was never able
-# to learn these two flags reliably, most likely from too few positive
-# training examples, the same root cause already documented for the CBC
-# fields RDW_CV/WBC/platelets. Flags below this bar are suppressed from
+# dimorphic_picture (F1 0.030), macrocytosis (F1 0.0), and
+# poikilocytosis (F1 0.098) in the real eval_report.json all fall well
+# under this, the model was never able to learn these three flags
+# reliably, most likely from too few positive training examples, the
+# same root cause already documented for the CBC fields
+# RDW_CV/WBC/platelets. Flags below this bar are suppressed from
 # morphology_findings/observed_indicators regardless of their raw
 # probability on a given image, the same way cbc_uncertainty.py
 # suppresses CBC fields whose MAE is too large relative to their range,
@@ -202,8 +203,8 @@ def load_morphology_reporting_thresholds() -> dict[str, float]:
 MORPHOLOGY_REPORTING_THRESHOLDS: dict[str, float] = load_morphology_reporting_thresholds()
 
 
-_VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("deployed_threshold")
-# NOTE: 0.50, not 0.58. eval_report.json's "binary.deployed_threshold"
+_VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("optimal_threshold")
+# NOTE: 0.50, not 0.58. eval_report.json's "binary.optimal_threshold"
 # (written by Cell 6's RECALL_FLOOR sweep) is 0.58 -- the highest
 # threshold that clears the 0.95 recall floor -- but 0.58 was evaluated
 # against 0.50 and deliberately not deployed: it buys only +0.72pts of
@@ -217,7 +218,7 @@ _VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("deploye
 # decision (0.50), not the recall-floor algorithm's raw output (0.58).
 ANEMIA_DECISION_THRESHOLD: float = float(
     os.getenv(
-        "OPTIMAL_THRESHOLD",
+        "ANEMIA_DECISION_THRESHOLD",
         str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.50",
     )
 )
