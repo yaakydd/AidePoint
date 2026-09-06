@@ -17,14 +17,15 @@ export const PLANS = {
 
     features: [
       'Basic anaemia & malaria reference info',
-      '7-day chat history · 14-day report history',
+      '10 chats/day · 5-day chat history · 14-day report history',
+      '5 scans/day (+1 bonus scan)',
       'Community email support',
     ],
   },
   max: {
     id: 'max',
     label: 'Max',
-    price: 'Mid-tier',
+    price: 'Pricing coming soon',
     comingSoon: true,
     dailyChatLimit: 100,
     chatHistoryDays: 30,
@@ -38,15 +39,15 @@ export const PLANS = {
 
     features: [
       'Scan-result-aware chat (AideBot can reference a specific scan)',
-      'Priority scan processing queue',
-      '30-day chat history · 90-day report history',
+      '100 chats/day · 30-day chat history · 90-day report history',
+      '30 scans/day (+3 bonus scans), priority processing queue',
       'Priority email support (24–48h)',
     ],
   },
   pro: {
     id: 'pro',
     label: 'Pro',
-    price: 'Top-tier',
+    price: 'Pricing coming soon',
     comingSoon: true,
     dailyChatLimit: 500,
     chatHistoryDays: 365,
@@ -59,9 +60,9 @@ export const PLANS = {
     },
     features: [
       'Unlimited blood smear scans — every 5 images saved earns a discount on your next renewal',
-      'Full scan-result-aware chat + treatment guideline lookups',
+      '500 chats/day, full scan-result-aware chat + treatment guideline lookups',
       'Fastest scan processing queue',
-      '1-year chat & report history',
+      '365-day chat & report history',
       'Priority bug-report triage',
       'Multi-technician / lab team support',
     ],
