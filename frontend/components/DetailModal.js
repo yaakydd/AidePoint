@@ -121,6 +121,13 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
   const morphologyEntries = filterDisplayableMorphologyFindings(report.morphologyFindings);
   const cbcPatternEntries = Object.entries(report.cbcPatternSummary ?? {});
 
+  // Backend zeroes morphology_findings whenever condition === 'unknown'
+  // (see routers/predict.py) -- an empty morphologyEntries in that case
+  // means "suppressed because unreliable", not "nothing was found", so
+  // the section still renders with an explicit placeholder instead of
+  // silently disappearing.
+  const isMorphologyUnreliable = report.condition === 'unknown';
+
   const hasCellOverlay = report.cellOverlay?.cells?.length > 0;
   const severityBreakdown = hasCellOverlay ? computeSeverityBreakdown(report.cellOverlay.cells) : [];
 
@@ -300,26 +307,34 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
               </Text>
             </View>
 
-            {morphologyEntries.length > 0 ? (
+            {(isMorphologyUnreliable || morphologyEntries.length > 0) ? (
               <View>
                 <Text style={styles.sectionHeading}>Morphology Findings</Text>
-                {morphologyEntries.map(function (entry) {
-                  const flagName = entry[0];
-                  const finding = entry[1] ?? {};
-                  const label = finding.display_label ?? flagName.replace(/_/g, ' ');
-                  const isPossible = finding.tier === 'possible';
-                  return (
-                    <View key={flagName} style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>{label}</Text>
-                      <Text style={styles.detailValue}>{isPossible ? 'Possible' : 'Flagged'}</Text>
-                    </View>
-                  );
-                })}
-                {morphologyEntries.some(function (entry) { return entry[1]?.tier === 'possible'; }) ? (
+                {isMorphologyUnreliable ? (
                   <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginTop: SPACING.xs }}>
-                    "Possible" findings are patterns the model detects less reliably -- confirm with manual review.
+                    Not shown — result unreliable.
                   </Text>
-                ) : null}
+                ) : (
+                  <>
+                    {morphologyEntries.map(function (entry) {
+                      const flagName = entry[0];
+                      const finding = entry[1] ?? {};
+                      const label = finding.display_label ?? flagName.replace(/_/g, ' ');
+                      const isPossible = finding.tier === 'possible';
+                      return (
+                        <View key={flagName} style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>{label}</Text>
+                          <Text style={styles.detailValue}>{isPossible ? 'Possible' : 'Flagged'}</Text>
+                        </View>
+                      );
+                    })}
+                    {morphologyEntries.some(function (entry) { return entry[1]?.tier === 'possible'; }) ? (
+                      <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, fontStyle: 'italic', marginTop: SPACING.xs }}>
+                        "Possible" findings are patterns the model detects less reliably -- confirm with manual review.
+                      </Text>
+                    ) : null}
+                  </>
+                )}
               </View>
             ) : null}
 
