@@ -127,6 +127,16 @@ async def predict(
         out whenever condition is "unknown", since per-cell shape data is
         exactly the thing a "the read itself can't be trusted" verdict
         shouldn't imply confidence in.
+      - morphology_findings / explanation.observed_indicators follow the
+        same rule as cell_overlay: they're only meaningful when condition
+        is determinate. morphology_findings is needed *before* condition
+        is known (resolve_condition() reads it to decide whether a
+        non-anemia flag fired), so it's replaced with an empty dict right
+        after that decision is made -- same point cell_overlay is zeroed,
+        for the same reason (before build_explanation, the audit record,
+        and the response payload all consume it). The frontend renders a
+        "not shown -- result unreliable" placeholder in this case rather
+        than treating an empty section as "nothing found".
     """
 
     _model = request.app.state.model
@@ -280,6 +290,17 @@ async def predict(
             "cell_count": 0,
             "flagged_count": 0,
         }
+        # Same reliability gate as cell_overlay above, extended to
+        # morphology_findings: an "unknown"/unreliable condition must not
+        # carry confident-looking per-flag morphology calls downstream --
+        # into build_explanation(), the audit record, or the response
+        # payload. morphology_findings was only needed *before* this
+        # point (to let resolve_condition() decide whether a non-anemia
+        # flag fired above); it's replaced with an empty dict here, same
+        # as cell_overlay's fields are zeroed, and for the same reason.
+        # The frontend shows an explicit "not shown -- result unreliable"
+        # placeholder rather than treating this as "no findings".
+        morphology_findings = {}
 
     # Route the analyzed image into the "screenings" bucket
     # (anemia/healthy/unknown prefix) and attach its confidence score.
@@ -321,6 +342,16 @@ async def predict(
     )
     prediction_confidence = explanation.confidence
     explanation_dict = asdict(explanation)
+
+    # build_explanation() derives observed_indicators from the raw
+    # morphology_probs independently of the morphology_findings
+    # suppression above, so it needs its own gate here -- same rule,
+    # same reason: an "unknown" condition shouldn't carry a confident-
+    # looking list of observed indicators either. NOTE: if
+    # observed_indicators is actually keyed by flag name (a dict) rather
+    # than a list in morphology_explanations.py, change [] to {} below.
+    if condition == "unknown":
+        explanation_dict["observed_indicators"] = []
 
     log.info(
         "predict  user=%s  is_anemic=%s  probability=%.3f  unreliable=%s  time=%sms",
