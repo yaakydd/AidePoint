@@ -207,6 +207,13 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
   const cbcPatternEntries = Object.entries(prediction.cbc_pattern_summary ?? {});
   const morphologyEntries = filterDisplayableMorphologyFindings(prediction.morphology_findings);
 
+  // Backend zeroes morphology_findings whenever condition === 'unknown'
+  // (see routers/predict.py) -- an empty morphologyEntries in that case
+  // means "suppressed because unreliable", not "nothing was found", so
+  // the section still renders with an explicit placeholder instead of
+  // silently disappearing.
+  const isMorphologyUnreliable = conditionKey === 'unknown';
+
   const isUnreliable = prediction.is_unreliable ?? false;
   const unreliableReasons = prediction.unreliable_reasons ?? [];
 
@@ -382,22 +389,28 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
           
             </View>
 
-             {morphologyEntries.length > 0 && (
+             {(isMorphologyUnreliable || morphologyEntries.length > 0) && (
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeading}>Morphology Findings</Text>
-                {morphologyEntries.map(([flagName, finding]) => (
-                  <View key={flagName} style={styles.findingRow}>
-                    <MaterialCommunityIcons name="alert-circle-outline" size={14} color={COLORS.textSecondary} style={{ marginTop: 2 }} />
-                    <Text style={styles.findingText}>
-                      {finding?.display_label ?? flagName.replace(/_/g, ' ')}
-                      {finding?.tier === 'possible' ? '  (possible)' : ''}
-                    </Text>
-                  </View>
-                ))}
-                {morphologyEntries.some(([, finding]) => finding?.tier === 'possible') && (
-                  <Text style={styles.sectionSubcaption}>
-                    "Possible" findings are patterns the model detects less reliably -- confirm with manual review.
-                  </Text>
+                {isMorphologyUnreliable ? (
+                  <Text style={styles.sectionSubcaption}>Not shown — result unreliable.</Text>
+                ) : (
+                  <>
+                    {morphologyEntries.map(([flagName, finding]) => (
+                      <View key={flagName} style={styles.findingRow}>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={14} color={COLORS.textSecondary} style={{ marginTop: 2 }} />
+                        <Text style={styles.findingText}>
+                          {finding?.display_label ?? flagName.replace(/_/g, ' ')}
+                          {finding?.tier === 'possible' ? '  (possible)' : ''}
+                        </Text>
+                      </View>
+                    ))}
+                    {morphologyEntries.some(([, finding]) => finding?.tier === 'possible') && (
+                      <Text style={styles.sectionSubcaption}>
+                        "Possible" findings are patterns the model detects less reliably -- confirm with manual review.
+                      </Text>
+                    )}
+                  </>
                 )}
               </View>
             )}
