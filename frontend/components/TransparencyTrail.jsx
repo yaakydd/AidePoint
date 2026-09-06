@@ -287,22 +287,26 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
               {cfg.label}
             </Text>
             {showProbabilityConfidence ? (
-              <>
-                <Text style={styles.probabilityText}>
-                  {(prediction.anemia_probability * 100).toFixed(0)}% probability
-                </Text>
-                <View style={styles.confidenceRow}>
-                  <MaterialCommunityIcons
-                    name={confidenceInfo.icon}
-                    size={FONTS.xs}
-                    color={confidenceInfo.color}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.confidenceText, { color: confidenceInfo.color, marginTop: 0, marginBottom: 0 }]}>
-                    {confidenceInfo.text}
+              isUnreliable ? (
+                <View style={{ marginBottom: SPACING.md }} />
+              ) : (
+                <>
+                  <Text style={styles.probabilityText}>
+                    {(prediction.anemia_probability * 100).toFixed(0)}% probability
                   </Text>
-                </View>
-              </>
+                  <View style={styles.confidenceRow}>
+                    <MaterialCommunityIcons
+                      name={confidenceInfo.icon}
+                      size={FONTS.xs}
+                      color={confidenceInfo.color}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.confidenceText, { color: confidenceInfo.color, marginTop: 0, marginBottom: 0 }]}>
+                      {confidenceInfo.text}
+                    </Text>
+                  </View>
+                </>
+              )
             ) : (
               <View style={{ marginBottom: SPACING.md }} />
             )}
@@ -320,7 +324,7 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                   <TouchableOpacity
                   style={styles.toggleChip}
                   onPress={() => {
-                    setShowOverlay(v => !v);
+                    setShowBeforeCrop(v => !v);
                     setSelectedSeverityBand(null);
                   }}
                   disabled={showBeforeCrop}
