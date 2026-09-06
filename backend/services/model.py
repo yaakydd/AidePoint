@@ -217,7 +217,7 @@ _VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("deploye
 # decision (0.50), not the recall-floor algorithm's raw output (0.58).
 ANEMIA_DECISION_THRESHOLD: float = float(
     os.getenv(
-        "ANEMIA_DECISION_THRESHOLD",
+        "OPTIMAL_THRESHOLD",
         str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.50",
     )
 )
