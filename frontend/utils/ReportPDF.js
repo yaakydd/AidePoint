@@ -42,7 +42,18 @@ const row = (label, value) => {
     </tr>`;
 };
 
-const buildMorphologySection = (morphologyFindings) => {
+// condition is now required: when the backend has suppressed
+// morphology_findings because condition === 'unknown' (see
+// routers/predict.py), an empty findings list here means "not shown
+// because unreliable", not "nothing found" -- those are two different
+// clinical claims and must render as two different sentences.
+const buildMorphologySection = (morphologyFindings, condition) => {
+  if (condition === 'unknown') {
+    return `
+      <div class="section-bar">Morphology Findings</div>
+      <div class="note-text">Not shown — result unreliable.</div>`;
+  }
+
   const flaggedEntries = filterDisplayableMorphologyFindings(morphologyFindings);
 
   if (flaggedEntries.length === 0) {
@@ -295,7 +306,7 @@ const buildReportHtml = (report, logoBase64, wordmarkBase64) => {
         ${row('Urgency', cfg.urgency)}
       </table>
 
-      ${buildMorphologySection(report.morphologyFindings)}
+      ${buildMorphologySection(report.morphologyFindings, report.condition)}
 
       ${buildCbcSection(report.cbcPatternSummary)}
 
