@@ -248,10 +248,20 @@ const isFlaggedCell = (cell) =>
 export const computeSeverityBreakdown = (cells) => {
   const total = cells.length;
   return SEVERITY_BUCKETS.map((bucket) => {
+    // NOTE: 'unusual' membership is AND-based (isFlaggedCell) rather than
+    // severity-based, but severity itself is OR-based (max of the two
+    // components) -- so a non-flagged cell can still have severity >=
+    // 0.66 (one metric alone crossed its limit). Such a cell must NOT
+    // fall through to nowhere: it isn't flagged, so it can't be
+    // 'unusual', and it has no severity upper bound left to exclude it
+    // from 'mild'. So 'mild' is everything non-flagged with severity >=
+    // 0.33, with no upper cutoff -- every cell lands in exactly one of
+    // the three buckets, and the three counts always sum to `total`.
     const count = cells.filter((cell) => {
-      if (bucket.key === 'unusual') return isFlaggedCell(cell);
-      if (isFlaggedCell(cell)) return false; // already counted in 'unusual'
-      return cell.severity >= bucket.min && cell.severity < bucket.max;
+      if (isFlaggedCell(cell)) return bucket.key === 'unusual';
+      if (bucket.key === 'unusual') return false;
+      if (bucket.key === 'mild') return cell.severity >= 0.33;
+      return cell.severity < 0.33; // 'normal'
     }).length;
     const midpoint = (bucket.min + Math.min(bucket.max, 1)) / 2;
     return {
