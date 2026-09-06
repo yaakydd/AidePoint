@@ -203,10 +203,22 @@ MORPHOLOGY_REPORTING_THRESHOLDS: dict[str, float] = load_morphology_reporting_th
 
 
 _VALIDATED_THRESHOLD: float | None = _EVAL_REPORT.get("binary", {}).get("deployed_threshold")
+# NOTE: 0.50, not 0.58. eval_report.json's "binary.deployed_threshold"
+# (written by Cell 6's RECALL_FLOOR sweep) is 0.58 -- the highest
+# threshold that clears the 0.95 recall floor -- but 0.58 was evaluated
+# against 0.50 and deliberately not deployed: it buys only +0.72pts of
+# precision for -1.09pts of recall (13 more missed anemia cases per
+# 1200), and leaves a thinner margin above the recall floor at exactly
+# the moment real-world photos are known to diverge from the validation
+# distribution (see shape-screening findings). 0.50 is deployed for
+# that recall margin, not because it happens to equal this run's
+# F1-argmax point. This fallback string is the last resort if
+# eval_report.json is ever missing entirely; it must track the deployed
+# decision (0.50), not the recall-floor algorithm's raw output (0.58).
 ANEMIA_DECISION_THRESHOLD: float = float(
     os.getenv(
         "ANEMIA_DECISION_THRESHOLD",
-        str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.58",
+        str(_VALIDATED_THRESHOLD) if _VALIDATED_THRESHOLD is not None else "0.50",
     )
 )
 
