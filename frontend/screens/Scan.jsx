@@ -319,14 +319,27 @@ const Scan = ({ navigation, route }) => {
   // shows a real count as soon as the screen mounts instead of staying
   // blank until the first analysis completes.
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    const fetchAndSetRemaining = () => {
       fetchScanLimitStatus().then((status) => {
         if (!mountedRef.current || !status) {
           return;
         }
         setRemaining(status.scans_remaining_today ?? null);
       });
-    });
+    };
+    // BUG FIX: navigation's initial 'focus' event fires as soon as this
+    // screen becomes the active one, which -- for a user landing here for
+    // the very first time (e.g. straight after signup, no prior
+    // navigate-away-and-back) -- happens before this useEffect has run and
+    // subscribed the listener below. That initial focus was missed
+    // entirely, and since 'focus' only fires again on a later tab
+    // switch/navigation, `remaining` stayed null (rendered as "—") until
+    // the first completed scan set it via a totally separate code path
+    // (setRemaining(remainingAfterScan) after /predict). Calling it once
+    // directly here covers that missed initial focus; the listener below
+    // still handles the normal case of returning to this tab later.
+    fetchAndSetRemaining();
+    const unsubscribe = navigation.addListener('focus', fetchAndSetRemaining);
     return unsubscribe;
   }, [navigation]);
   useEffect(() => {
