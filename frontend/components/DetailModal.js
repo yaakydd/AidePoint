@@ -294,7 +294,7 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
             ) : null}
 
             <Text style={styles.sectionHeading}>AI Analysis</Text>
-            {showProbabilityConfidence ? (
+            {showProbabilityConfidence && !report.isUnreliable ? (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Probability</Text>
                 <Text style={styles.detailValue}>{confidencePct}</Text>
