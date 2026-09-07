@@ -327,7 +327,6 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
                     setShowBeforeCrop(v => !v);
                     setSelectedSeverityBand(null);
                   }}
-                  disabled={showBeforeCrop}
                 >
                     <MaterialIcons name="compare" size={16} color={COLORS.primary} />
                     <Text style={styles.toggleChipText}>
