@@ -11,7 +11,7 @@ const FOOTER_BUTTON_HEIGHT = SPACING.lg * 2 + mScale(17) * 1.3; // paddingVertic
 
 // ConsentScreen has no tab bar (it's shown before the main app nav even
 // mounts), so unlike tab-bar screens it can't reuse getTabBarHeight(insets)
-// -- there's no tab bar height to add. It still needs the REAL device
+// there's no tab bar height to add. It still needs the REAL device
 // bottom inset though, not the hardcoded layout.bottomInset guess (iOS 34 /
 // Android 0) the static styles below used to use, which meant the footer
 // under-padded on any device whose actual inset is bigger than that guess
@@ -147,7 +147,9 @@ export const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     gap: SPACING.sm,
   },
-  btnDisabled: { opacity: 0.65 },
+  btnDisabled: { 
+    opacity: 0.65
+  },
   btnText: {
     color: COLORS.white,
     fontSize: FONTS.lg,
