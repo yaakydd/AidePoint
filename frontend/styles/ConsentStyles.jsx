@@ -131,10 +131,10 @@ export const styles = StyleSheet.create({
     right: 0,
     backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.pagePad,
-    paddingTop: SPACING.md,
-    // Base/fallback value; ConsentScreen overrides this inline with the
-    // real device inset via getConsentFooterMetrics(insets.bottom).
-    paddingBottom: getConsentFooterMetrics().footerPaddingBottom,
+    paddingTop: SPACING.sm,
+    // Keep the safe-area inset, but trim a bit of the footer spacing so the
+    // primary button sits a little higher and feels more visually centered.
+    paddingBottom: Math.max(getConsentFooterMetrics().footerPaddingBottom - SPACING.sm, 0),
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
   },
