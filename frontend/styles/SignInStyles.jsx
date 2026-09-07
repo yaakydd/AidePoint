@@ -168,7 +168,7 @@ export const signInStyles = StyleSheet.create({
   },
 
   signInBtnDisabled: {
-    opacity: 0.5,
+    opacity: 0.2,
   },
 
   signInBtnText: {
