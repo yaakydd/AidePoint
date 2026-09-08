@@ -189,15 +189,18 @@ def _extract_image_quality_fields(quality_result) -> tuple[str, dict]:
     """
     Pulls the fields audit_trail.py's build_prediction_record needs out
     of assess_image_quality's ImageQualityResult. That dataclass is flat
-    (quality_score alongside blur/cells_detected/etc, not nested under
-    its own "breakdown" key), so the breakdown stored in the audit
+    (quality_score alongside blur/brightness/contrast/etc, not nested
+    under its own "breakdown" key), so the breakdown stored in the audit
     record is everything except quality_score itself, the individual
     measurements that explain how that score was reached.
     """
     quality_score = quality_result.quality_score
     breakdown = {
         "blur_score": quality_result.blur_score,
+        "brightness_score": quality_result.brightness_score,
+        "contrast_score": quality_result.contrast_score,
         "cells_detected": quality_result.cells_detected,
+        "staining_quality": quality_result.staining_quality,
         "failure_reasons": quality_result.failure_reasons,
     }
     return quality_score, breakdown
