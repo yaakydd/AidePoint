@@ -5,7 +5,7 @@ from dataclasses import asdict
 import numpy as np
 import onnxruntime as ort
 
-from services.quality_checks import run_reliability_gate  # noqa: F401 -- kept importable; the OOD/drift gate itself is no longer called from is_unreliable (see comment below), retained here in case it's re-validated and re-enabled later
+from services.quality_checks import run_reliability_gate
 from services.shape_screening import (
     get_cell_overlay,
     ShapeScreeningResult,
@@ -404,24 +404,9 @@ class AidePointONNX:
         # this ever reaches morphology_explanations.py or the audit trail.
         morphology_result = filter_unreliable_morphology_flags(morphology_result)
 
-        # SCOPE NOTE (intentionally reduced): this used to also run
-        # run_reliability_gate() here -- the embedding-distance/OOD check
-        # plus hue/saturation/value statistical drift checks from
-        # quality_checks.py. Removed for the same reason image_quality.py
-        # was cut down to blur + cell-count: none of those checks had a
-        # documented empirical calibration the way blur does, they were
-        # fixed statistical conventions (e.g. "3 standard deviations")
-        # applied without validation against real labeled good/bad photos.
-        # Stacking multiple unvalidated statistical checks together
-        # compounds false-flag risk without a measured benefit. is_unreliable
-        # is now driven by the defensible core only: image_quality.py's
-        # blur/cell-count check (folded in by predict.py) and shape
-        # screening below, which is a structural check (do >25% of cells
-        # have an unusual, hard-to-interpret shape), not a statistical
-        # quality judgment, so it's kept. Re-adding an OOD/drift check here
-        # should only happen once it's been validated the way blur was --
-        # see AidePoint_Documentation.md.
-        is_unreliable, unreliable_reasons = False, []
+        is_unreliable, unreliable_reasons = run_reliability_gate(
+            image_embedding, raw_resized_image, self.out_of_distribution_stats
+        )
 
         # CHANGED: previously this block called run_shape_screening() a
         # second time internally, wrapped in its own try/except, and had
