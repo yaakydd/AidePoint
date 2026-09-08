@@ -286,30 +286,14 @@ const  TransparencyTrail = ({ data, onClose, onViewReport, userId }) => {
             <Text style={[styles.conditionLabel, { color: sevStyle.text }]}>
               {cfg.label}
             </Text>
-            {showProbabilityConfidence ? (
-              isUnreliable ? (
-                <View style={{ marginBottom: SPACING.md }} />
-              ) : (
-                <>
-                  <Text style={styles.probabilityText}>
-                    {(prediction.anemia_probability * 100).toFixed(0)}% probability
-                  </Text>
-                  <View style={styles.confidenceRow}>
-                    <MaterialCommunityIcons
-                      name={confidenceInfo.icon}
-                      size={FONTS.xs}
-                      color={confidenceInfo.color}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={[styles.confidenceText, { color: confidenceInfo.color, marginTop: 0, marginBottom: 0 }]}>
-                      {confidenceInfo.text}
-                    </Text>
-                  </View>
-                </>
-              )
-            ) : (
-              <View style={{ marginBottom: SPACING.md }} />
-            )}
+            {/* Probability and confidence are internal-only signals as of
+                this change -- they still exist in the prediction payload
+                and drive internal logic (is_unreliable capping, audit
+                trail, etc.), they're just never rendered to the
+                technician. The condition label above (cfg.label) is the
+                only outcome shown here; unreliable results still surface
+                via the Review recommended banner below. */}
+            <View style={{ marginBottom: SPACING.md }} />
 
             <View style={styles.imageSection}>
               <ImageWithOverlay
