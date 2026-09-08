@@ -1,3 +1,17 @@
+"""
+NOT CURRENTLY CALLED as part of the live reliability gate. run_reliability_
+gate() and its statistical checks (embedding/OOD distance, hue/saturation/
+value drift, vignetting) were disconnected from is_unreliable in model.py --
+they lacked the kind of documented empirical calibration blur has in
+image_quality.py, and stacking multiple unvalidated statistical checks
+compounded false-flag risk without a measured benefit to show for it.
+
+Kept here, still fully functional and unit-testable, for future
+re-enablement once each threshold has been validated against a labeled
+batch of real good/bad photos. See model.py and image_quality.py for the
+full reasoning, and AidePoint_Documentation.md for the write-up.
+"""
+
 import numpy as np
 import cv2
 
