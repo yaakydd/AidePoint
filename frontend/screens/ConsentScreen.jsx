@@ -16,21 +16,21 @@ const INFO_ITEMS = [
     color: COLORS.success,
     bg: COLORS.successBg,
     title: 'If you allow storage',
-    body: 'Blood smear images are uploaded to secure cloud storage.',
+    body: 'Blood smear images are uploaded to secure cloud storage and used later for retraining the model to improve it.',
   },
   {
     icon: 'eye-off-outline',
     color: COLORS.info,
     bg: COLORS.infoBg,
     title: 'If you decline',
-    body: 'Images are used only for AI analysis and discarded right after. Reports are still generated — only the image itself is not kept.',
+    body: 'Images are used only for AI analysis and discarded right after. Reports are still generated, only the image itself is not kept.',
   },
   {
     icon: 'pencil-outline',
     color: COLORS.warning,
     bg: COLORS.warningBg,
     title: 'You can change this later',
-    body: 'Update this anytime from Profile → Data & Privacy, even while offline — it will sync once you\'re back online.',
+    body: 'Update this anytime. Go to Account then search for Data & Privacy, even while offline, it will sync once you\'re back online.',
   },
 ];
 
