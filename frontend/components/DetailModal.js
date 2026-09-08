@@ -294,12 +294,9 @@ export default function DetailModal({ report, visible, onClose, onNotesSaved, us
             ) : null}
 
             <Text style={styles.sectionHeading}>AI Analysis</Text>
-            {showProbabilityConfidence && !report.isUnreliable ? (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Probability</Text>
-                <Text style={styles.detailValue}>{confidencePct}</Text>
-              </View>
-            ) : null}
+            {/* Probability is internal-only as of this change -- still
+                present in the stored report data, just never rendered
+                here. */}
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Urgency</Text>
               <Text style={[styles.detailValue, cfg.severity === 'red' && styles.detailValueFlagged]}>
