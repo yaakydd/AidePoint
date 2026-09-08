@@ -247,14 +247,14 @@ async def predict(
 
     result["image_quality_warning"] = quality_result.quality_score == "poor"
 
-    # Quality checks (blur/brightness/contrast/staining/cell-count) are a
-    # peer validation layer alongside cell-shape screening and the
-    # embedding/OOD reliability gate -- all three feed the same
-    # is_unreliable signal, not just the two that happened to be wired up
-    # first. A "poor" quality photo must not be able to produce a
-    # confident-looking anemic/healthy verdict; it degrades the result
-    # the same way an out-of-distribution or unscoreable-shape image
-    # already does.
+    # is_unreliable is now built from two defensible sources: the blur +
+    # cell-count check below (image_quality.py -- the one check with
+    # documented empirical calibration), and shape screening (a structural
+    # check, not a statistical one). The embedding/OOD and color-drift
+    # statistical checks that used to also feed this were removed for lack
+    # of empirical validation -- see model.py and image_quality.py for the
+    # full reasoning. A "poor" quality photo must not be able to produce a
+    # confident-looking anemic/healthy verdict.
     if quality_result.quality_score == "poor":
         result["is_unreliable"] = True
         result["unreliable_reasons"] = [
