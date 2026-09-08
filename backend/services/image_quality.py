@@ -1,25 +1,19 @@
 """
 Server-side image quality assessment for incoming smear photos.
 
-This runs BEFORE the anemia model. It asks one narrow question: "is this
-photo sharp enough, and does it contain enough cells, to analyze at all."
+This runs BEFORE the anemia model and BEFORE the existing reliability
+gate (embedding distance + shape screening in quality_checks.py /
+shape_screening.py). The distinction matters: this module asks "is this
+photo usable at all," the reliability gate asks "does this usable photo
+look like something our model was trained on." A photo can pass this
+quality check and still get flagged unreliable, and a photo that fails
+this check should never reach the model in the first place.
 
-SCOPE NOTE (intentionally reduced): this module previously also checked
-brightness, contrast, and staining consistency. Those checks were removed.
-Reasoning: unlike blur (calibrated against a labeled batch of known
-in-focus vs out-of-focus AneRBC-II samples, see BLUR_VARIANCE_MINIMUM
-below), the brightness/contrast/staining thresholds had no documented
-empirical calibration -- they were reasonable-sounding fixed numbers, not
-values validated against real labeled good/bad photos. Stacking multiple
-unvalidated checks together compounds false-flag risk (even a low
-per-check false-positive rate adds up across several independent checks
-OR'd together) without a measured benefit to show for it. Cutting this
-down to the one check with real evidence behind it, plus the hard
-structural requirement (enough cells to analyze at all), is a smaller,
-more honestly-defensible reliability gate. Re-adding a check here should
-only happen once its specific threshold has been validated against a
-labeled batch of real good/bad photos, the same way blur was -- see
-AidePoint_Documentation.md for that write-up.
+The frontend should still run a cheap pre-check (blur/brightness) before
+upload, purely to save the technician a round trip on an obviously bad
+shot. This module is the authoritative check, it is what actually
+gets logged in the audit trail and what actually gates whether
+inference runs.
 """
 
 from dataclasses import dataclass
@@ -32,18 +26,28 @@ import numpy as np
 # in-focus vs out-of-focus AneRBC-II samples.
 BLUR_VARIANCE_MINIMUM = 100.0
 
+# Mean pixel intensity (0-255) outside this range indicates the photo is
+# under- or over-exposed to a degree that affects color-based morphology
+# flags like hypochromia.
+BRIGHTNESS_ACCEPTABLE_RANGE = (60, 200)
+
+# Minimum standard deviation of pixel intensity, used as a proxy for
+# contrast. A washed-out or overly uniform image will fall below this.
+CONTRAST_MINIMUM = 30.0
+
 # Fewer detected cells than this makes per-cell morphology statistics
-# unreliable regardless of how sharp the image is. This is a structural
-# requirement, not a quality judgment -- distinct from blur, it can't be
-# "recalibrated," it's simply whether there's enough to measure.
+# unreliable regardless of how sharp the image is.
 MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS = 15
 
 
 @dataclass
 class ImageQualityResult:
-    quality_score: str          # 'good', 'poor'
+    quality_score: str          # 'excellent', 'good', 'poor'
     blur_score: float
+    brightness_score: float
+    contrast_score: float
     cells_detected: int
+    staining_quality: str       # 'normal', 'over_stained', 'under_stained', 'uneven'
     failure_reasons: list[str]
 
 
@@ -52,6 +56,39 @@ def measure_blur(grayscale_image: np.ndarray) -> float:
     produce high variance under the Laplacian operator; a blurry image
     does not."""
     return float(cv2.Laplacian(grayscale_image, cv2.CV_64F).var())
+
+
+def measure_brightness_and_contrast(grayscale_image: np.ndarray) -> tuple[float, float]:
+    mean_intensity = float(np.mean(grayscale_image))
+    intensity_std_dev = float(np.std(grayscale_image))
+    return mean_intensity, intensity_std_dev
+
+
+def assess_staining_quality(bgr_image: np.ndarray) -> str:
+    """
+    Rough check for stain consistency using color channel balance.
+    A well-stained Giemsa/Wright smear has a fairly consistent
+    purple-pink cast; heavy skew toward one channel or very low
+    saturation suggests staining problems rather than a sample problem.
+    """
+    hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
+    saturation_channel = hsv_image[:, :, 1]
+    mean_saturation = float(np.mean(saturation_channel))
+
+    low_saturation_threshold = 40
+    high_saturation_threshold = 200
+
+    if mean_saturation < low_saturation_threshold:
+        return "under_stained"
+    if mean_saturation > high_saturation_threshold:
+        return "over_stained"
+
+    saturation_std_dev = float(np.std(saturation_channel))
+    uneven_staining_threshold = 55
+    if saturation_std_dev > uneven_staining_threshold:
+        return "uneven"
+
+    return "normal"
 
 
 def assess_image_quality(bgr_image: np.ndarray, detected_cell_count: int) -> ImageQualityResult:
@@ -63,6 +100,8 @@ def assess_image_quality(bgr_image: np.ndarray, detected_cell_count: int) -> Ima
     grayscale_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2GRAY)
 
     blur_score = measure_blur(grayscale_image)
+    brightness_score, contrast_score = measure_brightness_and_contrast(grayscale_image)
+    staining_quality = assess_staining_quality(bgr_image)
 
     failure_reasons = []
 
@@ -73,6 +112,22 @@ def assess_image_quality(bgr_image: np.ndarray, detected_cell_count: int) -> Ima
             "and retake the photo."
         )
 
+    brightness_minimum, brightness_maximum = BRIGHTNESS_ACCEPTABLE_RANGE
+    if brightness_score < brightness_minimum:
+        failure_reasons.append(
+            "Image is too dark. Retake it in better lighting or move closer to a light source."
+        )
+    elif brightness_score > brightness_maximum:
+        failure_reasons.append(
+            "Image is overexposed. Reduce glare or direct light on the slide and retake the photo."
+        )
+
+    if contrast_score < CONTRAST_MINIMUM:
+        failure_reasons.append(
+            "Image contrast is too low to distinguish cell features. "
+            "Avoid flat, diffuse lighting and make sure the slide surface is clean, then retake the photo."
+        )
+
     if detected_cell_count < MINIMUM_CELLS_FOR_RELIABLE_ANALYSIS:
         failure_reasons.append(
             f"Only {detected_cell_count} cells detected, fewer than the "
@@ -80,12 +135,35 @@ def assess_image_quality(bgr_image: np.ndarray, detected_cell_count: int) -> Ima
             "Recapture a denser field of the smear, or select a monolayer region with more cells in view."
         )
 
-    quality_score = "poor" if failure_reasons else "good"
+    if staining_quality == "under_stained":
+        failure_reasons.append(
+            "Staining appears too light (under-stained). Increase stain contact time or re-stain the smear."
+        )
+    elif staining_quality == "over_stained":
+        failure_reasons.append(
+            "Staining appears too dark (over-stained). Reduce stain contact time or rinse the smear "
+            "more thoroughly and re-photograph."
+        )
+    elif staining_quality == "uneven":
+        failure_reasons.append(
+            "Staining is uneven across the field. Select a more evenly stained region of the smear, "
+            "or re-stain if the whole slide looks patchy."
+        )
+
+    if len(failure_reasons) == 0:
+        quality_score = "excellent"
+    elif len(failure_reasons) <= 1:
+        quality_score = "good"
+    else:
+        quality_score = "poor"
 
     return ImageQualityResult(
         quality_score=quality_score,
         blur_score=blur_score,
+        brightness_score=brightness_score,
+        contrast_score=contrast_score,
         cells_detected=detected_cell_count,
+        staining_quality=staining_quality,
         failure_reasons=failure_reasons,
     )
 
